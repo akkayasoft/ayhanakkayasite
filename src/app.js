@@ -138,10 +138,14 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
   return false;
 }
 
-function adminRedirect(res, queryParams) {
+function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
+  const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
+  const nextPath = /^\/admin\/(dashboard|students|categories|tasks|points|reports)$/.test(requestedNext)
+    ? requestedNext
+    : '/admin/dashboard';
   const queryString = params.toString();
-  return res.redirect(queryString ? `/admin?${queryString}` : '/admin');
+  return res.redirect(queryString ? `${nextPath}?${queryString}` : nextPath);
 }
 
 function mapUser(row) {
@@ -230,8 +234,8 @@ function requireRole(role) {
 }
 
 app.get('/', requireAuth, (req, res) => {
-  if (req.currentUser.role === 'admin') return res.redirect('/admin');
-  return res.redirect('/student');
+  if (req.currentUser.role === 'admin') return res.redirect('/admin/dashboard');
+  return res.redirect('/student/dashboard');
 });
 
 app.get('/login', (req, res) => {
@@ -276,212 +280,211 @@ app.post('/logout', (req, res) => {
   });
 });
 
-app.get(
-  '/admin',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const [studentsRes, categoriesRes, tasksRes, pointLogsRes] = await Promise.all([
-      query(
-        `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users WHERE role = 'student' ORDER BY name ASC`
-      ),
-      query(`SELECT id, name, created_at AS "createdAt" FROM categories ORDER BY name ASC`),
-      query(`
-        SELECT
-          id,
-          title,
-          description,
-          category_id AS "categoryId",
-          student_id AS "studentId",
-          repeat_type AS "repeatType",
-          single_date AS "singleDate",
-          weekly_day AS "weeklyDay",
-          monthly_day AS "monthlyDay",
-          custom_dates AS "customDates",
-          start_date AS "startDate",
-          end_date AS "endDate",
-          is_archived AS "isArchived",
-          created_by AS "createdBy",
-          created_at AS "createdAt"
-        FROM tasks
-        ORDER BY created_at DESC
-      `),
-      query(`
-        SELECT
-          id,
-          student_id AS "studentId",
-          type,
-          points,
-          reason,
-          delta,
-          created_by AS "createdBy",
-          created_at AS "createdAt"
-        FROM point_logs
-        ORDER BY created_at DESC
-        LIMIT 20
-      `)
-    ]);
+async function getAdminViewModel(req, currentPage) {
+  const [studentsRes, categoriesRes, tasksRes, pointLogsRes] = await Promise.all([
+    query(
+      `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users WHERE role = 'student' ORDER BY name ASC`
+    ),
+    query(`SELECT id, name, created_at AS "createdAt" FROM categories ORDER BY name ASC`),
+    query(`
+      SELECT
+        id,
+        title,
+        description,
+        category_id AS "categoryId",
+        student_id AS "studentId",
+        repeat_type AS "repeatType",
+        single_date AS "singleDate",
+        weekly_day AS "weeklyDay",
+        monthly_day AS "monthlyDay",
+        custom_dates AS "customDates",
+        start_date AS "startDate",
+        end_date AS "endDate",
+        is_archived AS "isArchived",
+        created_by AS "createdBy",
+        created_at AS "createdAt"
+      FROM tasks
+      ORDER BY created_at DESC
+    `),
+    query(`
+      SELECT
+        id,
+        student_id AS "studentId",
+        type,
+        points,
+        reason,
+        delta,
+        created_by AS "createdBy",
+        created_at AS "createdAt"
+      FROM point_logs
+      ORDER BY created_at DESC
+      LIMIT 20
+    `)
+  ]);
 
-    const students = studentsRes.rows.map(mapUser);
-    const categories = categoriesRes.rows;
-    const tasks = tasksRes.rows.map(mapTask).map((task) => ({
-      ...task,
-      student: students.find((s) => s.id === task.studentId) || null,
-      category: categories.find((c) => c.id === task.categoryId) || null,
-      repeatText: formatRepeat(task)
-    }));
+  const students = studentsRes.rows.map(mapUser);
+  const categories = categoriesRes.rows;
+  const tasks = tasksRes.rows.map(mapTask).map((task) => ({
+    ...task,
+    student: students.find((s) => s.id === task.studentId) || null,
+    category: categories.find((c) => c.id === task.categoryId) || null,
+    repeatText: formatRepeat(task)
+  }));
 
-    const pointLogs = pointLogsRes.rows.map((row) => ({
-      ...row,
-      createdAt: row.createdAt,
-      createdDate: toDateOnly(row.createdAt)
-    }));
+  const pointLogs = pointLogsRes.rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt,
+    createdDate: toDateOnly(row.createdAt)
+  }));
 
-    const today = todayDateString();
+  const today = todayDateString();
+  const dateObj = new Date(`${today}T00:00:00`);
 
-    const todayStatusesRes = await query(
+  const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
+    query(
       `
         SELECT task_id AS "taskId", student_id AS "studentId", status
         FROM task_statuses
         WHERE day = $1
       `,
       [today]
-    );
-
-    const todayQuestionsRes = await query(
+    ),
+    query(
       `
         SELECT student_id AS "studentId", count
         FROM daily_questions
         WHERE day = $1
       `,
       [today]
-    );
+    )
+  ]);
 
-    const statusRows = todayStatusesRes.rows;
-    const questionRows = todayQuestionsRes.rows;
+  const dailyBoard = students.map((student) => {
+    const dueTasks = tasks.filter((t) => t.studentId === student.id && isTaskDueOnDate(t, dateObj, today));
+    const doneCount = todayStatusesRes.rows.filter(
+      (st) => st.studentId === student.id && st.status === 'done' && dueTasks.some((t) => t.id === st.taskId)
+    ).length;
+    const question = todayQuestionsRes.rows.find((q) => q.studentId === student.id);
+    return {
+      ...student,
+      dueCount: dueTasks.length,
+      doneCount,
+      questionCount: question ? Number(question.count || 0) : 0
+    };
+  });
 
-    const dailyBoard = students.map((student) => {
-      const dateObj = new Date(`${today}T00:00:00`);
-      const dueTasks = tasks.filter((t) => t.studentId === student.id && isTaskDueOnDate(t, dateObj, today));
-      const doneCount = statusRows.filter(
-        (st) => st.studentId === student.id && st.status === 'done' && dueTasks.some((t) => t.id === st.taskId)
+  const reportStudentId = normalizeText(req.query.reportStudentId);
+  const reportRange = parseDateRange(normalizeText(req.query.reportFrom), normalizeText(req.query.reportTo));
+  const selectedStudent = students.find((s) => s.id === reportStudentId) || null;
+  let report = null;
+
+  if (currentPage === 'reports' && selectedStudent && !reportRange.error) {
+    const [rangeStatusesRes, rangeQuestionsRes, rangePointsRes] = await Promise.all([
+      query(
+        `
+          SELECT task_id AS "taskId", student_id AS "studentId", day, status
+          FROM task_statuses
+          WHERE student_id = $1 AND day BETWEEN $2 AND $3
+        `,
+        [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
+      ),
+      query(
+        `
+          SELECT student_id AS "studentId", day, count
+          FROM daily_questions
+          WHERE student_id = $1 AND day BETWEEN $2 AND $3
+        `,
+        [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
+      ),
+      query(
+        `
+          SELECT student_id AS "studentId", created_at AS "createdAt", delta
+          FROM point_logs
+          WHERE student_id = $1 AND created_at::date BETWEEN $2 AND $3
+        `,
+        [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
+      )
+    ]);
+
+    const taskPool = tasks.filter((t) => t.studentId === selectedStudent.id);
+    const rows = reportRange.days.map((dateStr) => {
+      const reportDateObj = new Date(`${dateStr}T00:00:00`);
+      const dueTasks = taskPool.filter((t) => isTaskDueOnDate(t, reportDateObj, dateStr));
+      const doneCount = rangeStatusesRes.rows.filter(
+        (st) =>
+          toDateOnly(st.day) === dateStr &&
+          st.status === 'done' &&
+          dueTasks.some((task) => task.id === st.taskId)
       ).length;
-
-      const question = questionRows.find((q) => q.studentId === student.id);
+      const question = rangeQuestionsRes.rows.find((q) => toDateOnly(q.day) === dateStr);
+      const dayPointDelta = rangePointsRes.rows
+        .filter((p) => toDateOnly(p.createdAt) === dateStr)
+        .reduce((sum, p) => sum + Number(p.delta || 0), 0);
 
       return {
-        ...student,
+        date: dateStr,
         dueCount: dueTasks.length,
         doneCount,
-        questionCount: question ? Number(question.count || 0) : 0
+        notDoneCount: Math.max(dueTasks.length - doneCount, 0),
+        questionCount: question ? Number(question.count || 0) : 0,
+        pointDelta: dayPointDelta
       };
     });
 
-    const reportStudentId = normalizeText(req.query.reportStudentId);
-    const reportRange = parseDateRange(normalizeText(req.query.reportFrom), normalizeText(req.query.reportTo));
-    const selectedStudent = students.find((s) => s.id === reportStudentId) || null;
-
-    let report = null;
-
-    if (selectedStudent && !reportRange.error) {
-      const [rangeStatusesRes, rangeQuestionsRes, rangePointsRes] = await Promise.all([
-        query(
-          `
-            SELECT task_id AS "taskId", student_id AS "studentId", day, status
-            FROM task_statuses
-            WHERE student_id = $1 AND day BETWEEN $2 AND $3
-          `,
-          [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
-        ),
-        query(
-          `
-            SELECT student_id AS "studentId", day, count
-            FROM daily_questions
-            WHERE student_id = $1 AND day BETWEEN $2 AND $3
-          `,
-          [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
-        ),
-        query(
-          `
-            SELECT student_id AS "studentId", created_at AS "createdAt", delta
-            FROM point_logs
-            WHERE student_id = $1 AND created_at::date BETWEEN $2 AND $3
-          `,
-          [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
-        )
-      ]);
-
-      const taskPool = tasks.filter((t) => t.studentId === selectedStudent.id);
-      const rangeStatuses = rangeStatusesRes.rows;
-      const rangeQuestions = rangeQuestionsRes.rows;
-      const rangePoints = rangePointsRes.rows;
-
-      const rows = reportRange.days.map((dateStr) => {
-        const dateObj = new Date(`${dateStr}T00:00:00`);
-        const dueTasks = taskPool.filter((t) => isTaskDueOnDate(t, dateObj, dateStr));
-
-        const doneCount = rangeStatuses.filter(
-          (st) =>
-            toDateOnly(st.day) === dateStr &&
-            st.status === 'done' &&
-            dueTasks.some((task) => task.id === st.taskId)
-        ).length;
-
-        const question = rangeQuestions.find((q) => toDateOnly(q.day) === dateStr);
-        const dayPointDelta = rangePoints
-          .filter((p) => toDateOnly(p.createdAt) === dateStr)
-          .reduce((sum, p) => sum + Number(p.delta || 0), 0);
-
-        return {
-          date: dateStr,
-          dueCount: dueTasks.length,
-          doneCount,
-          notDoneCount: Math.max(dueTasks.length - doneCount, 0),
-          questionCount: question ? Number(question.count || 0) : 0,
-          pointDelta: dayPointDelta
-        };
-      });
-
-      const totals = rows.reduce(
-        (acc, row) => {
-          acc.due += row.dueCount;
-          acc.done += row.doneCount;
-          acc.questions += row.questionCount;
-          acc.pointDelta += row.pointDelta;
-          return acc;
-        },
-        { due: 0, done: 0, questions: 0, pointDelta: 0 }
-      );
-
-      report = {
-        student: selectedStudent,
-        fromDate: reportRange.fromDate,
-        toDate: reportRange.toDate,
-        rows,
-        totals,
-        completionRate: totals.due ? Math.round((totals.done / totals.due) * 100) : 0
-      };
-    }
-
-    return res.render('admin', {
-      user: req.currentUser,
-      students,
-      categories,
-      tasks,
-      activeTasks: tasks.filter((t) => !t.isArchived),
-      archivedTasks: tasks.filter((t) => t.isArchived),
-      pointLogs,
-      dailyBoard,
-      report,
-      reportError: reportRange.error,
-      reportFilters: {
-        studentId: reportStudentId,
-        fromDate: reportRange.fromDate || '',
-        toDate: reportRange.toDate || ''
+    const totals = rows.reduce(
+      (acc, row) => {
+        acc.due += row.dueCount;
+        acc.done += row.doneCount;
+        acc.questions += row.questionCount;
+        acc.pointDelta += row.pointDelta;
+        return acc;
       },
-      message: req.query.message || null,
-      error: req.query.error || null,
-      today
-    });
+      { due: 0, done: 0, questions: 0, pointDelta: 0 }
+    );
+
+    report = {
+      student: selectedStudent,
+      fromDate: reportRange.fromDate,
+      toDate: reportRange.toDate,
+      rows,
+      totals,
+      completionRate: totals.due ? Math.round((totals.done / totals.due) * 100) : 0
+    };
+  }
+
+  return {
+    user: req.currentUser,
+    currentPage,
+    students,
+    categories,
+    tasks,
+    activeTasks: tasks.filter((t) => !t.isArchived),
+    archivedTasks: tasks.filter((t) => t.isArchived),
+    pointLogs,
+    dailyBoard,
+    report,
+    reportError: currentPage === 'reports' ? reportRange.error : null,
+    reportFilters: {
+      studentId: reportStudentId,
+      fromDate: reportRange.fromDate || '',
+      toDate: reportRange.toDate || ''
+    },
+    message: req.query.message || null,
+    error: req.query.error || null,
+    today
+  };
+}
+
+app.get('/admin', requireRole('admin'), (req, res) => res.redirect('/admin/dashboard'));
+
+app.get(
+  '/admin/:page',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const allowedPages = new Set(['dashboard', 'students', 'categories', 'tasks', 'points', 'reports']);
+    const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
+    const viewModel = await getAdminViewModel(req, currentPage);
+    return res.render('admin', viewModel);
   })
 );
 
@@ -494,16 +497,16 @@ app.post(
     const password = normalizeText(req.body.password);
 
     if (!name || !username || !password) {
-      return adminRedirect(res, { error: 'Ogrenci bilgileri eksik.' });
+      return adminRedirect(req, res, { error: 'Ogrenci bilgileri eksik.' });
     }
 
     if (password.length < 6) {
-      return adminRedirect(res, { error: 'Sifre en az 6 karakter olmali.' });
+      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
     }
 
     const exists = await query(`SELECT id FROM users WHERE username = $1 LIMIT 1`, [username]);
     if (exists.rowCount > 0) {
-      return adminRedirect(res, { error: 'Bu kullanici adi zaten var.' });
+      return adminRedirect(req, res, { error: 'Bu kullanici adi zaten var.' });
     }
 
     await query(
@@ -514,7 +517,7 @@ app.post(
       [makeId('user'), name, username, bcrypt.hashSync(password, 10)]
     );
 
-    return adminRedirect(res, { message: 'Ogrenci eklendi.' });
+    return adminRedirect(req, res, { message: 'Ogrenci eklendi.' });
   })
 );
 
@@ -525,7 +528,7 @@ app.post(
     const name = normalizeText(req.body.name);
 
     if (!name) {
-      return adminRedirect(res, { error: 'Kategori adi zorunlu.' });
+      return adminRedirect(req, res, { error: 'Kategori adi zorunlu.' });
     }
 
     try {
@@ -535,12 +538,12 @@ app.post(
       );
     } catch (err) {
       if (err.code === '23505') {
-        return adminRedirect(res, { error: 'Bu kategori zaten var.' });
+        return adminRedirect(req, res, { error: 'Bu kategori zaten var.' });
       }
       throw err;
     }
 
-    return adminRedirect(res, { message: 'Kategori eklendi.' });
+    return adminRedirect(req, res, { message: 'Kategori eklendi.' });
   })
 );
 
@@ -556,16 +559,16 @@ app.post(
     );
 
     if (activeUse.rowCount > 0) {
-      return adminRedirect(res, { error: 'Bu kategori aktif gorevlerde kullaniliyor.' });
+      return adminRedirect(req, res, { error: 'Bu kategori aktif gorevlerde kullaniliyor.' });
     }
 
     const deleted = await query(`DELETE FROM categories WHERE id = $1`, [categoryId]);
 
     if (deleted.rowCount === 0) {
-      return adminRedirect(res, { error: 'Kategori bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Kategori bulunamadi.' });
     }
 
-    return adminRedirect(res, { message: 'Kategori silindi.' });
+    return adminRedirect(req, res, { message: 'Kategori silindi.' });
   })
 );
 
@@ -586,11 +589,11 @@ app.post(
     const endDate = normalizeText(req.body.endDate);
 
     if (!title || !categoryId || !studentId || !repeatType) {
-      return adminRedirect(res, { error: 'Gorev icin zorunlu alanlar eksik.' });
+      return adminRedirect(req, res, { error: 'Gorev icin zorunlu alanlar eksik.' });
     }
 
     if (startDate && endDate && startDate > endDate) {
-      return adminRedirect(res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
     }
 
     const [categoryRes, studentRes] = await Promise.all([
@@ -599,7 +602,7 @@ app.post(
     ]);
 
     if (categoryRes.rowCount === 0 || studentRes.rowCount === 0) {
-      return adminRedirect(res, { error: 'Kategori veya ogrenci gecersiz.' });
+      return adminRedirect(req, res, { error: 'Kategori veya ogrenci gecersiz.' });
     }
 
     let singleDateVal = null;
@@ -609,17 +612,17 @@ app.post(
 
     if (repeatType === 'once') {
       if (!singleDate) {
-        return adminRedirect(res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
+        return adminRedirect(req, res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
       }
       singleDateVal = singleDate;
     } else if (repeatType === 'weekly') {
       if (weeklyDay === '') {
-        return adminRedirect(res, { error: 'Haftalik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
       }
       weeklyDayVal = Number(weeklyDay);
     } else if (repeatType === 'monthly') {
       if (!monthlyDay) {
-        return adminRedirect(res, { error: 'Aylik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Aylik gorev icin gun zorunlu.' });
       }
       monthlyDayVal = Number(monthlyDay);
     } else if (repeatType === 'custom') {
@@ -629,11 +632,11 @@ app.post(
         .filter(Boolean);
 
       if (!parsedDates.length) {
-        return adminRedirect(res, { error: 'Ozel tarihli gorev icin en az bir tarih girin.' });
+        return adminRedirect(req, res, { error: 'Ozel tarihli gorev icin en az bir tarih girin.' });
       }
       customDatesVal = parsedDates;
     } else {
-      return adminRedirect(res, { error: 'Gecersiz tekrar tipi.' });
+      return adminRedirect(req, res, { error: 'Gecersiz tekrar tipi.' });
     }
 
     await query(
@@ -673,7 +676,7 @@ app.post(
       ]
     );
 
-    return adminRedirect(res, { message: 'Gorev olusturuldu.' });
+    return adminRedirect(req, res, { message: 'Gorev olusturuldu.' });
   })
 );
 
@@ -685,10 +688,10 @@ app.post(
     const updated = await query(`UPDATE tasks SET is_archived = true WHERE id = $1`, [taskId]);
 
     if (updated.rowCount === 0) {
-      return adminRedirect(res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
     }
 
-    return adminRedirect(res, { message: 'Gorev arsive alindi.' });
+    return adminRedirect(req, res, { message: 'Gorev arsive alindi.' });
   })
 );
 
@@ -700,10 +703,10 @@ app.post(
     const updated = await query(`UPDATE tasks SET is_archived = false WHERE id = $1`, [taskId]);
 
     if (updated.rowCount === 0) {
-      return adminRedirect(res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
     }
 
-    return adminRedirect(res, { message: 'Gorev yeniden aktiflesti.' });
+    return adminRedirect(req, res, { message: 'Gorev yeniden aktiflesti.' });
   })
 );
 
@@ -717,11 +720,11 @@ app.post(
     const parsedPoints = Number(req.body.points);
 
     if (!studentId || !type || !parsedPoints || !reason) {
-      return adminRedirect(res, { error: 'Odul/ceza alanlari eksik.' });
+      return adminRedirect(req, res, { error: 'Odul/ceza alanlari eksik.' });
     }
 
     if (!['reward', 'penalty'].includes(type)) {
-      return adminRedirect(res, { error: 'Gecersiz puan tipi.' });
+      return adminRedirect(req, res, { error: 'Gecersiz puan tipi.' });
     }
 
     const delta = type === 'reward' ? Math.abs(parsedPoints) : -Math.abs(parsedPoints);
@@ -737,7 +740,7 @@ app.post(
 
       if (studentRes.rowCount === 0) {
         await client.query('ROLLBACK');
-        return adminRedirect(res, { error: 'Ogrenci bulunamadi.' });
+        return adminRedirect(req, res, { error: 'Ogrenci bulunamadi.' });
       }
 
       await client.query(
@@ -761,115 +764,119 @@ app.post(
       client.release();
     }
 
-    return adminRedirect(res, { message: 'Puan islemi kaydedildi.' });
+    return adminRedirect(req, res, { message: 'Puan islemi kaydedildi.' });
   })
 );
 
+async function getStudentViewModel(req, currentPage) {
+  const today = todayDateString();
+  const dateObj = new Date(`${today}T00:00:00`);
+
+  const [tasksRes, statusesRes, questionRes, pointLogsRes, categoriesRes] = await Promise.all([
+    query(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          category_id AS "categoryId",
+          student_id AS "studentId",
+          repeat_type AS "repeatType",
+          single_date AS "singleDate",
+          weekly_day AS "weeklyDay",
+          monthly_day AS "monthlyDay",
+          custom_dates AS "customDates",
+          start_date AS "startDate",
+          end_date AS "endDate",
+          is_archived AS "isArchived",
+          created_by AS "createdBy",
+          created_at AS "createdAt"
+        FROM tasks
+        WHERE student_id = $1
+        ORDER BY created_at DESC
+      `,
+      [req.currentUser.id]
+    ),
+    query(
+      `
+        SELECT task_id AS "taskId", student_id AS "studentId", day, status, note
+        FROM task_statuses
+        WHERE student_id = $1 AND day = $2
+      `,
+      [req.currentUser.id, today]
+    ),
+    query(
+      `
+        SELECT id, student_id AS "studentId", day, count, note
+        FROM daily_questions
+        WHERE student_id = $1 AND day = $2
+        LIMIT 1
+      `,
+      [req.currentUser.id, today]
+    ),
+    query(
+      `
+        SELECT
+          id,
+          student_id AS "studentId",
+          type,
+          points,
+          reason,
+          delta,
+          created_by AS "createdBy",
+          created_at AS "createdAt"
+        FROM point_logs
+        WHERE student_id = $1
+        ORDER BY created_at DESC
+        LIMIT 20
+      `,
+      [req.currentUser.id]
+    ),
+    query(`SELECT id, name FROM categories`)
+  ]);
+
+  const categories = categoriesRes.rows;
+  const statuses = statusesRes.rows;
+
+  const tasksForToday = tasksRes.rows
+    .map(mapTask)
+    .filter((task) => isTaskDueOnDate(task, dateObj, today))
+    .map((task) => {
+      const category = categories.find((c) => c.id === task.categoryId);
+      const status = statuses.find((s) => s.taskId === task.id);
+      return {
+        ...task,
+        categoryName: category ? category.name : 'Kategori Yok',
+        todayStatus: status || null
+      };
+    });
+
+  const doneCount = tasksForToday.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
+  const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
+
+  return {
+    user: req.currentUser,
+    currentPage,
+    today,
+    tasksForToday,
+    doneCount,
+    questionEntry: questionRes.rowCount ? questionRes.rows[0] : null,
+    pointLogs,
+    message: req.query.message || null,
+    error: req.query.error || null
+  };
+}
+
+app.get('/student', requireRole('student'), (req, res) => res.redirect('/student/dashboard'));
+
 app.get(
-  '/student',
+  '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const today = todayDateString();
-    const dateObj = new Date(`${today}T00:00:00`);
-
-    const [tasksRes, statusesRes, questionRes, pointLogsRes] = await Promise.all([
-      query(
-        `
-          SELECT
-            id,
-            title,
-            description,
-            category_id AS "categoryId",
-            student_id AS "studentId",
-            repeat_type AS "repeatType",
-            single_date AS "singleDate",
-            weekly_day AS "weeklyDay",
-            monthly_day AS "monthlyDay",
-            custom_dates AS "customDates",
-            start_date AS "startDate",
-            end_date AS "endDate",
-            is_archived AS "isArchived",
-            created_by AS "createdBy",
-            created_at AS "createdAt"
-          FROM tasks
-          WHERE student_id = $1
-          ORDER BY created_at DESC
-        `,
-        [req.currentUser.id]
-      ),
-      query(
-        `
-          SELECT task_id AS "taskId", student_id AS "studentId", day, status, note
-          FROM task_statuses
-          WHERE student_id = $1 AND day = $2
-        `,
-        [req.currentUser.id, today]
-      ),
-      query(
-        `
-          SELECT id, student_id AS "studentId", day, count, note
-          FROM daily_questions
-          WHERE student_id = $1 AND day = $2
-          LIMIT 1
-        `,
-        [req.currentUser.id, today]
-      ),
-      query(
-        `
-          SELECT
-            id,
-            student_id AS "studentId",
-            type,
-            points,
-            reason,
-            delta,
-            created_by AS "createdBy",
-            created_at AS "createdAt"
-          FROM point_logs
-          WHERE student_id = $1
-          ORDER BY created_at DESC
-          LIMIT 20
-        `,
-        [req.currentUser.id]
-      )
-    ]);
-
-    const categoriesRes = await query(`SELECT id, name FROM categories`);
-
-    const categories = categoriesRes.rows;
-    const statuses = statusesRes.rows;
-
-    const tasksForToday = tasksRes.rows
-      .map(mapTask)
-      .filter((task) => isTaskDueOnDate(task, dateObj, today))
-      .map((task) => {
-        const category = categories.find((c) => c.id === task.categoryId);
-        const status = statuses.find((s) => s.taskId === task.id);
-
-        return {
-          ...task,
-          categoryName: category ? category.name : 'Kategori Yok',
-          todayStatus: status || null
-        };
-      });
-
-    const doneCount = tasksForToday.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
-
-    const pointLogs = pointLogsRes.rows.map((row) => ({
-      ...row,
-      createdDate: toDateOnly(row.createdAt)
-    }));
-
-    return res.render('student', {
-      user: req.currentUser,
-      today,
-      tasksForToday,
-      doneCount,
-      questionEntry: questionRes.rowCount ? questionRes.rows[0] : null,
-      pointLogs,
-      message: req.query.message || null,
-      error: req.query.error || null
-    });
+    const allowedPages = new Set(['dashboard', 'questions', 'points']);
+    const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
+    const viewModel = await getStudentViewModel(req, currentPage);
+    return res.render('student', viewModel);
   })
 );
 
@@ -883,7 +890,7 @@ app.post(
     const today = todayDateString();
 
     if (!['done', 'not_done'].includes(status)) {
-      return res.redirect('/student?error=Gecersiz%20durum.');
+      return res.redirect('/student/dashboard?error=Gecersiz%20durum.');
     }
 
     const taskRes = await query(
@@ -892,7 +899,7 @@ app.post(
     );
 
     if (taskRes.rowCount === 0) {
-      return res.redirect('/student?error=Gorev%20bulunamadi.');
+      return res.redirect('/student/dashboard?error=Gorev%20bulunamadi.');
     }
 
     await query(
@@ -905,7 +912,7 @@ app.post(
       [makeId('status'), taskId, req.currentUser.id, today, status, note]
     );
 
-    return res.redirect('/student?message=Gorev%20durumu%20guncellendi.');
+    return res.redirect('/student/dashboard?message=Gorev%20durumu%20guncellendi.');
   })
 );
 
@@ -918,7 +925,7 @@ app.post(
     const today = todayDateString();
 
     if (!Number.isFinite(parsedCount) || parsedCount < 0) {
-      return res.redirect('/student?error=Soru%20sayisi%20gecersiz.');
+      return res.redirect('/student/questions?error=Soru%20sayisi%20gecersiz.');
     }
 
     await query(
@@ -931,7 +938,7 @@ app.post(
       [makeId('q'), req.currentUser.id, today, parsedCount, note]
     );
 
-    return res.redirect('/student?message=Gunluk%20soru%20kaydi%20guncellendi.');
+    return res.redirect('/student/questions?message=Gunluk%20soru%20kaydi%20guncellendi.');
   })
 );
 
@@ -943,11 +950,11 @@ app.use((err, req, res, _next) => {
   console.error('Uygulama hatasi:', err);
 
   if (req.path.startsWith('/admin')) {
-    return adminRedirect(res, { error: 'Beklenmeyen bir hata olustu.' });
+    return adminRedirect(req, res, { error: 'Beklenmeyen bir hata olustu.' });
   }
 
   if (req.path.startsWith('/student')) {
-    return res.redirect('/student?error=Beklenmeyen%20bir%20hata%20olustu.');
+    return res.redirect('/student/dashboard?error=Beklenmeyen%20bir%20hata%20olustu.');
   }
 
   if (req.path === '/login') {

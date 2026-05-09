@@ -7,314 +7,360 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="container">
-      <header class="page-header">
+    <main class="shell">
+      <aside class="sidebar">
         <div>
-          <span class="hero-tag">Yonetim Alani</span>
-          <h1>Admin Paneli</h1>
-          <p class="muted">Hosgeldin <strong><%= user.name %></strong></p>
+          <p class="sidebar-kicker">Yonetim</p>
+          <h1 class="sidebar-title">Ogrenci Takip</h1>
+          <p class="sidebar-user"><strong><%= user.name %></strong></p>
         </div>
-        <form method="post" action="/logout"><button>Cikis</button></form>
-      </header>
 
-      <% if (message) { %>
-      <div class="alert success"><%= message %></div>
-      <% } %>
-      <% if (error) { %>
-      <div class="alert error"><%= error %></div>
-      <% } %>
+        <nav class="menu">
+          <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Genel Durum</a>
+          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Ogrenciler</a>
+          <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
+          <a href="/admin/tasks" class="menu-link <%= currentPage === 'tasks' ? 'active' : '' %>">Gorevler</a>
+          <a href="/admin/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Islemleri</a>
+          <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
+        </nav>
 
-      <section class="kpi-grid">
-        <article class="kpi">
-          <p class="kpi-label">Ogrenci Sayisi</p>
-          <p class="kpi-value"><%= students.length %></p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Aktif Gorev</p>
-          <p class="kpi-value"><%= activeTasks.length %></p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Arsiv Gorev</p>
-          <p class="kpi-value"><%= archivedTasks.length %></p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Kategori</p>
-          <p class="kpi-value"><%= categories.length %></p>
-        </article>
-      </section>
+        <form method="post" action="/logout" class="sidebar-logout">
+          <button type="submit" class="ghost">Cikis</button>
+        </form>
+      </aside>
 
-      <section class="card">
-        <h2>Bugunluk Ogrenci Durumu (<%= today %>)</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Ogrenci</th>
-                <th>Toplam Puan</th>
-                <th>Bugun Gorev</th>
-                <th>Tamamlanan</th>
-                <th>Gunluk Soru</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% dailyBoard.forEach((row) => { %>
-              <tr>
-                <td><%= row.name %></td>
-                <td><%= row.points || 0 %></td>
-                <td><%= row.dueCount %></td>
-                <td><%= row.doneCount %></td>
-                <td><%= row.questionCount %></td>
-              </tr>
+      <section class="content">
+        <% if (message) { %>
+        <div class="alert success"><%= message %></div>
+        <% } %>
+        <% if (error) { %>
+        <div class="alert error"><%= error %></div>
+        <% } %>
+
+        <% if (currentPage === 'dashboard') { %>
+        <header class="content-header">
+          <h2>Genel Durum</h2>
+          <p class="muted">Gunluk performans ozeti - <strong><%= today %></strong></p>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi"><p class="kpi-label">Ogrenci</p><p class="kpi-value"><%= students.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Aktif Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Arsiv Gorev</p><p class="kpi-value"><%= archivedTasks.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Kategori</p><p class="kpi-value"><%= categories.length %></p></article>
+        </section>
+
+        <section class="panel">
+          <h3>Bugunluk Ogrenci Durumu</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ogrenci</th>
+                  <th>Toplam Puan</th>
+                  <th>Bugun Gorev</th>
+                  <th>Tamamlanan</th>
+                  <th>Gunluk Soru</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% dailyBoard.forEach((row) => { %>
+                <tr>
+                  <td><%= row.name %></td>
+                  <td><%= row.points || 0 %></td>
+                  <td><%= row.dueCount %></td>
+                  <td><%= row.doneCount %></td>
+                  <td><%= row.questionCount %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+
+        <% if (currentPage === 'students') { %>
+        <header class="content-header">
+          <h2>Ogrenci Yonetimi</h2>
+        </header>
+        <section class="grid two">
+          <article class="panel">
+            <h3>Yeni Ogrenci</h3>
+            <form method="post" action="/admin/students" class="stack">
+              <input type="hidden" name="next" value="/admin/students" />
+              <label>Ad Soyad</label>
+              <input type="text" name="name" required />
+              <label>Kullanici Adi</label>
+              <input type="text" name="username" required />
+              <label>Sifre</label>
+              <input type="text" name="password" minlength="6" required />
+              <button type="submit">Kaydet</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <h3>Mevcut Ogrenciler</h3>
+            <ul class="clean-list">
+              <% students.forEach((s) => { %>
+              <li><strong><%= s.name %></strong> (@<%= s.username %>) - Puan: <%= s.points || 0 %></li>
               <% }) %>
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </ul>
+          </article>
+        </section>
+        <% } %>
 
-      <section class="grid two">
-        <article class="card">
-          <h2>Ogrenci Ekle</h2>
-          <form method="post" action="/admin/students" class="stack">
-            <label>Ad Soyad</label>
-            <input type="text" name="name" required />
-            <label>Kullanici Adi</label>
-            <input type="text" name="username" required />
-            <label>Sifre</label>
-            <input type="text" name="password" minlength="6" required />
-            <button type="submit">Kaydet</button>
-          </form>
+        <% if (currentPage === 'categories') { %>
+        <header class="content-header">
+          <h2>Kategori Yonetimi</h2>
+        </header>
+        <section class="grid two">
+          <article class="panel">
+            <h3>Yeni Kategori</h3>
+            <form method="post" action="/admin/categories" class="stack">
+              <input type="hidden" name="next" value="/admin/categories" />
+              <label>Kategori Adi</label>
+              <input type="text" name="name" required />
+              <button type="submit">Ekle</button>
+            </form>
+          </article>
 
-          <h3>Mevcut Ogrenciler</h3>
-          <ul class="clean-list">
-            <% students.forEach((s) => { %>
-            <li><strong><%= s.name %></strong> (@<%= s.username %>) - Puan: <%= s.points || 0 %></li>
-            <% }) %>
-          </ul>
-        </article>
-
-        <article class="card">
-          <h2>Kategori Ekle</h2>
-          <form method="post" action="/admin/categories" class="stack">
-            <label>Kategori Adi</label>
-            <input type="text" name="name" required />
-            <button type="submit">Ekle</button>
-          </form>
-
-          <h3>Kategoriler</h3>
-          <ul class="clean-list">
-            <% categories.forEach((c) => { %>
-            <li class="row space-between center">
-              <span><%= c.name %></span>
-              <form method="post" action="/admin/categories/<%= c.id %>/delete" onsubmit="return confirm('Kategori silinsin mi?')">
-                <button type="submit" class="danger">Sil</button>
-              </form>
-            </li>
-            <% }) %>
-          </ul>
-        </article>
-      </section>
-
-      <section class="card">
-        <h2>Gorev Olustur</h2>
-        <form method="post" action="/admin/tasks" class="grid two">
-          <div class="stack">
-            <label>Gorev Basligi</label>
-            <input type="text" name="title" required />
-
-            <label>Aciklama</label>
-            <textarea name="description"></textarea>
-
-            <label>Kategori</label>
-            <select name="categoryId" required>
-              <option value="">Seciniz</option>
+          <article class="panel">
+            <h3>Kategori Listesi</h3>
+            <ul class="clean-list">
               <% categories.forEach((c) => { %>
-              <option value="<%= c.id %>"><%= c.name %></option>
+              <li class="row space-between center">
+                <span><%= c.name %></span>
+                <form method="post" action="/admin/categories/<%= c.id %>/delete" onsubmit="return confirm('Kategori silinsin mi?')">
+                  <input type="hidden" name="next" value="/admin/categories" />
+                  <button type="submit" class="danger">Sil</button>
+                </form>
+              </li>
               <% }) %>
-            </select>
+            </ul>
+          </article>
+        </section>
+        <% } %>
 
-            <label>Ogrenci</label>
-            <select name="studentId" required>
-              <option value="">Seciniz</option>
-              <% students.forEach((s) => { %>
-              <option value="<%= s.id %>"><%= s.name %></option>
-              <% }) %>
-            </select>
-          </div>
+        <% if (currentPage === 'tasks') { %>
+        <header class="content-header">
+          <h2>Gorev Yonetimi</h2>
+        </header>
+        <section class="panel">
+          <h3>Gorev Olustur</h3>
+          <form method="post" action="/admin/tasks" class="grid two">
+            <input type="hidden" name="next" value="/admin/tasks" />
+            <div class="stack">
+              <label>Gorev Basligi</label>
+              <input type="text" name="title" required />
 
-          <div class="stack">
-            <label>Tekrar Tipi</label>
-            <select name="repeatType" required>
-              <option value="once">Tek Seferlik</option>
-              <option value="weekly">Haftalik</option>
-              <option value="monthly">Aylik</option>
-              <option value="custom">Ozel Tarihler</option>
-            </select>
+              <label>Aciklama</label>
+              <textarea name="description"></textarea>
 
-            <label>Tek Seferlik Tarih</label>
-            <input type="date" name="singleDate" value="<%= today %>" />
+              <label>Kategori</label>
+              <select name="categoryId" required>
+                <option value="">Seciniz</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.id %>"><%= c.name %></option>
+                <% }) %>
+              </select>
 
-            <label>Haftalik Gun (0=Pazar ... 6=Cumartesi)</label>
-            <input type="number" min="0" max="6" name="weeklyDay" />
+              <label>Ogrenci</label>
+              <select name="studentId" required>
+                <option value="">Seciniz</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>"><%= s.name %></option>
+                <% }) %>
+              </select>
+            </div>
 
-            <label>Aylik Gun (1-31)</label>
-            <input type="number" min="1" max="31" name="monthlyDay" />
+            <div class="stack">
+              <label>Tekrar Tipi</label>
+              <select name="repeatType" required>
+                <option value="once">Tek Seferlik</option>
+                <option value="weekly">Haftalik</option>
+                <option value="monthly">Aylik</option>
+                <option value="custom">Ozel Tarihler</option>
+              </select>
 
-            <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
-            <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
+              <label>Tek Seferlik Tarih</label>
+              <input type="date" name="singleDate" value="<%= today %>" />
 
-            <label>Baslangic Tarihi (opsiyonel)</label>
-            <input type="date" name="startDate" />
+              <label>Haftalik Gun (0-6)</label>
+              <input type="number" min="0" max="6" name="weeklyDay" />
 
-            <label>Bitis Tarihi (opsiyonel)</label>
-            <input type="date" name="endDate" />
+              <label>Aylik Gun (1-31)</label>
+              <input type="number" min="1" max="31" name="monthlyDay" />
 
-            <button type="submit">Gorevi Kaydet</button>
-          </div>
-        </form>
-      </section>
+              <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+              <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
 
-      <section class="grid two">
-        <article class="card">
-          <h2>Odul/Ceza Isle</h2>
-          <form method="post" action="/admin/points" class="stack">
-            <label>Ogrenci</label>
-            <select name="studentId" required>
-              <option value="">Seciniz</option>
-              <% students.forEach((s) => { %>
-              <option value="<%= s.id %>"><%= s.name %></option>
-              <% }) %>
-            </select>
+              <label>Baslangic Tarihi</label>
+              <input type="date" name="startDate" />
 
-            <label>Islem Tipi</label>
-            <select name="type" required>
-              <option value="reward">Odul</option>
-              <option value="penalty">Ceza</option>
-            </select>
+              <label>Bitis Tarihi</label>
+              <input type="date" name="endDate" />
 
-            <label>Puan</label>
-            <input type="number" name="points" min="1" required />
-
-            <label>Gerekce</label>
-            <input type="text" name="reason" required />
-
-            <button type="submit">Uygula</button>
+              <button type="submit">Gorevi Kaydet</button>
+            </div>
           </form>
-        </article>
+        </section>
 
-        <article class="card">
-          <h2>Son Puan Kayitlari</h2>
-          <ul class="clean-list">
-            <% pointLogs.forEach((p) => { %>
-            <li>
-              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
-              - <%= p.points %> puan - <%= p.reason %>
-            </li>
-            <% }) %>
-          </ul>
-        </article>
-      </section>
-
-      <section class="card">
-        <h2>Performans Raporu</h2>
-        <form method="get" action="/admin" class="grid three">
-          <div class="stack">
-            <label>Ogrenci</label>
-            <select name="reportStudentId" required>
-              <option value="">Seciniz</option>
-              <% students.forEach((s) => { %>
-              <option value="<%= s.id %>" <%= reportFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+        <section class="grid two">
+          <article class="panel">
+            <h3>Aktif Gorevler</h3>
+            <ul class="clean-list">
+              <% activeTasks.forEach((t) => { %>
+              <li class="row space-between center task-line">
+                <span>
+                  <strong><%= t.title %></strong> - <%= t.repeatText %> -
+                  <%= t.student ? t.student.name : 'Ogrenci yok' %> -
+                  <%= t.category ? t.category.name : 'Kategori yok' %>
+                </span>
+                <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
+                  <input type="hidden" name="next" value="/admin/tasks" />
+                  <button type="submit" class="danger">Arsivle</button>
+                </form>
+              </li>
               <% }) %>
-            </select>
-          </div>
-          <div class="stack">
-            <label>Baslangic</label>
-            <input type="date" name="reportFrom" value="<%= reportFilters.fromDate %>" required />
-          </div>
-          <div class="stack">
-            <label>Bitis</label>
-            <input type="date" name="reportTo" value="<%= reportFilters.toDate %>" required />
-          </div>
-          <div class="stack">
-            <button type="submit">Rapor Getir</button>
-          </div>
-        </form>
+            </ul>
+          </article>
 
-        <% if (reportError) { %>
-        <div class="alert error"><%= reportError %></div>
+          <article class="panel">
+            <h3>Arsivdeki Gorevler</h3>
+            <ul class="clean-list">
+              <% archivedTasks.forEach((t) => { %>
+              <li class="row space-between center task-line">
+                <span>
+                  <strong><%= t.title %></strong> - <%= t.repeatText %> -
+                  <%= t.student ? t.student.name : 'Ogrenci yok' %>
+                </span>
+                <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
+                  <input type="hidden" name="next" value="/admin/tasks" />
+                  <button type="submit">Aktif Et</button>
+                </form>
+              </li>
+              <% }) %>
+            </ul>
+          </article>
+        </section>
         <% } %>
 
-        <% if (report) { %>
-        <p>
-          <strong><%= report.student.name %></strong> icin <%= report.fromDate %> - <%= report.toDate %>
-          donemi tamamlanma orani: <strong>%<%= report.completionRate %></strong>
-        </p>
-        <p class="muted">
-          Toplam Gorev: <%= report.totals.due %> | Tamamlanan: <%= report.totals.done %> |
-          Soru: <%= report.totals.questions %> | Puan Degisimi: <%= report.totals.pointDelta %>
-        </p>
+        <% if (currentPage === 'points') { %>
+        <header class="content-header">
+          <h2>Puan Islemleri</h2>
+        </header>
+        <section class="grid two">
+          <article class="panel">
+            <h3>Odul / Ceza Uygula</h3>
+            <form method="post" action="/admin/points" class="stack">
+              <input type="hidden" name="next" value="/admin/points" />
+              <label>Ogrenci</label>
+              <select name="studentId" required>
+                <option value="">Seciniz</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>"><%= s.name %></option>
+                <% }) %>
+              </select>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Tarih</th>
-                <th>Gorev</th>
-                <th>Yapildi</th>
-                <th>Yapilmadi</th>
-                <th>Soru</th>
-                <th>Puan Delta</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% report.rows.forEach((r) => { %>
-              <tr>
-                <td><%= r.date %></td>
-                <td><%= r.dueCount %></td>
-                <td><%= r.doneCount %></td>
-                <td><%= r.notDoneCount %></td>
-                <td><%= r.questionCount %></td>
-                <td><%= r.pointDelta %></td>
-              </tr>
+              <label>Islem Tipi</label>
+              <select name="type" required>
+                <option value="reward">Odul</option>
+                <option value="penalty">Ceza</option>
+              </select>
+
+              <label>Puan</label>
+              <input type="number" name="points" min="1" required />
+
+              <label>Gerekce</label>
+              <input type="text" name="reason" required />
+
+              <button type="submit">Uygula</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <h3>Son Puan Kayitlari</h3>
+            <ul class="clean-list">
+              <% pointLogs.forEach((p) => { %>
+              <li>
+                <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+                - <%= p.points %> puan - <%= p.reason %>
+              </li>
               <% }) %>
-            </tbody>
-          </table>
-        </div>
+            </ul>
+          </article>
+        </section>
         <% } %>
-      </section>
 
-      <section class="card">
-        <h2>Aktif Gorevler</h2>
-        <ul class="clean-list">
-          <% activeTasks.forEach((t) => { %>
-          <li class="row space-between center task-line">
-            <span>
-              <strong><%= t.title %></strong> - <%= t.repeatText %> -
-              <%= t.student ? t.student.name : 'Ogrenci yok' %> -
-              <%= t.category ? t.category.name : 'Kategori yok' %>
-            </span>
-            <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
-              <button type="submit" class="danger">Arsivle</button>
-            </form>
-          </li>
-          <% }) %>
-        </ul>
-      </section>
+        <% if (currentPage === 'reports') { %>
+        <header class="content-header">
+          <h2>Performans Raporlari</h2>
+        </header>
+        <section class="panel">
+          <form method="get" action="/admin/reports" class="grid three">
+            <div class="stack">
+              <label>Ogrenci</label>
+              <select name="reportStudentId" required>
+                <option value="">Seciniz</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>" <%= reportFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="stack">
+              <label>Baslangic</label>
+              <input type="date" name="reportFrom" value="<%= reportFilters.fromDate %>" required />
+            </div>
+            <div class="stack">
+              <label>Bitis</label>
+              <input type="date" name="reportTo" value="<%= reportFilters.toDate %>" required />
+            </div>
+            <div class="stack"><button type="submit">Rapor Getir</button></div>
+          </form>
 
-      <section class="card">
-        <h2>Arsivdeki Gorevler</h2>
-        <ul class="clean-list">
-          <% archivedTasks.forEach((t) => { %>
-          <li class="row space-between center task-line">
-            <span>
-              <strong><%= t.title %></strong> - <%= t.repeatText %> -
-              <%= t.student ? t.student.name : 'Ogrenci yok' %>
-            </span>
-            <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
-              <button type="submit">Aktif Et</button>
-            </form>
-          </li>
-          <% }) %>
-        </ul>
+          <% if (reportError) { %>
+          <div class="alert error"><%= reportError %></div>
+          <% } %>
+
+          <% if (report) { %>
+          <p>
+            <strong><%= report.student.name %></strong> icin <%= report.fromDate %> - <%= report.toDate %>
+            donemi tamamlanma orani: <strong>%<%= report.completionRate %></strong>
+          </p>
+          <p class="muted">
+            Toplam Gorev: <%= report.totals.due %> | Tamamlanan: <%= report.totals.done %> |
+            Soru: <%= report.totals.questions %> | Puan Degisimi: <%= report.totals.pointDelta %>
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gorev</th>
+                  <th>Yapildi</th>
+                  <th>Yapilmadi</th>
+                  <th>Soru</th>
+                  <th>Puan Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% report.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.date %></td>
+                  <td><%= r.dueCount %></td>
+                  <td><%= r.doneCount %></td>
+                  <td><%= r.notDoneCount %></td>
+                  <td><%= r.questionCount %></td>
+                  <td><%= r.pointDelta %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+        <% } %>
       </section>
     </main>
   </body>
