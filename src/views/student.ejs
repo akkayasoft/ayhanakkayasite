@@ -49,15 +49,28 @@
           <article class="kpi"><p class="kpi-label">Puan</p><p class="kpi-value"><%= user.points || 0 %></p></article>
         </section>
 
+        <section class="panel compact-panel">
+          <div class="legend-row">
+            <span class="legend-item"><span class="dot done"></span> Yapilan</span>
+            <span class="legend-item"><span class="dot not-done"></span> Yapilmayan</span>
+            <span class="legend-item"><span class="dot open"></span> Isaretlenmeyen</span>
+          </div>
+        </section>
+
         <section class="panel">
           <% if (!tasksForToday.length) { %>
           <p class="muted">Bugune atanmis gorev yok.</p>
           <% } %>
 
           <% tasksForToday.forEach((task) => { %>
-          <form method="post" action="/student/tasks/<%= task.id %>/status" class="task">
+          <form method="post" action="/student/tasks/<%= task.id %>/status" class="task task-card <%= task.todayStatus?.status === 'done' ? 'done' : task.todayStatus?.status === 'not_done' ? 'not-done' : 'open' %>">
             <div>
-              <h3><%= task.title %></h3>
+              <div class="row space-between center">
+                <h3><%= task.title %></h3>
+                <span class="status-pill <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
+                  <%= task.todayStatus?.status === 'done' ? 'Yapildi' : task.todayStatus?.status === 'not_done' ? 'Yapilmadi' : 'Isaretlenmedi' %>
+                </span>
+              </div>
               <p class="muted"><%= task.categoryName %></p>
               <p><%= task.description %></p>
             </div>
@@ -106,7 +119,7 @@
               </thead>
               <tbody>
                 <% calendar.days.forEach((d) => { %>
-                <tr>
+                <tr class="<%= d.dueCount > 0 && d.doneCount === d.dueCount ? 'day-ok' : d.doneCount > 0 ? 'day-partial' : d.dueCount > 0 ? 'day-bad' : '' %>">
                   <td><%= d.dayName %></td>
                   <td><%= d.date %></td>
                   <td><%= d.dueCount %></td>
