@@ -18,6 +18,7 @@
         <nav class="menu">
           <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Genel Durum</a>
           <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Ogrenciler</a>
+          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanici Yonetimi</a>
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
           <a href="/admin/tasks" class="menu-link <%= currentPage === 'tasks' ? 'active' : '' %>">Gorevler</a>
           <a href="/admin/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Islemleri</a>
@@ -106,6 +107,97 @@
               <% }) %>
             </ul>
           </article>
+        </section>
+        <% } %>
+
+        <% if (currentPage === 'users') { %>
+        <header class="content-header">
+          <h2>Kullanici Yonetimi</h2>
+          <p class="muted">Toplam kullanici: <strong><%= users.length %></strong> | Admin: <strong><%= adminCount %></strong></p>
+        </header>
+
+        <section class="grid two">
+          <article class="panel">
+            <h3>Yeni Kullanici</h3>
+            <form method="post" action="/admin/users" class="stack">
+              <input type="hidden" name="next" value="/admin/users" />
+              <label>Ad Soyad</label>
+              <input type="text" name="name" required />
+              <label>Kullanici Adi</label>
+              <input type="text" name="username" required />
+              <label>Sifre</label>
+              <input type="text" name="password" minlength="6" required />
+              <label>Rol</label>
+              <select name="role" required>
+                <option value="student">Ogrenci</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button type="submit">Kullanici Ekle</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <h3>Kullanim Notlari</h3>
+            <ul class="clean-list">
+              <li>Son admin hesabi silinemez veya ogrenciye dusurulemez.</li>
+              <li>Kendi hesabinizin rolunu veya silme islemini bu ekrandan yapamazsiniz.</li>
+              <li>Sifre guncellemede minimum 6 karakter zorunludur.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Mevcut Kullanicilar</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ad Soyad</th>
+                  <th>Kullanici Adi</th>
+                  <th>Rol</th>
+                  <th>Puan</th>
+                  <th>Sifre</th>
+                  <th>Sil</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% users.forEach((u) => { %>
+                <tr>
+                  <td><%= u.name %> <%= u.id === user.id ? '(Siz)' : '' %></td>
+                  <td>@<%= u.username %></td>
+                  <td>
+                    <form method="post" action="/admin/users/<%= u.id %>/role" class="row center">
+                      <input type="hidden" name="next" value="/admin/users" />
+                      <select name="role" <%= u.id === user.id ? 'disabled' : '' %>>
+                        <option value="student" <%= u.role === 'student' ? 'selected' : '' %>>Ogrenci</option>
+                        <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                      </select>
+                      <% if (u.id !== user.id) { %>
+                      <button type="submit">Guncelle</button>
+                      <% } %>
+                    </form>
+                  </td>
+                  <td><%= u.points || 0 %></td>
+                  <td>
+                    <form method="post" action="/admin/users/<%= u.id %>/password" class="row center">
+                      <input type="hidden" name="next" value="/admin/users" />
+                      <input type="text" name="password" minlength="6" placeholder="Yeni sifre" required />
+                      <button type="submit">Sifre Degistir</button>
+                    </form>
+                  </td>
+                  <td>
+                    <% if (u.id !== user.id) { %>
+                    <form method="post" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Bu kullanici silinsin mi?')">
+                      <input type="hidden" name="next" value="/admin/users" />
+                      <button type="submit" class="danger">Sil</button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
         </section>
         <% } %>
 

@@ -141,7 +141,7 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|categories|tasks|points|reports)$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|tasks|points|reports)$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -281,7 +281,10 @@ app.post('/logout', (req, res) => {
 });
 
 async function getAdminViewModel(req, currentPage) {
-  const [studentsRes, categoriesRes, tasksRes, pointLogsRes] = await Promise.all([
+  const [usersRes, studentsRes, categoriesRes, tasksRes, pointLogsRes] = await Promise.all([
+    query(
+      `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users ORDER BY role DESC, name ASC`
+    ),
     query(
       `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users WHERE role = 'student' ORDER BY name ASC`
     ),
@@ -322,6 +325,7 @@ async function getAdminViewModel(req, currentPage) {
     `)
   ]);
 
+  const users = usersRes.rows.map(mapUser);
   const students = studentsRes.rows.map(mapUser);
   const categories = categoriesRes.rows;
   const tasks = tasksRes.rows.map(mapTask).map((task) => ({
@@ -462,6 +466,8 @@ async function getAdminViewModel(req, currentPage) {
   return {
     user: req.currentUser,
     currentPage,
+    users,
+    adminCount: users.filter((u) => u.role === 'admin').length,
     students,
     categories,
     tasks,
@@ -488,7 +494,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'categories', 'tasks', 'points', 'reports']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'tasks', 'points', 'reports']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -525,6 +531,133 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Ogrenci eklendi.' });
+  })
+);
+
+app.post(
+  '/admin/users',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const name = normalizeText(req.body.name);
+    const username = normalizeText(req.body.username);
+    const password = normalizeText(req.body.password);
+    const role = normalizeText(req.body.role);
+
+    if (!name || !username || !password || !role) {
+      return adminRedirect(req, res, { error: 'Kullanici bilgileri eksik.' });
+    }
+
+    if (!['admin', 'student'].includes(role)) {
+      return adminRedirect(req, res, { error: 'Gecersiz rol.' });
+    }
+
+    if (password.length < 6) {
+      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
+    }
+
+    const exists = await query(`SELECT id FROM users WHERE username = $1 LIMIT 1`, [username]);
+    if (exists.rowCount > 0) {
+      return adminRedirect(req, res, { error: 'Bu kullanici adi zaten var.' });
+    }
+
+    await query(
+      `
+        INSERT INTO users (id, name, username, password_hash, role, points)
+        VALUES ($1, $2, $3, $4, $5, 0)
+      `,
+      [makeId('user'), name, username, bcrypt.hashSync(password, 10), role]
+    );
+
+    return adminRedirect(req, res, { message: 'Kullanici eklendi.' });
+  })
+);
+
+app.post(
+  '/admin/users/:userId/role',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const role = normalizeText(req.body.role);
+
+    if (!['admin', 'student'].includes(role)) {
+      return adminRedirect(req, res, { error: 'Gecersiz rol.' });
+    }
+
+    if (userId === req.currentUser.id) {
+      return adminRedirect(req, res, { error: 'Kendi rolunuzu bu ekrandan degistiremezsiniz.' });
+    }
+
+    const userRes = await query(`SELECT id, role FROM users WHERE id = $1 LIMIT 1`, [userId]);
+    if (userRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+    }
+
+    const target = userRes.rows[0];
+    if (target.role === 'admin' && role !== 'admin') {
+      const adminCountRes = await query(`SELECT COUNT(*)::int AS "count" FROM users WHERE role = 'admin'`);
+      if (Number(adminCountRes.rows[0].count) <= 1) {
+        return adminRedirect(req, res, { error: 'Son admin kullanici ogrenciye dusurulemez.' });
+      }
+    }
+
+    await query(`UPDATE users SET role = $1 WHERE id = $2`, [role, userId]);
+    return adminRedirect(req, res, { message: 'Kullanici rolu guncellendi.' });
+  })
+);
+
+app.post(
+  '/admin/users/:userId/password',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const password = normalizeText(req.body.password);
+
+    if (password.length < 6) {
+      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
+    }
+
+    const updated = await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [bcrypt.hashSync(password, 10), userId]);
+    if (updated.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+    }
+
+    return adminRedirect(req, res, { message: 'Kullanici sifresi guncellendi.' });
+  })
+);
+
+app.post(
+  '/admin/users/:userId/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if (userId === req.currentUser.id) {
+      return adminRedirect(req, res, { error: 'Kendi hesabinizi silemezsiniz.' });
+    }
+
+    const userRes = await query(`SELECT id, role FROM users WHERE id = $1 LIMIT 1`, [userId]);
+    if (userRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+    }
+
+    const target = userRes.rows[0];
+    if (target.role === 'admin') {
+      const adminCountRes = await query(`SELECT COUNT(*)::int AS "count" FROM users WHERE role = 'admin'`);
+      if (Number(adminCountRes.rows[0].count) <= 1) {
+        return adminRedirect(req, res, { error: 'Son admin kullanici silinemez.' });
+      }
+    }
+
+    try {
+      await query(`DELETE FROM users WHERE id = $1`, [userId]);
+    } catch (err) {
+      if (err.code === '23503') {
+        return adminRedirect(req, res, { error: 'Bu kullanici bagli kayitlar nedeniyle silinemiyor.' });
+      }
+      throw err;
+    }
+
+    return adminRedirect(req, res, { message: 'Kullanici silindi.' });
   })
 );
 
