@@ -340,7 +340,7 @@ async function getAdminViewModel(req, currentPage) {
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
 
-  const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
+    const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
     query(
       `
         SELECT task_id AS "taskId", student_id AS "studentId", status
@@ -349,11 +349,14 @@ async function getAdminViewModel(req, currentPage) {
       `,
       [today]
     ),
-    query(
-      `
-        SELECT student_id AS "studentId", count
+      query(
+        `
+        SELECT
+          student_id AS "studentId",
+          COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions"
         FROM daily_questions
         WHERE day = $1
+        GROUP BY student_id
       `,
       [today]
     )
@@ -369,7 +372,7 @@ async function getAdminViewModel(req, currentPage) {
       ...student,
       dueCount: dueTasks.length,
       doneCount,
-      questionCount: question ? Number(question.count || 0) : 0
+      questionCount: question ? Number(question.totalQuestions || 0) : 0
     };
   });
 
@@ -390,9 +393,13 @@ async function getAdminViewModel(req, currentPage) {
       ),
       query(
         `
-          SELECT student_id AS "studentId", day, count
+          SELECT
+            student_id AS "studentId",
+            day,
+            COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions"
           FROM daily_questions
           WHERE student_id = $1 AND day BETWEEN $2 AND $3
+          GROUP BY student_id, day
         `,
         [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
       ),
@@ -426,7 +433,7 @@ async function getAdminViewModel(req, currentPage) {
         dueCount: dueTasks.length,
         doneCount,
         notDoneCount: Math.max(dueTasks.length - doneCount, 0),
-        questionCount: question ? Number(question.count || 0) : 0,
+        questionCount: question ? Number(question.totalQuestions || 0) : 0,
         pointDelta: dayPointDelta
       };
     });
@@ -772,7 +779,7 @@ async function getStudentViewModel(req, currentPage) {
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
 
-  const [tasksRes, statusesRes, questionRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -807,12 +814,41 @@ async function getStudentViewModel(req, currentPage) {
     ),
     query(
       `
-        SELECT id, student_id AS "studentId", day, count, note
+        SELECT
+          id,
+          student_id AS "studentId",
+          day,
+          category_id AS "categoryId",
+          lesson_name AS "lessonName",
+          correct_count AS "correctCount",
+          wrong_count AS "wrongCount",
+          duration_minutes AS "durationMinutes"
         FROM daily_questions
         WHERE student_id = $1 AND day = $2
         LIMIT 1
       `,
       [req.currentUser.id, today]
+    ),
+    query(
+      `
+        SELECT
+          dq.id,
+          dq.student_id AS "studentId",
+          dq.day,
+          dq.category_id AS "categoryId",
+          c.name AS "categoryName",
+          dq.lesson_name AS "lessonName",
+          dq.correct_count AS "correctCount",
+          dq.wrong_count AS "wrongCount",
+          dq.duration_minutes AS "durationMinutes",
+          dq.updated_at AS "updatedAt"
+        FROM daily_questions dq
+        LEFT JOIN categories c ON c.id = dq.category_id
+        WHERE dq.student_id = $1
+        ORDER BY dq.day DESC, dq.updated_at DESC
+        LIMIT 20
+      `,
+      [req.currentUser.id]
     ),
     query(
       `
@@ -853,14 +889,21 @@ async function getStudentViewModel(req, currentPage) {
 
   const doneCount = tasksForToday.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
   const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
+  const questionHistory = questionHistoryRes.rows.map((row) => ({
+    ...row,
+    date: toDateOnly(row.day),
+    totalCount: Number(row.correctCount || 0) + Number(row.wrongCount || 0)
+  }));
 
   return {
     user: req.currentUser,
     currentPage,
     today,
+    categories,
     tasksForToday,
     doneCount,
-    questionEntry: questionRes.rowCount ? questionRes.rows[0] : null,
+    questionEntry: todayQuestionRes.rowCount ? todayQuestionRes.rows[0] : null,
+    questionHistory,
     pointLogs,
     message: req.query.message || null,
     error: req.query.error || null
@@ -920,22 +963,55 @@ app.post(
   '/student/questions',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const parsedCount = Number(req.body.count);
-    const note = normalizeText(req.body.note);
-    const today = todayDateString();
+    const categoryId = normalizeText(req.body.categoryId);
+    const lessonName = normalizeText(req.body.lessonName);
+    const day = normalizeText(req.body.day) || todayDateString();
+    const correctCount = Number(req.body.correctCount);
+    const wrongCount = Number(req.body.wrongCount);
+    const durationMinutes = Number(req.body.durationMinutes);
 
-    if (!Number.isFinite(parsedCount) || parsedCount < 0) {
-      return res.redirect('/student/questions?error=Soru%20sayisi%20gecersiz.');
+    if (!categoryId || !lessonName) {
+      return res.redirect('/student/questions?error=Kategori%20ve%20ders%20adi%20zorunlu.');
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      return res.redirect('/student/questions?error=Tarih%20formati%20gecersiz.');
+    }
+
+    if (!Number.isInteger(correctCount) || correctCount < 0) {
+      return res.redirect('/student/questions?error=Dogru%20sayisi%20gecersiz.');
+    }
+
+    if (!Number.isInteger(wrongCount) || wrongCount < 0) {
+      return res.redirect('/student/questions?error=Yanlis%20sayisi%20gecersiz.');
+    }
+
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 0) {
+      return res.redirect('/student/questions?error=Sure%20gecersiz.');
+    }
+
+    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+    if (categoryRes.rowCount === 0) {
+      return res.redirect('/student/questions?error=Kategori%20bulunamadi.');
     }
 
     await query(
       `
-        INSERT INTO daily_questions (id, student_id, day, count, note)
-        VALUES ($1,$2,$3,$4,$5)
+        INSERT INTO daily_questions (
+          id, student_id, day, category_id, lesson_name, correct_count, wrong_count, duration_minutes, count, note
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'')
         ON CONFLICT (student_id, day)
-        DO UPDATE SET count = EXCLUDED.count, note = EXCLUDED.note, updated_at = NOW()
+        DO UPDATE SET
+          category_id = EXCLUDED.category_id,
+          lesson_name = EXCLUDED.lesson_name,
+          correct_count = EXCLUDED.correct_count,
+          wrong_count = EXCLUDED.wrong_count,
+          duration_minutes = EXCLUDED.duration_minutes,
+          count = EXCLUDED.count,
+          updated_at = NOW()
       `,
-      [makeId('q'), req.currentUser.id, today, parsedCount, note]
+      [makeId('q'), req.currentUser.id, day, categoryId, lessonName, correctCount, wrongCount, durationMinutes, correctCount + wrongCount]
     );
 
     return res.redirect('/student/questions?message=Gunluk%20soru%20kaydi%20guncellendi.');

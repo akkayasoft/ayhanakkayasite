@@ -84,16 +84,69 @@
           <p class="muted"><%= today %></p>
         </header>
 
-        <section class="panel compact-panel">
-          <form method="post" action="/student/questions" class="stack">
-            <label>Bugun kac soru cozdun?</label>
-            <input type="number" min="0" name="count" value="<%= questionEntry?.count ?? 0 %>" required />
+        <section class="panel">
+          <form method="post" action="/student/questions" class="grid two">
+            <div class="stack">
+              <label>Kategori</label>
+              <select name="categoryId" required>
+                <option value="">Seciniz</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.id %>" <%= questionEntry?.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                <% }) %>
+              </select>
 
-            <label>Not (opsiyonel)</label>
-            <textarea name="note"><%= questionEntry?.note || '' %></textarea>
+              <label>Ders Adi</label>
+              <input type="text" name="lessonName" value="<%= questionEntry?.lessonName || '' %>" required />
 
-            <button type="submit">Kaydet</button>
+              <label>Tarih</label>
+              <input type="date" name="day" value="<%= today %>" required />
+            </div>
+
+            <div class="stack">
+              <label>Dogru</label>
+              <input type="number" min="0" name="correctCount" value="<%= questionEntry?.correctCount ?? 0 %>" required />
+
+              <label>Yanlis</label>
+              <input type="number" min="0" name="wrongCount" value="<%= questionEntry?.wrongCount ?? 0 %>" required />
+
+              <label>Sure (dakika)</label>
+              <input type="number" min="0" name="durationMinutes" value="<%= questionEntry?.durationMinutes ?? 0 %>" required />
+
+              <button type="submit">Kaydet</button>
+            </div>
           </form>
+        </section>
+
+        <section class="panel">
+          <h3>Son Kayitlar</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Kategori</th>
+                  <th>Ders Adi</th>
+                  <th>Dogru</th>
+                  <th>Yanlis</th>
+                  <th>Toplam</th>
+                  <th>Sure (dk)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% questionHistory.forEach((q) => { %>
+                <tr>
+                  <td><%= q.date %></td>
+                  <td><%= q.categoryName || 'Kategori Yok' %></td>
+                  <td><%= q.lessonName %></td>
+                  <td><%= q.correctCount %></td>
+                  <td><%= q.wrongCount %></td>
+                  <td><%= q.totalCount %></td>
+                  <td><%= q.durationMinutes %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
         </section>
         <% } %>
 

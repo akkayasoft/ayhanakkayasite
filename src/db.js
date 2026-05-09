@@ -89,12 +89,23 @@ async function initDb() {
       id TEXT PRIMARY KEY,
       student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       day DATE NOT NULL,
+      category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
+      lesson_name TEXT NOT NULL DEFAULT '',
+      correct_count INTEGER NOT NULL DEFAULT 0 CHECK (correct_count >= 0),
+      wrong_count INTEGER NOT NULL DEFAULT 0 CHECK (wrong_count >= 0),
+      duration_minutes INTEGER NOT NULL DEFAULT 0 CHECK (duration_minutes >= 0),
       count INTEGER NOT NULL CHECK (count >= 0),
       note TEXT NOT NULL DEFAULT '',
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (student_id, day)
     )
   `);
+
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS category_id TEXT`);
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS lesson_name TEXT NOT NULL DEFAULT ''`);
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS correct_count INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS wrong_count INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS duration_minutes INTEGER NOT NULL DEFAULT 0`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS point_logs (
