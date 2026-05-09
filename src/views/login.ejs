@@ -8,14 +8,17 @@
   </head>
   <body>
     <main class="container narrow">
-      <h1>Ogrenci Takip Sistemi</h1>
-      <p class="muted">Admin ve ogrenci panelleri ile gorev, puan ve gunluk takip</p>
+      <section class="login-hero">
+        <span class="hero-tag">Gorev ve Performans Takibi</span>
+        <h1 class="brand-title">Ogrenci Takip Sistemi</h1>
+        <p class="muted brand-subtitle">Admin ve ogrenci paneli ile gunluk gorev, puan ve soru takibini tek noktadan yonetin.</p>
+      </section>
 
       <% if (error) { %>
       <div class="alert error"><%= error %></div>
       <% } %>
 
-      <form method="post" action="/login" class="card">
+      <form method="post" action="/login" class="card stack login-form">
         <label>Kullanici Adi</label>
         <input type="text" name="username" required />
 
@@ -23,6 +26,7 @@
         <input type="password" name="password" required />
 
         <button type="submit">Giris Yap</button>
+        <p class="muted login-footnote">Giris sonrasinda rolunuze gore panelinize yonlendirilirsiniz.</p>
       </form>
     </main>
   </body>

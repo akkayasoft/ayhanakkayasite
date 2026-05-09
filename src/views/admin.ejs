@@ -8,8 +8,9 @@
   </head>
   <body>
     <main class="container">
-      <header class="row space-between center">
+      <header class="page-header">
         <div>
+          <span class="hero-tag">Yonetim Alani</span>
           <h1>Admin Paneli</h1>
           <p class="muted">Hosgeldin <strong><%= user.name %></strong></p>
         </div>
@@ -22,6 +23,25 @@
       <% if (error) { %>
       <div class="alert error"><%= error %></div>
       <% } %>
+
+      <section class="kpi-grid">
+        <article class="kpi">
+          <p class="kpi-label">Ogrenci Sayisi</p>
+          <p class="kpi-value"><%= students.length %></p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Aktif Gorev</p>
+          <p class="kpi-value"><%= activeTasks.length %></p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Arsiv Gorev</p>
+          <p class="kpi-value"><%= archivedTasks.length %></p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Kategori</p>
+          <p class="kpi-value"><%= categories.length %></p>
+        </article>
+      </section>
 
       <section class="card">
         <h2>Bugunluk Ogrenci Durumu (<%= today %>)</h2>
@@ -65,7 +85,7 @@
           </form>
 
           <h3>Mevcut Ogrenciler</h3>
-          <ul>
+          <ul class="clean-list">
             <% students.forEach((s) => { %>
             <li><strong><%= s.name %></strong> (@<%= s.username %>) - Puan: <%= s.points || 0 %></li>
             <% }) %>
@@ -81,7 +101,7 @@
           </form>
 
           <h3>Kategoriler</h3>
-          <ul>
+          <ul class="clean-list">
             <% categories.forEach((c) => { %>
             <li class="row space-between center">
               <span><%= c.name %></span>
@@ -183,7 +203,7 @@
 
         <article class="card">
           <h2>Son Puan Kayitlari</h2>
-          <ul>
+          <ul class="clean-list">
             <% pointLogs.forEach((p) => { %>
             <li>
               <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
@@ -264,7 +284,7 @@
 
       <section class="card">
         <h2>Aktif Gorevler</h2>
-        <ul>
+        <ul class="clean-list">
           <% activeTasks.forEach((t) => { %>
           <li class="row space-between center task-line">
             <span>
@@ -282,7 +302,7 @@
 
       <section class="card">
         <h2>Arsivdeki Gorevler</h2>
-        <ul>
+        <ul class="clean-list">
           <% archivedTasks.forEach((t) => { %>
           <li class="row space-between center task-line">
             <span>
