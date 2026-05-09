@@ -1,6 +1,6 @@
-# Ogrenci Takip Uygulamasi (Node.js)
+# Ogrenci Takip Uygulamasi (Node.js + PostgreSQL)
 
-Bu proje, Hostinger'da Node.js olarak yayinlanabilecek ogrenci takip uygulamasidir.
+Bu proje Hostinger Node.js ortaminda calisacak sekilde PostgreSQL ile gelistirildi.
 
 ## Ozellikler
 - Admin ve ogrenci panelleri
@@ -16,8 +16,9 @@ Bu proje, Hostinger'da Node.js olarak yayinlanabilecek ogrenci takip uygulamasid
 
 ## Teknoloji
 - Node.js + Express + EJS
+- PostgreSQL (`pg`)
 - Session tabanli kimlik dogrulama
-- JSON dosya tabanli veri saklama (`src/data/db.json`)
+- Temel guvenlik: `helmet`, `rate-limit`
 
 ## Kurulum
 ```bash
@@ -26,34 +27,39 @@ cp .env.example .env
 npm start
 ```
 
-Uygulama varsayilan olarak `http://localhost:3000` adresinde calisir.
+## Ortam Degiskenleri
+- `PORT`
+- `SESSION_SECRET`
+- `DEFAULT_ADMIN_USERNAME`
+- `DEFAULT_ADMIN_PASSWORD`
+- `NODE_ENV`
+- `DATABASE_URL` (onerilen)
+- `DATABASE_SSL`
+- `DATABASE_SSL_REJECT_UNAUTHORIZED`
+
+Uygulama acilisinda gerekli tablolari otomatik olusturur ve ilk admin kullanicisini seed eder.
 
 ## Varsayilan Admin
-Ilk calistirmada otomatik olusur:
 - Kullanici adi: `admin`
 - Sifre: `admin123`
 
-`.env` icinden degistirebilirsin.
+`.env` dosyasindan degistir.
 
-## Ortam Degiskenleri
-- `PORT=3000`
-- `SESSION_SECRET=burayi-uzun-guclu-secret-yap`
-- `DEFAULT_ADMIN_USERNAME=admin`
-- `DEFAULT_ADMIN_PASSWORD=admin123`
-- `NODE_ENV=production`
+## Hostinger Node.js + PostgreSQL Deploy
+1. Projeyi GitHub'a push et.
+2. Hostinger panelinde Node.js app olustur.
+3. Start file: `src/app.js`
+4. Install command: `npm install`
+5. Start command: `npm start`
+6. PostgreSQL veritabani olustur (Hostinger Managed PostgreSQL veya harici).
+7. Environment Variables'a `DATABASE_URL` ve diger `.env` degerlerini gir.
+8. SSL zorunluysa:
+   - `DATABASE_SSL=true`
+   - Gecici olarak gerekiyorsa `DATABASE_SSL_REJECT_UNAUTHORIZED=false`
+9. Deploy ve restart et.
 
-## Hostinger Node.js Deploy (GitHub baglantili)
-1. Projeyi GitHub repository'sine push et.
-2. Hostinger panelinde `Websites > Manage > Node.js` bolumune gir.
-3. Node surumunu `18+` sec.
-4. Repository baglantisini yap.
-5. Start file olarak `src/app.js` belirle.
-6. Environment Variables alanina yukaridaki degerleri gir.
-7. Install command: `npm install`
-8. Start command: `npm start`
-9. Deploy sonrasi restart et.
-
-## Notlar
-- Bu surumde veri `src/data/db.json` dosyasinda saklanir.
-- Uretim ortami icin bu dosyanin yedegini periyodik al.
-- Buyuk olcek icin PostgreSQL/MySQL'e gecis tavsiye edilir.
+## GitHub Push
+```bash
+git remote add origin <REPO_URL>
+git push -u origin main
+```

@@ -74,7 +74,7 @@
           <ul>
             <% pointLogs.forEach((p) => { %>
             <li>
-              <%= p.createdAt.slice(0,10) %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
               - <%= p.points %> puan - <%= p.reason %>
             </li>
             <% }) %>
