@@ -2,6 +2,7 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const pgSessionFactory = require('connect-pg-simple');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -26,6 +27,9 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const PgSession = pgSessionFactory(session);
+const isProduction = process.env.NODE_ENV === 'production';
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
@@ -34,19 +38,27 @@ const loginLimiter = rateLimit({
   message: 'Cok fazla giris denemesi yaptiniz. Lutfen daha sonra tekrar deneyin.'
 });
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'degistir-beni-session-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 12
-    }
-  })
-);
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'degistir-beni-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction,
+    maxAge: 1000 * 60 * 60 * 12
+  }
+};
+
+if (isProduction) {
+  sessionConfig.store = new PgSession({
+    pool,
+    tableName: 'user_sessions',
+    createTableIfMissing: true
+  });
+}
+
+app.use(session(sessionConfig));
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
