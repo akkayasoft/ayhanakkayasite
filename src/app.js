@@ -85,6 +85,24 @@ function shiftDate(dateStr, offsetDays) {
   return local.toISOString().slice(0, 10);
 }
 
+function startOfWeek(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function getWeekDates(weekStart) {
+  return Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index));
+}
+
+function getDayName(dateStr) {
+  const names = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
+  const d = new Date(`${dateStr}T00:00:00`);
+  return names[d.getDay()];
+}
+
 function todayDateString() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -1028,6 +1046,76 @@ async function getStudentViewModel(req, currentPage) {
     totalCount: Number(row.correctCount || 0) + Number(row.wrongCount || 0)
   }));
 
+  let calendar = null;
+  if (currentPage === 'calendar') {
+    const requestedWeekStart = normalizeText(req.query.weekStart);
+    const baseDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedWeekStart) ? requestedWeekStart : today;
+    const weekStart = startOfWeek(baseDate);
+    const weekEnd = shiftDate(weekStart, 6);
+
+    const [calendarStatusesRes, calendarQuestionsRes] = await Promise.all([
+      query(
+        `
+          SELECT task_id AS "taskId", day, status
+          FROM task_statuses
+          WHERE student_id = $1 AND day BETWEEN $2 AND $3
+        `,
+        [req.currentUser.id, weekStart, weekEnd]
+      ),
+      query(
+        `
+          SELECT
+            day,
+            COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions",
+            COALESCE(SUM(duration_minutes), 0) AS "totalDuration"
+          FROM daily_questions
+          WHERE student_id = $1 AND day BETWEEN $2 AND $3
+          GROUP BY day
+        `,
+        [req.currentUser.id, weekStart, weekEnd]
+      )
+    ]);
+
+    const questionByDay = new Map(
+      calendarQuestionsRes.rows.map((row) => [toDateOnly(row.day), row])
+    );
+    const statusByTaskAndDay = new Map(
+      calendarStatusesRes.rows.map((row) => [`${row.taskId}:${toDateOnly(row.day)}`, row.status])
+    );
+
+    const allTasks = tasksRes.rows.map(mapTask);
+    const days = getWeekDates(weekStart).map((day) => {
+      const dayDateObj = new Date(`${day}T00:00:00`);
+      const dueTasks = allTasks.filter((task) => isTaskDueOnDate(task, dayDateObj, day));
+      const doneCountForDay = dueTasks.filter(
+        (task) => statusByTaskAndDay.get(`${task.id}:${day}`) === 'done'
+      ).length;
+      const dayQuestion = questionByDay.get(day);
+
+      return {
+        date: day,
+        dayName: getDayName(day),
+        dueCount: dueTasks.length,
+        doneCount: doneCountForDay,
+        questionTotal: dayQuestion ? Number(dayQuestion.totalQuestions || 0) : 0,
+        durationMinutes: dayQuestion ? Number(dayQuestion.totalDuration || 0) : 0,
+        tasks: dueTasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          status: statusByTaskAndDay.get(`${task.id}:${day}`) || 'not_set'
+        }))
+      };
+    });
+
+    calendar = {
+      weekStart,
+      weekEnd,
+      prevWeekStart: shiftDate(weekStart, -7),
+      nextWeekStart: shiftDate(weekStart, 7),
+      days
+    };
+  }
+
   return {
     user: req.currentUser,
     currentPage,
@@ -1037,6 +1125,7 @@ async function getStudentViewModel(req, currentPage) {
     doneCount,
     questionEntry: todayQuestionRes.rowCount ? todayQuestionRes.rows[0] : null,
     questionHistory,
+    calendar,
     pointLogs,
     message: req.query.message || null,
     error: req.query.error || null
@@ -1049,7 +1138,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'points']);
+    const allowedPages = new Set(['dashboard', 'questions', 'points', 'calendar']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);

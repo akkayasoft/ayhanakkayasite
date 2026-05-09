@@ -18,6 +18,7 @@
 
         <nav class="menu">
           <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Bugun</a>
+          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalik Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
           <a href="/student/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Gecmisi</a>
         </nav>
@@ -74,6 +75,71 @@
               <button type="submit">Kaydet</button>
             </div>
           </form>
+          <% }) %>
+        </section>
+        <% } %>
+
+        <% if (currentPage === 'calendar' && calendar) { %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Haftalik Takvim</h2>
+            <p class="muted"><%= calendar.weekStart %> - <%= calendar.weekEnd %></p>
+          </div>
+          <div class="row">
+            <a class="button-link" href="/student/calendar?weekStart=<%= calendar.prevWeekStart %>">Onceki Hafta</a>
+            <a class="button-link" href="/student/calendar?weekStart=<%= calendar.nextWeekStart %>">Sonraki Hafta</a>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Gun</th>
+                  <th>Tarih</th>
+                  <th>Gorev</th>
+                  <th>Tamamlanan</th>
+                  <th>Soru</th>
+                  <th>Sure (dk)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% calendar.days.forEach((d) => { %>
+                <tr>
+                  <td><%= d.dayName %></td>
+                  <td><%= d.date %></td>
+                  <td><%= d.dueCount %></td>
+                  <td><%= d.doneCount %></td>
+                  <td><%= d.questionTotal %></td>
+                  <td><%= d.durationMinutes %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="grid two">
+          <% calendar.days.forEach((d) => { %>
+          <article class="panel">
+            <h3><%= d.dayName %> - <%= d.date %></h3>
+            <% if (!d.tasks.length) { %>
+            <p class="muted">Gorev yok.</p>
+            <% } %>
+            <% if (d.tasks.length) { %>
+            <ul class="clean-list">
+              <% d.tasks.forEach((t) => { %>
+              <li class="row space-between center">
+                <span><%= t.title %></span>
+                <span class="status-pill <%= t.status === 'done' ? 'ok' : t.status === 'not_done' ? 'bad' : 'idle' %>">
+                  <%= t.status === 'done' ? 'Yapildi' : t.status === 'not_done' ? 'Yapilmadi' : 'Isaretlenmedi' %>
+                </span>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </article>
           <% }) %>
         </section>
         <% } %>
