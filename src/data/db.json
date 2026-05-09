@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "id": "user_cc793770-db7d-4ab3-9c91-96123220dc7b",
+      "name": "Sistem Yonetici",
+      "username": "admin",
+      "passwordHash": "$2b$10$IuANDj6ir6Za33rpHJQRyun27Ks4l5IRTqkji..BsNJSNnqsRTyk.",
+      "role": "admin",
+      "points": 0,
+      "createdAt": "2026-05-09T09:46:24.582Z"
+    }
+  ],
+  "categories": [],
+  "tasks": [],
+  "taskStatuses": [],
+  "dailyQuestions": [],
+  "pointLogs": []
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ogrenci Paneli</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="row space-between center">
+        <div>
+          <h1>Ogrenci Paneli</h1>
+          <p class="muted"><strong><%= user.name %></strong> - Toplam Puan: <%= user.points || 0 %></p>
+        </div>
+        <form method="post" action="/logout"><button>Cikis</button></form>
+      </header>
+
+      <% if (message) { %>
+      <div class="alert success"><%= message %></div>
+      <% } %>
+      <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+      <% } %>
+
+      <section class="card">
+        <h2>Bugunun Gorevleri (<%= today %>)</h2>
+        <p class="muted">Tamamlanan: <strong><%= doneCount %></strong> / <strong><%= tasksForToday.length %></strong></p>
+
+        <% if (!tasksForToday.length) { %>
+          <p class="muted">Bugune atanmis gorev yok.</p>
+        <% } %>
+
+        <% tasksForToday.forEach((task) => { %>
+        <form method="post" action="/student/tasks/<%= task.id %>/status" class="task">
+          <div>
+            <h3><%= task.title %></h3>
+            <p class="muted"><%= task.categoryName %></p>
+            <p><%= task.description %></p>
+          </div>
+
+          <div class="stack">
+            <label>Durum</label>
+            <select name="status" required>
+              <option value="done" <%= task.todayStatus?.status === 'done' ? 'selected' : '' %>>Yapildi</option>
+              <option value="not_done" <%= task.todayStatus?.status === 'not_done' ? 'selected' : '' %>>Yapilmadi</option>
+            </select>
+
+            <label>Not</label>
+            <input type="text" name="note" value="<%= task.todayStatus?.note || '' %>" />
+
+            <button type="submit">Kaydet</button>
+          </div>
+        </form>
+        <% }) %>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Gunluk Soru Cozumu</h2>
+          <form method="post" action="/student/questions" class="stack">
+            <label>Bugun kac soru cozdun?</label>
+            <input type="number" min="0" name="count" value="<%= questionEntry?.count ?? 0 %>" required />
+
+            <label>Not (opsiyonel)</label>
+            <textarea name="note"><%= questionEntry?.note || '' %></textarea>
+
+            <button type="submit">Kaydet</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>Son Odul/Ceza Kayitlari</h2>
+          <ul>
+            <% pointLogs.forEach((p) => { %>
+            <li>
+              <%= p.createdAt.slice(0,10) %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              - <%= p.points %> puan - <%= p.reason %>
+            </li>
+            <% }) %>
+          </ul>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

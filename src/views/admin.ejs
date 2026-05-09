@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Paneli</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="row space-between center">
+        <div>
+          <h1>Admin Paneli</h1>
+          <p class="muted">Hosgeldin <strong><%= user.name %></strong></p>
+        </div>
+        <form method="post" action="/logout"><button>Cikis</button></form>
+      </header>
+
+      <% if (message) { %>
+      <div class="alert success"><%= message %></div>
+      <% } %>
+      <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+      <% } %>
+
+      <section class="card">
+        <h2>Bugunluk Ogrenci Durumu (<%= today %>)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ogrenci</th>
+                <th>Toplam Puan</th>
+                <th>Bugun Gorev</th>
+                <th>Tamamlanan</th>
+                <th>Gunluk Soru</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% dailyBoard.forEach((row) => { %>
+              <tr>
+                <td><%= row.name %></td>
+                <td><%= row.points || 0 %></td>
+                <td><%= row.dueCount %></td>
+                <td><%= row.doneCount %></td>
+                <td><%= row.questionCount %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Ogrenci Ekle</h2>
+          <form method="post" action="/admin/students" class="stack">
+            <label>Ad Soyad</label>
+            <input type="text" name="name" required />
+            <label>Kullanici Adi</label>
+            <input type="text" name="username" required />
+            <label>Sifre</label>
+            <input type="text" name="password" minlength="6" required />
+            <button type="submit">Kaydet</button>
+          </form>
+
+          <h3>Mevcut Ogrenciler</h3>
+          <ul>
+            <% students.forEach((s) => { %>
+            <li><strong><%= s.name %></strong> (@<%= s.username %>) - Puan: <%= s.points || 0 %></li>
+            <% }) %>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Kategori Ekle</h2>
+          <form method="post" action="/admin/categories" class="stack">
+            <label>Kategori Adi</label>
+            <input type="text" name="name" required />
+            <button type="submit">Ekle</button>
+          </form>
+
+          <h3>Kategoriler</h3>
+          <ul>
+            <% categories.forEach((c) => { %>
+            <li class="row space-between center">
+              <span><%= c.name %></span>
+              <form method="post" action="/admin/categories/<%= c.id %>/delete" onsubmit="return confirm('Kategori silinsin mi?')">
+                <button type="submit" class="danger">Sil</button>
+              </form>
+            </li>
+            <% }) %>
+          </ul>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Gorev Olustur</h2>
+        <form method="post" action="/admin/tasks" class="grid two">
+          <div class="stack">
+            <label>Gorev Basligi</label>
+            <input type="text" name="title" required />
+
+            <label>Aciklama</label>
+            <textarea name="description"></textarea>
+
+            <label>Kategori</label>
+            <select name="categoryId" required>
+              <option value="">Seciniz</option>
+              <% categories.forEach((c) => { %>
+              <option value="<%= c.id %>"><%= c.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Ogrenci</label>
+            <select name="studentId" required>
+              <option value="">Seciniz</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>"><%= s.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="stack">
+            <label>Tekrar Tipi</label>
+            <select name="repeatType" required>
+              <option value="once">Tek Seferlik</option>
+              <option value="weekly">Haftalik</option>
+              <option value="monthly">Aylik</option>
+              <option value="custom">Ozel Tarihler</option>
+            </select>
+
+            <label>Tek Seferlik Tarih</label>
+            <input type="date" name="singleDate" value="<%= today %>" />
+
+            <label>Haftalik Gun (0=Pazar ... 6=Cumartesi)</label>
+            <input type="number" min="0" max="6" name="weeklyDay" />
+
+            <label>Aylik Gun (1-31)</label>
+            <input type="number" min="1" max="31" name="monthlyDay" />
+
+            <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+            <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
+
+            <label>Baslangic Tarihi (opsiyonel)</label>
+            <input type="date" name="startDate" />
+
+            <label>Bitis Tarihi (opsiyonel)</label>
+            <input type="date" name="endDate" />
+
+            <button type="submit">Gorevi Kaydet</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Odul/Ceza Isle</h2>
+          <form method="post" action="/admin/points" class="stack">
+            <label>Ogrenci</label>
+            <select name="studentId" required>
+              <option value="">Seciniz</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>"><%= s.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Islem Tipi</label>
+            <select name="type" required>
+              <option value="reward">Odul</option>
+              <option value="penalty">Ceza</option>
+            </select>
+
+            <label>Puan</label>
+            <input type="number" name="points" min="1" required />
+
+            <label>Gerekce</label>
+            <input type="text" name="reason" required />
+
+            <button type="submit">Uygula</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>Son Puan Kayitlari</h2>
+          <ul>
+            <% pointLogs.forEach((p) => { %>
+            <li>
+              <%= p.createdAt.slice(0,10) %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              - <%= p.points %> puan - <%= p.reason %>
+            </li>
+            <% }) %>
+          </ul>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Performans Raporu</h2>
+        <form method="get" action="/admin" class="grid three">
+          <div class="stack">
+            <label>Ogrenci</label>
+            <select name="reportStudentId" required>
+              <option value="">Seciniz</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= reportFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="stack">
+            <label>Baslangic</label>
+            <input type="date" name="reportFrom" value="<%= reportFilters.fromDate %>" required />
+          </div>
+          <div class="stack">
+            <label>Bitis</label>
+            <input type="date" name="reportTo" value="<%= reportFilters.toDate %>" required />
+          </div>
+          <div class="stack">
+            <button type="submit">Rapor Getir</button>
+          </div>
+        </form>
+
+        <% if (reportError) { %>
+        <div class="alert error"><%= reportError %></div>
+        <% } %>
+
+        <% if (report) { %>
+        <p>
+          <strong><%= report.student.name %></strong> icin <%= report.fromDate %> - <%= report.toDate %>
+          donemi tamamlanma orani: <strong>%<%= report.completionRate %></strong>
+        </p>
+        <p class="muted">
+          Toplam Gorev: <%= report.totals.due %> | Tamamlanan: <%= report.totals.done %> |
+          Soru: <%= report.totals.questions %> | Puan Degisimi: <%= report.totals.pointDelta %>
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Gorev</th>
+                <th>Yapildi</th>
+                <th>Yapilmadi</th>
+                <th>Soru</th>
+                <th>Puan Delta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% report.rows.forEach((r) => { %>
+              <tr>
+                <td><%= r.date %></td>
+                <td><%= r.dueCount %></td>
+                <td><%= r.doneCount %></td>
+                <td><%= r.notDoneCount %></td>
+                <td><%= r.questionCount %></td>
+                <td><%= r.pointDelta %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </section>
+
+      <section class="card">
+        <h2>Aktif Gorevler</h2>
+        <ul>
+          <% activeTasks.forEach((t) => { %>
+          <li class="row space-between center task-line">
+            <span>
+              <strong><%= t.title %></strong> - <%= t.repeatText %> -
+              <%= t.student ? t.student.name : 'Ogrenci yok' %> -
+              <%= t.category ? t.category.name : 'Kategori yok' %>
+            </span>
+            <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
+              <button type="submit" class="danger">Arsivle</button>
+            </form>
+          </li>
+          <% }) %>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Arsivdeki Gorevler</h2>
+        <ul>
+          <% archivedTasks.forEach((t) => { %>
+          <li class="row space-between center task-line">
+            <span>
+              <strong><%= t.title %></strong> - <%= t.repeatText %> -
+              <%= t.student ? t.student.name : 'Ogrenci yok' %>
+            </span>
+            <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
+              <button type="submit">Aktif Et</button>
+            </form>
+          </li>
+          <% }) %>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
