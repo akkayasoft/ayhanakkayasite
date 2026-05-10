@@ -362,12 +362,14 @@
         <% if (currentPage === 'points') { %>
         <header class="content-header">
           <h2>Puan Islemleri</h2>
+          <p class="muted">Hafta: <strong><%= weeklyRuleWeekStart %> - <%= weeklyRuleWeekEnd %></strong></p>
         </header>
         <section class="grid two">
           <article class="panel">
             <h3>Odul / Ceza Uygula</h3>
             <form method="post" action="/admin/points" class="stack">
               <input type="hidden" name="next" value="/admin/points" />
+              <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
               <label>Ogrenci</label>
               <select name="studentId" required>
                 <option value="">Seciniz</option>
@@ -393,16 +395,139 @@
           </article>
 
           <article class="panel">
-            <h3>Son Puan Kayitlari</h3>
-            <ul class="clean-list">
-              <% pointLogs.forEach((p) => { %>
-              <li>
-                <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
-                - <%= p.points %> puan - <%= p.reason %>
-              </li>
-              <% }) %>
-            </ul>
+            <h3>Haftalik Kategori Odul/Ceza Tanimla</h3>
+            <form method="post" action="/admin/weekly-rules" class="stack">
+              <input type="hidden" name="next" value="/admin/points" />
+              <label>Hafta Baslangici</label>
+              <input type="date" name="weekStart" value="<%= weeklyRuleWeekStart %>" required />
+
+              <label>Kategori</label>
+              <select name="categoryId" required>
+                <option value="">Seciniz</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.id %>"><%= c.name %></option>
+                <% }) %>
+              </select>
+
+              <label>Odul Puani (>%80)</label>
+              <input type="number" name="rewardPoints" min="0" value="0" required />
+
+              <label>Odul Aciklamasi</label>
+              <input type="text" name="rewardLabel" placeholder="Orn: Haftalik Matematik Odulu" />
+
+              <label>Ceza Puani (%80 alti)</label>
+              <input type="number" name="penaltyPoints" min="0" value="0" required />
+
+              <label>Ceza Aciklamasi</label>
+              <input type="text" name="penaltyLabel" placeholder="Orn: Haftalik Matematik Cezasi" />
+
+              <button type="submit">Haftalik Kurali Kaydet</button>
+            </form>
           </article>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalik Kurallar</h3>
+          <% if (!weeklyRules.length) { %>
+          <p class="muted">Bu hafta icin kategori kurali tanimlanmamis.</p>
+          <% } %>
+          <% if (weeklyRules.length) { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th>Odul Puani</th>
+                  <th>Odul Aciklamasi</th>
+                  <th>Ceza Puani</th>
+                  <th>Ceza Aciklamasi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyRules.forEach((r) => { %>
+                <tr>
+                  <td><%= r.categoryName %></td>
+                  <td><%= r.rewardPoints %></td>
+                  <td><%= r.rewardLabel || '-' %></td>
+                  <td><%= r.penaltyPoints %></td>
+                  <td><%= r.penaltyLabel || '-' %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalik Degerlendirme</h3>
+          <form method="post" action="/admin/weekly-evaluations/run" class="row center">
+            <input type="hidden" name="next" value="/admin/points" />
+            <label>Hafta Baslangici</label>
+            <input type="date" name="weekStart" value="<%= weeklyRuleWeekStart %>" required />
+            <label>Ogrenci</label>
+            <select name="studentId">
+              <option value="">Tum Ogrenciler</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= weeklyEvalFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+            <button type="submit">Haftalik Orana Gore Puanla</button>
+          </form>
+          <p class="muted">Kural: %80 ustu odul, %80 alti ceza, %80 esiginde puan uygulanmaz.</p>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalik Degerlendirme Sonuclari</h3>
+          <% if (!weeklyEvaluations.length) { %>
+          <p class="muted">Secili hafta ve filtre icin degerlendirme kaydi yok.</p>
+          <% } %>
+          <% if (weeklyEvaluations.length) { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ogrenci</th>
+                  <th>Kategori</th>
+                  <th>Toplam Gorev</th>
+                  <th>Yapilan</th>
+                  <th>Oran</th>
+                  <th>Sonuc</th>
+                  <th>Puan</th>
+                  <th>Aciklama</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyEvaluations.forEach((e) => { %>
+                <tr>
+                  <td><%= e.studentName %></td>
+                  <td><%= e.categoryName %></td>
+                  <td><%= e.dueCount %></td>
+                  <td><%= e.doneCount %></td>
+                  <td>%<%= e.completionRate.toFixed(1) %></td>
+                  <td>
+                    <%= e.resultType === 'reward' ? 'Odul' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %>
+                  </td>
+                  <td><%= e.pointsApplied %></td>
+                  <td><%= e.reasonText || '-' %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Son Puan Kayitlari</h3>
+          <ul class="clean-list">
+            <% pointLogs.forEach((p) => { %>
+            <li>
+              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              - <%= p.points %> puan - <%= p.reason %>
+            </li>
+            <% }) %>
+          </ul>
         </section>
         <% } %>
 

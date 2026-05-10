@@ -107,6 +107,22 @@ async function initDb() {
     )
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS weekly_category_rules (
+      id TEXT PRIMARY KEY,
+      week_start DATE NOT NULL,
+      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      reward_points INTEGER NOT NULL DEFAULT 0 CHECK (reward_points >= 0),
+      penalty_points INTEGER NOT NULL DEFAULT 0 CHECK (penalty_points >= 0),
+      reward_label TEXT NOT NULL DEFAULT '',
+      penalty_label TEXT NOT NULL DEFAULT '',
+      created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (week_start, category_id)
+    )
+  `);
+
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS category_id TEXT`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS lesson_name TEXT NOT NULL DEFAULT ''`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS correct_count INTEGER NOT NULL DEFAULT 0`);
@@ -123,6 +139,25 @@ async function initDb() {
       delta INTEGER NOT NULL,
       created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS weekly_category_evaluations (
+      id TEXT PRIMARY KEY,
+      week_start DATE NOT NULL,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      due_count INTEGER NOT NULL DEFAULT 0 CHECK (due_count >= 0),
+      done_count INTEGER NOT NULL DEFAULT 0 CHECK (done_count >= 0),
+      completion_rate NUMERIC(5, 2) NOT NULL DEFAULT 0,
+      result_type TEXT NOT NULL CHECK (result_type IN ('reward', 'penalty', 'none')),
+      points_applied INTEGER NOT NULL DEFAULT 0,
+      reason_text TEXT NOT NULL DEFAULT '',
+      point_log_id TEXT NULL REFERENCES point_logs(id) ON DELETE SET NULL,
+      calculated_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (week_start, student_id, category_id)
     )
   `);
 }

@@ -128,6 +128,16 @@ function todayDateString() {
   return local.toISOString().slice(0, 10);
 }
 
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizeWeekStart(value, fallbackDate = null) {
+  if (isDateOnly(value)) return startOfWeek(value);
+  if (fallbackDate && isDateOnly(fallbackDate)) return startOfWeek(fallbackDate);
+  return null;
+}
+
 async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate, allTasks = null) {
   const baseDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedWeekStart) ? requestedWeekStart : fallbackDate;
   const weekStart = startOfWeek(baseDate);
@@ -495,6 +505,12 @@ async function getAdminViewModel(req, currentPage) {
 
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
+  const weeklyRuleWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
+  const weeklyRuleWeekEnd = shiftDate(weeklyRuleWeekStart, 6);
+  const weeklyEvalStudentIdRaw = normalizeText(req.query.weeklyEvalStudentId);
+  const weeklyEvalStudentId = students.some((s) => s.id === weeklyEvalStudentIdRaw)
+    ? weeklyEvalStudentIdRaw
+    : '';
   const editTaskId = normalizeText(req.query.editTaskId);
   const activeTaskStudentIdRaw = normalizeText(req.query.activeTaskStudentId);
   const activeTaskStudentId = students.some((s) => s.id === activeTaskStudentIdRaw) ? activeTaskStudentIdRaw : '';
@@ -664,6 +680,65 @@ async function getAdminViewModel(req, currentPage) {
     };
   }
 
+  let weeklyRules = [];
+  let weeklyEvaluations = [];
+  if (currentPage === 'points') {
+    const [weeklyRulesRes, weeklyEvaluationsRes] = await Promise.all([
+      query(
+        `
+          SELECT
+            r.id,
+            r.week_start AS "weekStart",
+            r.category_id AS "categoryId",
+            r.reward_points AS "rewardPoints",
+            r.penalty_points AS "penaltyPoints",
+            r.reward_label AS "rewardLabel",
+            r.penalty_label AS "penaltyLabel",
+            r.created_at AS "createdAt",
+            r.updated_at AS "updatedAt",
+            c.name AS "categoryName"
+          FROM weekly_category_rules r
+          JOIN categories c ON c.id = r.category_id
+          WHERE r.week_start = $1
+          ORDER BY c.name ASC
+        `,
+        [weeklyRuleWeekStart]
+      ),
+      query(
+        `
+          SELECT
+            e.id,
+            e.week_start AS "weekStart",
+            e.student_id AS "studentId",
+            e.category_id AS "categoryId",
+            e.due_count AS "dueCount",
+            e.done_count AS "doneCount",
+            e.completion_rate AS "completionRate",
+            e.result_type AS "resultType",
+            e.points_applied AS "pointsApplied",
+            e.reason_text AS "reasonText",
+            e.calculated_at AS "calculatedAt",
+            u.name AS "studentName",
+            c.name AS "categoryName"
+          FROM weekly_category_evaluations e
+          JOIN users u ON u.id = e.student_id
+          JOIN categories c ON c.id = e.category_id
+          WHERE e.week_start = $1
+            AND ($2::text = '' OR e.student_id = $2)
+          ORDER BY u.name ASC, c.name ASC
+        `,
+        [weeklyRuleWeekStart, weeklyEvalStudentId]
+      )
+    ]);
+
+    weeklyRules = weeklyRulesRes.rows;
+    weeklyEvaluations = weeklyEvaluationsRes.rows.map((row) => ({
+      ...row,
+      completionRate: Number(row.completionRate || 0),
+      createdDate: toDateOnly(row.calculatedAt)
+    }));
+  }
+
   return {
     user: req.currentUser,
     currentPage,
@@ -677,6 +752,13 @@ async function getAdminViewModel(req, currentPage) {
     taskForm,
     activeTaskFilters: {
       studentId: activeTaskStudentId
+    },
+    weeklyRuleWeekStart,
+    weeklyRuleWeekEnd,
+    weeklyRules,
+    weeklyEvaluations,
+    weeklyEvalFilters: {
+      studentId: weeklyEvalStudentId
     },
     pointLogs,
     dailyBoard,
@@ -1232,20 +1314,341 @@ app.post(
 );
 
 app.post(
+  '/admin/weekly-rules',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
+    const categoryId = normalizeText(req.body.categoryId);
+    const rewardPoints = Number.parseInt(req.body.rewardPoints, 10);
+    const penaltyPoints = Number.parseInt(req.body.penaltyPoints, 10);
+    const rewardLabel = normalizeText(req.body.rewardLabel);
+    const penaltyLabel = normalizeText(req.body.penaltyLabel);
+
+    if (!weekStart || !categoryId) {
+      return adminRedirect(req, res, { error: 'Hafta ve kategori zorunlu.', weekStart: weekStart || '' });
+    }
+
+    if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
+      return adminRedirect(req, res, { error: 'Odul/ceza puani 0 veya daha buyuk bir tam sayi olmali.', weekStart });
+    }
+
+    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+    if (categoryRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kategori bulunamadi.', weekStart });
+    }
+
+    await query(
+      `
+        INSERT INTO weekly_category_rules (
+          id,
+          week_start,
+          category_id,
+          reward_points,
+          penalty_points,
+          reward_label,
+          penalty_label,
+          created_by
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        ON CONFLICT (week_start, category_id)
+        DO UPDATE SET
+          reward_points = EXCLUDED.reward_points,
+          penalty_points = EXCLUDED.penalty_points,
+          reward_label = EXCLUDED.reward_label,
+          penalty_label = EXCLUDED.penalty_label,
+          created_by = EXCLUDED.created_by,
+          updated_at = NOW()
+      `,
+      [
+        makeId('wcr'),
+        weekStart,
+        categoryId,
+        rewardPoints,
+        penaltyPoints,
+        rewardLabel,
+        penaltyLabel,
+        req.currentUser.id
+      ]
+    );
+
+    return adminRedirect(req, res, { message: 'Haftalik kategori kurali kaydedildi.', weekStart });
+  })
+);
+
+app.post(
+  '/admin/weekly-evaluations/run',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
+    const weekEnd = weekStart ? shiftDate(weekStart, 6) : '';
+    const studentId = normalizeText(req.body.studentId);
+
+    if (!weekStart) {
+      return adminRedirect(req, res, { error: 'Hafta bilgisi gecersiz.' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const rulesRes = await client.query(
+        `
+          SELECT
+            r.week_start AS "weekStart",
+            r.category_id AS "categoryId",
+            r.reward_points AS "rewardPoints",
+            r.penalty_points AS "penaltyPoints",
+            r.reward_label AS "rewardLabel",
+            r.penalty_label AS "penaltyLabel",
+            c.name AS "categoryName"
+          FROM weekly_category_rules r
+          JOIN categories c ON c.id = r.category_id
+          WHERE r.week_start = $1
+          ORDER BY c.name ASC
+        `,
+        [weekStart]
+      );
+
+      if (!rulesRes.rowCount) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: 'Bu hafta icin kategori odul/ceza tanimi yok.', weekStart });
+      }
+
+      const studentsRes = await client.query(
+        `
+          SELECT id, name
+          FROM users
+          WHERE role = 'student'
+            AND ($1::text = '' OR id = $1)
+          ORDER BY name ASC
+        `,
+        [studentId]
+      );
+
+      if (!studentsRes.rowCount) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: 'Degerlendirilecek ogrenci bulunamadi.', weekStart });
+      }
+
+      const ruleByCategory = new Map(
+        rulesRes.rows.map((rule) => [rule.categoryId, rule])
+      );
+      const categoryIds = Array.from(ruleByCategory.keys());
+      const studentIds = studentsRes.rows.map((row) => row.id);
+      const weekDates = getWeekDates(weekStart);
+
+      const tasksRes = await client.query(
+        `
+          SELECT
+            id,
+            title,
+            description,
+            category_id AS "categoryId",
+            student_id AS "studentId",
+            repeat_type AS "repeatType",
+            single_date AS "singleDate",
+            weekly_day AS "weeklyDay",
+            monthly_day AS "monthlyDay",
+            custom_dates AS "customDates",
+            start_date AS "startDate",
+            end_date AS "endDate",
+            is_archived AS "isArchived",
+            created_by AS "createdBy",
+            created_at AS "createdAt"
+          FROM tasks
+          WHERE student_id = ANY($1)
+            AND category_id = ANY($2)
+            AND is_archived = false
+        `,
+        [studentIds, categoryIds]
+      );
+      const statusesRes = await client.query(
+        `
+          SELECT task_id AS "taskId", student_id AS "studentId", day, status
+          FROM task_statuses
+          WHERE student_id = ANY($1)
+            AND day BETWEEN $2 AND $3
+        `,
+        [studentIds, weekStart, weekEnd]
+      );
+      const existingRes = await client.query(
+        `
+          SELECT student_id AS "studentId", category_id AS "categoryId"
+          FROM weekly_category_evaluations
+          WHERE week_start = $1
+            AND student_id = ANY($2)
+        `,
+        [weekStart, studentIds]
+      );
+
+      const tasksByStudent = new Map();
+      tasksRes.rows.map(mapTask).forEach((task) => {
+        const current = tasksByStudent.get(task.studentId) || [];
+        current.push(task);
+        tasksByStudent.set(task.studentId, current);
+      });
+
+      const doneStatusSet = new Set(
+        statusesRes.rows
+          .filter((row) => row.status === 'done')
+          .map((row) => `${row.studentId}:${row.taskId}:${toDateOnly(row.day)}`)
+      );
+      const existingSet = new Set(
+        existingRes.rows.map((row) => `${row.studentId}:${row.categoryId}`)
+      );
+
+      let createdCount = 0;
+      let rewardCount = 0;
+      let penaltyCount = 0;
+      let skippedCount = 0;
+
+      for (const student of studentsRes.rows) {
+        const studentTasks = tasksByStudent.get(student.id) || [];
+        const metricsByCategory = new Map(
+          categoryIds.map((categoryId) => [categoryId, { due: 0, done: 0 }])
+        );
+
+        for (const day of weekDates) {
+          const dayObj = new Date(`${day}T00:00:00`);
+          const dueTasks = studentTasks.filter(
+            (task) => ruleByCategory.has(task.categoryId) && isTaskDueOnDate(task, dayObj, day)
+          );
+
+          for (const dueTask of dueTasks) {
+            const metric = metricsByCategory.get(dueTask.categoryId);
+            if (!metric) continue;
+
+            metric.due += 1;
+            if (doneStatusSet.has(`${student.id}:${dueTask.id}:${day}`)) {
+              metric.done += 1;
+            }
+          }
+        }
+
+        for (const [categoryId, rule] of ruleByCategory.entries()) {
+          const alreadyCalculated = existingSet.has(`${student.id}:${categoryId}`);
+          if (alreadyCalculated) {
+            skippedCount += 1;
+            continue;
+          }
+
+          const metric = metricsByCategory.get(categoryId) || { due: 0, done: 0 };
+          const completionRate = metric.due > 0 ? (metric.done / metric.due) * 100 : 0;
+          let resultType = 'none';
+          let pointsApplied = 0;
+          let reasonText = '';
+          let pointLogId = null;
+
+          if (metric.due > 0 && completionRate > 80 && Number(rule.rewardPoints) > 0) {
+            resultType = 'reward';
+            pointsApplied = Number(rule.rewardPoints);
+            reasonText = normalizeText(rule.rewardLabel) || `${rule.categoryName} haftalik odul`;
+          } else if (metric.due > 0 && completionRate < 80 && Number(rule.penaltyPoints) > 0) {
+            resultType = 'penalty';
+            pointsApplied = -Number(rule.penaltyPoints);
+            reasonText = normalizeText(rule.penaltyLabel) || `${rule.categoryName} haftalik ceza`;
+          }
+
+          if (pointsApplied !== 0) {
+            await client.query(
+              `UPDATE users SET points = points + $1 WHERE id = $2`,
+              [pointsApplied, student.id]
+            );
+
+            const pointType = pointsApplied > 0 ? 'reward' : 'penalty';
+            const pointReason = `${reasonText} (${rule.categoryName}, ${weekStart} - ${weekEnd}, oran %${completionRate.toFixed(1)})`;
+            const pointInsertRes = await client.query(
+              `
+                INSERT INTO point_logs (id, student_id, type, points, reason, delta, created_by)
+                VALUES ($1,$2,$3,$4,$5,$6,$7)
+                RETURNING id
+              `,
+              [
+                makeId('plog'),
+                student.id,
+                pointType,
+                Math.abs(pointsApplied),
+                pointReason,
+                pointsApplied,
+                req.currentUser.id
+              ]
+            );
+            pointLogId = pointInsertRes.rows[0].id;
+
+            if (pointsApplied > 0) rewardCount += 1;
+            if (pointsApplied < 0) penaltyCount += 1;
+          }
+
+          await client.query(
+            `
+              INSERT INTO weekly_category_evaluations (
+                id,
+                week_start,
+                student_id,
+                category_id,
+                due_count,
+                done_count,
+                completion_rate,
+                result_type,
+                points_applied,
+                reason_text,
+                point_log_id,
+                calculated_by
+              )
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            `,
+            [
+              makeId('weval'),
+              weekStart,
+              student.id,
+              categoryId,
+              metric.due,
+              metric.done,
+              completionRate.toFixed(2),
+              resultType,
+              pointsApplied,
+              reasonText,
+              pointLogId,
+              req.currentUser.id
+            ]
+          );
+
+          createdCount += 1;
+        }
+      }
+
+      await client.query('COMMIT');
+
+      return adminRedirect(req, res, {
+        message: `Haftalik degerlendirme tamamlandi. Kayit: ${createdCount}, Odul: ${rewardCount}, Ceza: ${penaltyCount}, Atlanan: ${skippedCount}.`,
+        weekStart,
+        weeklyEvalStudentId: studentId
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  })
+);
+
+app.post(
   '/admin/points',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
+    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
     const studentId = normalizeText(req.body.studentId);
     const type = normalizeText(req.body.type);
     const reason = normalizeText(req.body.reason);
     const parsedPoints = Number(req.body.points);
 
     if (!studentId || !type || !parsedPoints || !reason) {
-      return adminRedirect(req, res, { error: 'Odul/ceza alanlari eksik.' });
+      return adminRedirect(req, res, { error: 'Odul/ceza alanlari eksik.', weekStart: weekStart || '' });
     }
 
     if (!['reward', 'penalty'].includes(type)) {
-      return adminRedirect(req, res, { error: 'Gecersiz puan tipi.' });
+      return adminRedirect(req, res, { error: 'Gecersiz puan tipi.', weekStart: weekStart || '' });
     }
 
     const delta = type === 'reward' ? Math.abs(parsedPoints) : -Math.abs(parsedPoints);
@@ -1261,7 +1664,7 @@ app.post(
 
       if (studentRes.rowCount === 0) {
         await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Ogrenci bulunamadi.' });
+        return adminRedirect(req, res, { error: 'Ogrenci bulunamadi.', weekStart: weekStart || '' });
       }
 
       await client.query(
@@ -1285,7 +1688,7 @@ app.post(
       client.release();
     }
 
-    return adminRedirect(req, res, { message: 'Puan islemi kaydedildi.' });
+    return adminRedirect(req, res, { message: 'Puan islemi kaydedildi.', weekStart: weekStart || '' });
   })
 );
 
