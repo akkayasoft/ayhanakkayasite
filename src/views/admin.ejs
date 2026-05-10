@@ -299,55 +299,50 @@
           </form>
         </section>
 
-        <section class="grid two">
-          <article class="panel">
-            <h3>Aktif Gorevler</h3>
-            <ul class="clean-list">
-              <% activeTasks.forEach((t) => { %>
-              <li class="row space-between center task-line">
-                <span>
-                  <strong><%= t.title %></strong> - <%= t.repeatText %> -
-                  <%= t.student ? t.student.name : 'Ogrenci yok' %> -
-                  <%= t.category ? t.category.name : 'Kategori yok' %>
-                </span>
-                <div class="row">
-                  <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
-                    <input type="hidden" name="next" value="/admin/tasks" />
-                    <button type="submit" class="danger">Arsivle</button>
-                  </form>
-                  <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
-                    <input type="hidden" name="next" value="/admin/tasks" />
-                    <button type="submit" class="danger">Sil</button>
-                  </form>
-                </div>
-              </li>
-              <% }) %>
-            </ul>
-          </article>
-
-          <article class="panel">
-            <h3>Arsivdeki Gorevler</h3>
-            <ul class="clean-list">
-              <% archivedTasks.forEach((t) => { %>
-              <li class="row space-between center task-line">
-                <span>
-                  <strong><%= t.title %></strong> - <%= t.repeatText %> -
-                  <%= t.student ? t.student.name : 'Ogrenci yok' %>
-                </span>
-                <div class="row">
-                  <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
-                    <input type="hidden" name="next" value="/admin/tasks" />
-                    <button type="submit">Aktif Et</button>
-                  </form>
-                  <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
-                    <input type="hidden" name="next" value="/admin/tasks" />
-                    <button type="submit" class="danger">Sil</button>
-                  </form>
-                </div>
-              </li>
-              <% }) %>
-            </ul>
-          </article>
+        <section class="panel">
+          <h3>Aktif Gorevler</h3>
+          <% if (!activeTasks.length) { %>
+          <p class="muted">Aktif gorev yok.</p>
+          <% } %>
+          <% if (activeTasks.length) { %>
+          <div class="table-wrap">
+            <table class="task-table">
+              <thead>
+                <tr>
+                  <th>Baslik</th>
+                  <th>Ogrenci</th>
+                  <th>Kategori</th>
+                  <th>Tekrar</th>
+                  <th>Tarih</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% activeTasks.forEach((t) => { %>
+                <tr>
+                  <td><strong><%= t.title %></strong></td>
+                  <td><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
+                  <td><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td><%= t.repeatText %></td>
+                  <td><%= t.dateText %></td>
+                  <td>
+                    <div class="task-table-actions">
+                      <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
+                        <input type="hidden" name="next" value="/admin/tasks" />
+                        <button type="submit" class="danger">Arsivle</button>
+                      </form>
+                      <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
+                        <input type="hidden" name="next" value="/admin/tasks" />
+                        <button type="submit" class="danger">Sil</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
         </section>
         <% } %>
 

@@ -441,6 +441,10 @@ tbody tr:nth-child(even) {
   margin: 0;
 }
 
+.task-table-actions button {
+  width: auto;
+}
+
 .task-actions {
   display: inline-flex;
   align-items: center;

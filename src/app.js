@@ -473,7 +473,8 @@ async function getAdminViewModel(req, currentPage) {
     ...task,
     student: students.find((s) => s.id === task.studentId) || null,
     category: categories.find((c) => c.id === task.categoryId) || null,
-    repeatText: formatRepeat(task)
+    repeatText: formatRepeat(task),
+    dateText: formatTaskSchedule(task)
   }));
 
   const pointLogs = pointLogsRes.rows.map((row) => ({
