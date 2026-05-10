@@ -313,6 +313,7 @@
               <thead>
                 <tr>
                   <th>Baslik</th>
+                  <th>Konu</th>
                   <th>Ogrenci</th>
                   <th>Kategori</th>
                   <th>Tarih</th>
@@ -323,6 +324,7 @@
                 <% activeTasks.forEach((t) => { %>
                 <tr>
                   <td><strong><%= t.title %></strong></td>
+                  <td><%= t.description || '-' %></td>
                   <td><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
                   <td><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td><%= t.dateText %></td>
