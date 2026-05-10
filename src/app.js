@@ -507,6 +507,8 @@ async function getAdminViewModel(req, currentPage) {
   const dateObj = new Date(`${today}T00:00:00`);
   const weeklyRuleWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const weeklyRuleWeekEnd = shiftDate(weeklyRuleWeekStart, 6);
+  const weeklyRulePrevWeekStart = shiftDate(weeklyRuleWeekStart, -7);
+  const weeklyRuleNextWeekStart = shiftDate(weeklyRuleWeekStart, 7);
   const weeklyRuleEditId = normalizeText(req.query.weeklyRuleEditId);
   const weeklyEvalStudentIdRaw = normalizeText(req.query.weeklyEvalStudentId);
   const weeklyEvalStudentId = students.some((s) => s.id === weeklyEvalStudentIdRaw)
@@ -786,6 +788,8 @@ async function getAdminViewModel(req, currentPage) {
     },
     weeklyRuleWeekStart,
     weeklyRuleWeekEnd,
+    weeklyRulePrevWeekStart,
+    weeklyRuleNextWeekStart,
     weeklyRules,
     weeklyRuleForm,
     weeklyEvaluations,
@@ -1948,10 +1952,137 @@ app.post(
   })
 );
 
+app.get(
+  '/admin/points/export-weekly',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const today = todayDateString();
+    const weekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
+    const weekEnd = shiftDate(weekStart, 6);
+    const weeklyEvalStudentIdRaw = normalizeText(req.query.weeklyEvalStudentId);
+
+    const studentRes = await query(
+      `SELECT id, name FROM users WHERE role = 'student' AND ($1::text = '' OR id = $1) LIMIT 1`,
+      [weeklyEvalStudentIdRaw]
+    );
+    const weeklyEvalStudentId = studentRes.rowCount ? weeklyEvalStudentIdRaw : '';
+
+    const [evaluationsRes, logsRes] = await Promise.all([
+      query(
+        `
+          SELECT
+            e.week_start AS "weekStart",
+            u.name AS "studentName",
+            c.name AS "categoryName",
+            e.due_count AS "dueCount",
+            e.done_count AS "doneCount",
+            e.completion_rate AS "completionRate",
+            e.result_type AS "resultType",
+            e.points_applied AS "pointsApplied",
+            e.reason_text AS "reasonText",
+            e.calculated_at AS "calculatedAt"
+          FROM weekly_category_evaluations e
+          JOIN users u ON u.id = e.student_id
+          JOIN categories c ON c.id = e.category_id
+          WHERE e.week_start = $1
+            AND ($2::text = '' OR e.student_id = $2)
+          ORDER BY u.name ASC, c.name ASC
+        `,
+        [weekStart, weeklyEvalStudentId]
+      ),
+      query(
+        `
+          SELECT
+            pl.created_at AS "createdAt",
+            s.name AS "studentName",
+            pl.type,
+            pl.points,
+            pl.delta,
+            pl.reason
+          FROM point_logs pl
+          JOIN users s ON s.id = pl.student_id
+          WHERE pl.created_at::date BETWEEN $1 AND $2
+            AND ($3::text = '' OR pl.student_id = $3)
+          ORDER BY pl.created_at DESC
+        `,
+        [weekStart, weekEnd, weeklyEvalStudentId]
+      )
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Ogrenci Takip';
+    workbook.created = new Date();
+
+    const evalSheet = workbook.addWorksheet('Haftalik Degerlendirme');
+    evalSheet.columns = [
+      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Kategori', key: 'categoryName', width: 20 },
+      { header: 'Toplam Gorev', key: 'dueCount', width: 14 },
+      { header: 'Yapilan', key: 'doneCount', width: 11 },
+      { header: 'Oran', key: 'completionRate', width: 10 },
+      { header: 'Sonuc', key: 'resultText', width: 12 },
+      { header: 'Puan', key: 'pointsApplied', width: 10 },
+      { header: 'Aciklama', key: 'reasonText', width: 42 },
+      { header: 'Hesaplama Tarihi', key: 'createdDate', width: 14 }
+    ];
+    evalSheet.getRow(1).font = { bold: true };
+    evalSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    evaluationsRes.rows.forEach((row) => {
+      evalSheet.addRow({
+        studentName: row.studentName,
+        categoryName: row.categoryName,
+        dueCount: Number(row.dueCount || 0),
+        doneCount: Number(row.doneCount || 0),
+        completionRate: `%${Number(row.completionRate || 0).toFixed(1)}`,
+        resultText: row.resultType === 'reward' ? 'Odul' : row.resultType === 'penalty' ? 'Ceza' : 'Esik',
+        pointsApplied: Number(row.pointsApplied || 0),
+        reasonText: row.reasonText || '-',
+        createdDate: toDateOnly(row.calculatedAt)
+      });
+    });
+
+    const logSheet = workbook.addWorksheet('Haftalik Puan Loglari');
+    logSheet.columns = [
+      { header: 'Tarih', key: 'createdDate', width: 13 },
+      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Tip', key: 'typeText', width: 10 },
+      { header: 'Puan', key: 'points', width: 8 },
+      { header: 'Delta', key: 'delta', width: 8 },
+      { header: 'Gerekce', key: 'reason', width: 56 }
+    ];
+    logSheet.getRow(1).font = { bold: true };
+    logSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    logsRes.rows.forEach((row) => {
+      logSheet.addRow({
+        createdDate: toDateOnly(row.createdAt),
+        studentName: row.studentName,
+        typeText: row.type === 'reward' ? 'Odul' : 'Ceza',
+        points: Number(row.points || 0),
+        delta: Number(row.delta || 0),
+        reason: row.reason
+      });
+    });
+
+    const fileName = `admin-haftalik-puanlama-${weekStart}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    await workbook.xlsx.write(res);
+    return res.end();
+  })
+);
+
 async function getStudentViewModel(req, currentPage) {
   const today = todayDateString();
   const weeklyPointWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const weeklyPointWeekEnd = shiftDate(weeklyPointWeekStart, 6);
+  const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
+  const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
   const [tasksRes, statusesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
@@ -2131,6 +2262,8 @@ async function getStudentViewModel(req, currentPage) {
     pointLogs,
     weeklyPointWeekStart,
     weeklyPointWeekEnd,
+    weeklyPointPrevWeekStart,
+    weeklyPointNextWeekStart,
     weeklyPointEvaluations,
     message: req.query.message || null,
     error: req.query.error || null

@@ -256,10 +256,12 @@
 
         <section class="panel">
           <form method="get" action="/student/points" class="row center">
+            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointPrevWeekStart %>">Onceki Hafta</a>
+            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointNextWeekStart %>">Sonraki Hafta</a>
             <label>Hafta Baslangici</label>
             <input type="date" name="weekStart" value="<%= weeklyPointWeekStart %>" required />
             <button type="submit">Haftayi Getir</button>
-            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Excel Indir</a>
+            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Haftalik Excel Indir</a>
           </form>
         </section>
 

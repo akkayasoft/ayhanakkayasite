@@ -363,6 +363,11 @@
         <header class="content-header">
           <h2>Puan Islemleri</h2>
           <p class="muted">Hafta: <strong><%= weeklyRuleWeekStart %> - <%= weeklyRuleWeekEnd %></strong></p>
+          <div class="row">
+            <a class="button-link" href="/admin/points?weekStart=<%= weeklyRulePrevWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Onceki Hafta</a>
+            <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleNextWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Sonraki Hafta</a>
+            <a class="button-link" href="/admin/points/export-weekly?weekStart=<%= weeklyRuleWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Excel Indir</a>
+          </div>
         </header>
         <section class="grid two">
           <article class="panel">
@@ -503,6 +508,17 @@
 
         <section class="panel">
           <h3>Haftalik Degerlendirme Sonuclari</h3>
+          <form method="get" action="/admin/points" class="row center">
+            <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
+            <label>Ogrenci</label>
+            <select name="weeklyEvalStudentId">
+              <option value="">Tum Ogrenciler</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= weeklyEvalFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+            <button type="submit">Filtrele</button>
+          </form>
           <% if (!weeklyEvaluations.length) { %>
           <p class="muted">Secili hafta ve filtre icin degerlendirme kaydi yok.</p>
           <% } %>
