@@ -485,6 +485,41 @@ async function getAdminViewModel(req, currentPage) {
 
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
+  const editTaskId = normalizeText(req.query.editTaskId);
+  const editingTask = tasks.find((t) => t.id === editTaskId) || null;
+  const taskForm = editingTask
+    ? {
+        isEdit: true,
+        action: `/admin/tasks/${editingTask.id}/update`,
+        submitText: 'Gorevi Guncelle',
+        title: editingTask.title || '',
+        description: editingTask.description || '',
+        categoryId: editingTask.categoryId || '',
+        studentId: editingTask.studentId || '',
+        repeatType: editingTask.repeatType || 'once',
+        singleDate: editingTask.singleDate || today,
+        weeklyDay: editingTask.weeklyDay ?? '',
+        monthlyDay: editingTask.monthlyDay ?? '',
+        customDates: Array.isArray(editingTask.customDates) ? editingTask.customDates.join(',') : '',
+        startDate: editingTask.startDate || '',
+        endDate: editingTask.endDate || ''
+      }
+    : {
+        isEdit: false,
+        action: '/admin/tasks',
+        submitText: 'Gorevi Kaydet',
+        title: '',
+        description: '',
+        categoryId: '',
+        studentId: '',
+        repeatType: 'once',
+        singleDate: today,
+        weeklyDay: '',
+        monthlyDay: '',
+        customDates: '',
+        startDate: '',
+        endDate: ''
+      };
 
     const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
     query(
@@ -615,6 +650,7 @@ async function getAdminViewModel(req, currentPage) {
     tasks,
     activeTasks: tasks.filter((t) => !t.isArchived),
     archivedTasks: tasks.filter((t) => t.isArchived),
+    taskForm,
     pointLogs,
     dailyBoard,
     report,
@@ -1009,6 +1045,117 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Gorev olusturuldu.' });
+  })
+);
+
+app.post(
+  '/admin/tasks/:taskId/update',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const title = normalizeText(req.body.title);
+    const description = normalizeText(req.body.description);
+    const categoryId = normalizeText(req.body.categoryId);
+    const studentId = normalizeText(req.body.studentId);
+    const repeatType = normalizeText(req.body.repeatType);
+    const singleDate = normalizeText(req.body.singleDate);
+    const weeklyDay = normalizeText(req.body.weeklyDay);
+    const monthlyDay = normalizeText(req.body.monthlyDay);
+    const customDates = normalizeText(req.body.customDates);
+    const startDate = normalizeText(req.body.startDate);
+    const endDate = normalizeText(req.body.endDate);
+
+    if (!title || !categoryId || !studentId || !repeatType) {
+      return adminRedirect(req, res, { error: 'Gorev guncelleme alanlari eksik.' });
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+    }
+
+    const [taskRes, categoryRes, studentRes] = await Promise.all([
+      query(`SELECT id FROM tasks WHERE id = $1 LIMIT 1`, [taskId]),
+      query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]),
+      query(`SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`, [studentId])
+    ]);
+
+    if (taskRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+    }
+    if (categoryRes.rowCount === 0 || studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kategori veya ogrenci gecersiz.' });
+    }
+
+    let singleDateVal = null;
+    let weeklyDayVal = null;
+    let monthlyDayVal = null;
+    let customDatesVal = [];
+
+    if (repeatType === 'once') {
+      if (!singleDate) {
+        return adminRedirect(req, res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
+      }
+      singleDateVal = singleDate;
+    } else if (repeatType === 'daily') {
+      return adminRedirect(req, res, { error: 'Her gun tipi sadece yeni gorev olusturmada kullanilir.' });
+    } else if (repeatType === 'weekly') {
+      if (weeklyDay === '') {
+        return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
+      }
+      weeklyDayVal = Number(weeklyDay);
+    } else if (repeatType === 'monthly') {
+      if (!monthlyDay) {
+        return adminRedirect(req, res, { error: 'Aylik gorev icin gun zorunlu.' });
+      }
+      monthlyDayVal = Number(monthlyDay);
+    } else if (repeatType === 'custom') {
+      const parsedDates = customDates
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean);
+
+      if (!parsedDates.length) {
+        return adminRedirect(req, res, { error: 'Ozel tarihli gorev icin en az bir tarih girin.' });
+      }
+      customDatesVal = parsedDates;
+    } else {
+      return adminRedirect(req, res, { error: 'Gecersiz tekrar tipi.' });
+    }
+
+    await query(
+      `
+        UPDATE tasks
+        SET
+          title = $1,
+          description = $2,
+          category_id = $3,
+          student_id = $4,
+          repeat_type = $5,
+          single_date = $6,
+          weekly_day = $7,
+          monthly_day = $8,
+          custom_dates = $9,
+          start_date = $10,
+          end_date = $11
+        WHERE id = $12
+      `,
+      [
+        title,
+        description,
+        categoryId,
+        studentId,
+        repeatType,
+        singleDateVal,
+        weeklyDayVal,
+        monthlyDayVal,
+        customDatesVal,
+        startDate || null,
+        endDate || null,
+        taskId
+      ]
+    );
+
+    return adminRedirect(req, res, { message: 'Gorev guncellendi.' });
   })
 );
 

@@ -238,21 +238,21 @@
           <h2>Gorev Yonetimi</h2>
         </header>
         <section class="panel">
-          <h3>Gorev Olustur</h3>
-          <form method="post" action="/admin/tasks" class="grid two">
+          <h3><%= taskForm.isEdit ? 'Gorev Guncelle' : 'Gorev Olustur' %></h3>
+          <form method="post" action="<%= taskForm.action %>" class="grid two">
             <input type="hidden" name="next" value="/admin/tasks" />
             <div class="stack">
               <label>Gorev Basligi</label>
-              <input type="text" name="title" required />
+              <input type="text" name="title" value="<%= taskForm.title %>" required />
 
               <label>Aciklama</label>
-              <textarea name="description"></textarea>
+              <textarea name="description"><%= taskForm.description %></textarea>
 
               <label>Kategori</label>
               <select name="categoryId" required>
                 <option value="">Seciniz</option>
                 <% categories.forEach((c) => { %>
-                <option value="<%= c.id %>"><%= c.name %></option>
+                <option value="<%= c.id %>" <%= taskForm.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
                 <% }) %>
               </select>
 
@@ -260,7 +260,7 @@
               <select name="studentId" required>
                 <option value="">Seciniz</option>
                 <% students.forEach((s) => { %>
-                <option value="<%= s.id %>"><%= s.name %></option>
+                <option value="<%= s.id %>" <%= taskForm.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
                 <% }) %>
               </select>
             </div>
@@ -268,33 +268,36 @@
             <div class="stack">
               <label>Tekrar Tipi</label>
               <select name="repeatType" required>
-                <option value="once">Tek Seferlik</option>
-                <option value="daily">Her Gun</option>
-                <option value="weekly">Haftalik</option>
-                <option value="monthly">Aylik</option>
-                <option value="custom">Ozel Tarihler</option>
+                <option value="once" <%= taskForm.repeatType === 'once' ? 'selected' : '' %>>Tek Seferlik</option>
+                <option value="daily" <%= taskForm.repeatType === 'daily' ? 'selected' : '' %>>Her Gun</option>
+                <option value="weekly" <%= taskForm.repeatType === 'weekly' ? 'selected' : '' %>>Haftalik</option>
+                <option value="monthly" <%= taskForm.repeatType === 'monthly' ? 'selected' : '' %>>Aylik</option>
+                <option value="custom" <%= taskForm.repeatType === 'custom' ? 'selected' : '' %>>Ozel Tarihler</option>
               </select>
 
               <label>Tek Seferlik Tarih</label>
-              <input type="date" name="singleDate" value="<%= today %>" />
+              <input type="date" name="singleDate" value="<%= taskForm.singleDate %>" />
 
               <label>Haftalik Gun (0-6)</label>
-              <input type="number" min="0" max="6" name="weeklyDay" />
+              <input type="number" min="0" max="6" name="weeklyDay" value="<%= taskForm.weeklyDay %>" />
 
               <label>Aylik Gun (1-31)</label>
-              <input type="number" min="1" max="31" name="monthlyDay" />
+              <input type="number" min="1" max="31" name="monthlyDay" value="<%= taskForm.monthlyDay %>" />
 
               <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
-              <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
+              <input type="text" name="customDates" value="<%= taskForm.customDates %>" placeholder="2026-05-10,2026-05-20" />
 
               <label>Baslangic Tarihi</label>
-              <input type="date" name="startDate" />
+              <input type="date" name="startDate" value="<%= taskForm.startDate %>" />
 
               <label>Bitis Tarihi</label>
-              <input type="date" name="endDate" />
+              <input type="date" name="endDate" value="<%= taskForm.endDate %>" />
               <p class="muted">Not: Her Gun seceneginde bu araliktaki her gun icin ayri gorev olusturulur.</p>
 
-              <button type="submit">Gorevi Kaydet</button>
+              <button type="submit"><%= taskForm.submitText %></button>
+              <% if (taskForm.isEdit) { %>
+              <a class="button-link" href="/admin/tasks">Vazgec</a>
+              <% } %>
             </div>
           </form>
         </section>
@@ -327,10 +330,7 @@
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
-                      <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
-                        <input type="hidden" name="next" value="/admin/tasks" />
-                        <button type="submit" class="danger">Arsivle</button>
-                      </form>
+                      <a class="button-link" href="/admin/tasks?editTaskId=<%= t.id %>">Guncelle</a>
                       <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
                         <input type="hidden" name="next" value="/admin/tasks" />
                         <button type="submit" class="danger">Sil</button>
