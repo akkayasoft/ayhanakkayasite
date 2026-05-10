@@ -269,6 +269,7 @@
               <label>Tekrar Tipi</label>
               <select name="repeatType" required>
                 <option value="once">Tek Seferlik</option>
+                <option value="daily">Her Gun</option>
                 <option value="weekly">Haftalik</option>
                 <option value="monthly">Aylik</option>
                 <option value="custom">Ozel Tarihler</option>
@@ -308,10 +309,16 @@
                   <%= t.student ? t.student.name : 'Ogrenci yok' %> -
                   <%= t.category ? t.category.name : 'Kategori yok' %>
                 </span>
-                <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
-                  <input type="hidden" name="next" value="/admin/tasks" />
-                  <button type="submit" class="danger">Arsivle</button>
-                </form>
+                <div class="row">
+                  <form method="post" action="/admin/tasks/<%= t.id %>/archive" onsubmit="return confirm('Gorev arsive alinsin mi?')">
+                    <input type="hidden" name="next" value="/admin/tasks" />
+                    <button type="submit" class="danger">Arsivle</button>
+                  </form>
+                  <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
+                    <input type="hidden" name="next" value="/admin/tasks" />
+                    <button type="submit" class="danger">Sil</button>
+                  </form>
+                </div>
               </li>
               <% }) %>
             </ul>
@@ -326,10 +333,16 @@
                   <strong><%= t.title %></strong> - <%= t.repeatText %> -
                   <%= t.student ? t.student.name : 'Ogrenci yok' %>
                 </span>
-                <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
-                  <input type="hidden" name="next" value="/admin/tasks" />
-                  <button type="submit">Aktif Et</button>
-                </form>
+                <div class="row">
+                  <form method="post" action="/admin/tasks/<%= t.id %>/unarchive">
+                    <input type="hidden" name="next" value="/admin/tasks" />
+                    <button type="submit">Aktif Et</button>
+                  </form>
+                  <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
+                    <input type="hidden" name="next" value="/admin/tasks" />
+                    <button type="submit" class="danger">Sil</button>
+                  </form>
+                </div>
               </li>
               <% }) %>
             </ul>

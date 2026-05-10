@@ -17,7 +17,7 @@
         </div>
 
         <nav class="menu">
-          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Bugun</a>
+          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Gorevler</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalik Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
           <a href="/student/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Gecmisi</a>
@@ -38,14 +38,14 @@
 
         <% if (currentPage === 'dashboard') { %>
         <header class="content-header">
-          <h2>Bugunun Gorevleri</h2>
+          <h2>Aktif Gorevlerim</h2>
           <p class="muted"><%= today %></p>
         </header>
 
         <section class="kpi-grid">
-          <article class="kpi"><p class="kpi-label">Toplam Gorev</p><p class="kpi-value"><%= tasksForToday.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Toplam Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
           <article class="kpi"><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= doneCount %></p></article>
-          <article class="kpi"><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(tasksForToday.length - doneCount, 0) %></p></article>
+          <article class="kpi"><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(activeTasks.length - doneCount, 0) %></p></article>
           <article class="kpi"><p class="kpi-label">Puan</p><p class="kpi-value"><%= user.points || 0 %></p></article>
         </section>
 
@@ -58,11 +58,11 @@
         </section>
 
         <section class="panel">
-          <% if (!tasksForToday.length) { %>
-          <p class="muted">Bugune atanmis gorev yok.</p>
+          <% if (!activeTasks.length) { %>
+          <p class="muted">Aktif gorev yok.</p>
           <% } %>
 
-          <% tasksForToday.forEach((task) => { %>
+          <% activeTasks.forEach((task) => { %>
           <form method="post" action="/student/tasks/<%= task.id %>/status" class="task task-card <%= task.todayStatus?.status === 'done' ? 'done' : task.todayStatus?.status === 'not_done' ? 'not-done' : 'open' %>">
             <div>
               <div class="row space-between center">

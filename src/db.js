@@ -58,7 +58,7 @@ async function initDb() {
       description TEXT NOT NULL DEFAULT '',
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
       student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      repeat_type TEXT NOT NULL CHECK (repeat_type IN ('once', 'weekly', 'monthly', 'custom')),
+      repeat_type TEXT NOT NULL CHECK (repeat_type IN ('once', 'daily', 'weekly', 'monthly', 'custom')),
       single_date DATE NULL,
       weekly_day INTEGER NULL,
       monthly_day INTEGER NULL,
@@ -69,6 +69,12 @@ async function initDb() {
       created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  await query(`ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_repeat_type_check`);
+  await query(`
+    ALTER TABLE tasks
+    ADD CONSTRAINT tasks_repeat_type_check
+    CHECK (repeat_type IN ('once', 'daily', 'weekly', 'monthly', 'custom'))
   `);
 
   await query(`

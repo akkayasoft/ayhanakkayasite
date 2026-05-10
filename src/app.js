@@ -231,6 +231,7 @@ function parseDateRange(from, to) {
 
 function formatRepeat(task) {
   if (task.repeatType === 'once') return `Tek seferlik (${task.singleDate || '-'})`;
+  if (task.repeatType === 'daily') return 'Her gun';
   if (task.repeatType === 'weekly') return `Haftalik (Gun ${task.weeklyDay})`;
   if (task.repeatType === 'monthly') return `Aylik (Gun ${task.monthlyDay})`;
   if (task.repeatType === 'custom') return `Ozel (${(task.customDates || []).join(', ')})`;
@@ -243,6 +244,7 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
   if (task.endDate && dateStr > task.endDate) return false;
 
   if (task.repeatType === 'once') return task.singleDate === dateStr;
+  if (task.repeatType === 'daily') return true;
   if (task.repeatType === 'weekly') return Number(task.weeklyDay) === dateObj.getDay();
   if (task.repeatType === 'monthly') return Number(task.monthlyDay) === dateObj.getDate();
   if (task.repeatType === 'custom') return Array.isArray(task.customDates) && task.customDates.includes(dateStr);
@@ -867,6 +869,8 @@ app.post(
         return adminRedirect(req, res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
       }
       singleDateVal = singleDate;
+    } else if (repeatType === 'daily') {
+      // Her gun tekrar eden gorev icin ek bir tarih alani zorunlu degil.
     } else if (repeatType === 'weekly') {
       if (weeklyDay === '') {
         return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
@@ -963,6 +967,21 @@ app.post(
 );
 
 app.post(
+  '/admin/tasks/:taskId/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const deleted = await query(`DELETE FROM tasks WHERE id = $1`, [taskId]);
+
+    if (deleted.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+    }
+
+    return adminRedirect(req, res, { message: 'Gorev kalici olarak silindi.' });
+  })
+);
+
+app.post(
   '/admin/points',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
@@ -1022,7 +1041,6 @@ app.post(
 
 async function getStudentViewModel(req, currentPage) {
   const today = todayDateString();
-  const dateObj = new Date(`${today}T00:00:00`);
 
   const [tasksRes, statusesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
@@ -1120,8 +1138,8 @@ async function getStudentViewModel(req, currentPage) {
   const statuses = statusesRes.rows;
   const allTasks = tasksRes.rows.map(mapTask);
 
-  const tasksForToday = allTasks
-    .filter((task) => isTaskDueOnDate(task, dateObj, today))
+  const activeTasks = allTasks
+    .filter((task) => !task.isArchived)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
       const status = statuses.find((s) => s.taskId === task.id);
@@ -1132,7 +1150,7 @@ async function getStudentViewModel(req, currentPage) {
       };
     });
 
-  const doneCount = tasksForToday.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
+  const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
   const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
   const questionHistory = questionHistoryRes.rows.map((row) => ({
     ...row,
@@ -1155,7 +1173,7 @@ async function getStudentViewModel(req, currentPage) {
     currentPage,
     today,
     categories,
-    tasksForToday,
+    activeTasks,
     doneCount,
     questionEntry: todayQuestionRes.rowCount ? todayQuestionRes.rows[0] : null,
     questionHistory,
