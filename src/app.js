@@ -257,12 +257,12 @@ function formatRepeat(task) {
 }
 
 function formatTaskSchedule(task) {
-  const repeatText = formatRepeat(task);
-  if (task.repeatType === 'once') return repeatText;
-  if (task.startDate && task.endDate) return `${repeatText} | ${task.startDate} - ${task.endDate}`;
-  if (task.startDate) return `${repeatText} | Baslangic: ${task.startDate}`;
-  if (task.endDate) return `${repeatText} | Bitis: ${task.endDate}`;
-  return `${repeatText} | Tarih siniri yok`;
+  if (task.repeatType === 'once') return task.singleDate || '-';
+  if (task.repeatType === 'custom') return Array.isArray(task.customDates) ? task.customDates.join(', ') : '-';
+  if (task.startDate && task.endDate) return `${task.startDate} - ${task.endDate}`;
+  if (task.startDate) return task.startDate;
+  if (task.endDate) return task.endDate;
+  return '-';
 }
 
 function isTaskDueOnDate(task, dateObj, dateStr) {
