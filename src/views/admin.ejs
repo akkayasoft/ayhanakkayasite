@@ -304,6 +304,19 @@
 
         <section class="panel">
           <h3>Aktif Gorevler</h3>
+          <form method="get" action="/admin/tasks" class="row center">
+            <label for="activeTaskStudentId">Ogrenci</label>
+            <select id="activeTaskStudentId" name="activeTaskStudentId">
+              <option value="">Tum Ogrenciler</option>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= activeTaskFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+            <button type="submit">Filtrele</button>
+            <% if (activeTaskFilters.studentId) { %>
+            <a class="button-link" href="/admin/tasks">Temizle</a>
+            <% } %>
+          </form>
           <% if (!activeTasks.length) { %>
           <p class="muted">Aktif gorev yok.</p>
           <% } %>
@@ -330,7 +343,7 @@
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
-                      <a class="button-link" href="/admin/tasks?editTaskId=<%= t.id %>">Guncelle</a>
+                      <a class="button-link" href="/admin/tasks?editTaskId=<%= t.id %><%= activeTaskFilters.studentId ? `&activeTaskStudentId=${activeTaskFilters.studentId}` : '' %>">Guncelle</a>
                       <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
                         <input type="hidden" name="next" value="/admin/tasks" />
                         <button type="submit" class="danger">Sil</button>

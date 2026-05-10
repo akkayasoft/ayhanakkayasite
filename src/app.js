@@ -496,6 +496,8 @@ async function getAdminViewModel(req, currentPage) {
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
   const editTaskId = normalizeText(req.query.editTaskId);
+  const activeTaskStudentIdRaw = normalizeText(req.query.activeTaskStudentId);
+  const activeTaskStudentId = students.some((s) => s.id === activeTaskStudentIdRaw) ? activeTaskStudentIdRaw : '';
   const editingTask = tasks.find((t) => t.id === editTaskId) || null;
   const taskForm = editingTask
     ? {
@@ -530,6 +532,18 @@ async function getAdminViewModel(req, currentPage) {
         startDate: '',
         endDate: ''
       };
+
+  const sortedActiveTasks = tasks
+    .filter((t) => !t.isArchived)
+    .sort((a, b) => {
+      const aDate = getTaskSortDate(a);
+      const bDate = getTaskSortDate(b);
+      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+    });
+  const activeTasks = activeTaskStudentId
+    ? sortedActiveTasks.filter((t) => t.studentId === activeTaskStudentId)
+    : sortedActiveTasks;
 
     const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
     query(
@@ -658,16 +672,12 @@ async function getAdminViewModel(req, currentPage) {
     students,
     categories,
     tasks,
-    activeTasks: tasks
-      .filter((t) => !t.isArchived)
-      .sort((a, b) => {
-        const aDate = getTaskSortDate(a);
-        const bDate = getTaskSortDate(b);
-        if (aDate !== bDate) return aDate.localeCompare(bDate);
-        return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
-      }),
+    activeTasks,
     archivedTasks: tasks.filter((t) => t.isArchived),
     taskForm,
+    activeTaskFilters: {
+      studentId: activeTaskStudentId
+    },
     pointLogs,
     dailyBoard,
     report,
