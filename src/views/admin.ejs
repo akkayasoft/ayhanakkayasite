@@ -484,18 +484,6 @@
         </section>
 
         <section class="panel">
-          <h3>Puanlama Temizligi</h3>
-          <form method="post" action="/admin/points/cleanup-before" class="row center" onsubmit="return confirm('Bu islem geri alinmaz. Kesim tarihinden onceki puanlama verileri silinsin mi?')">
-            <input type="hidden" name="next" value="/admin/points" />
-            <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
-            <label>Kesim Tarihi</label>
-            <input type="date" name="cutoffDate" value="2026-05-11" required />
-            <button type="submit" class="danger">11.05.2026 Oncesini Sil</button>
-          </form>
-          <p class="muted">Kesim tarihinden onceki puan loglari, haftalik degerlendirmeler ve haftalik kurallar silinir.</p>
-        </section>
-
-        <section class="panel">
           <h3>Haftalik Degerlendirme</h3>
           <form method="post" action="/admin/weekly-evaluations/run" class="row center">
             <input type="hidden" name="next" value="/admin/points" />
