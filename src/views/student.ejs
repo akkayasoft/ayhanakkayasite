@@ -251,9 +251,57 @@
         <% if (currentPage === 'points') { %>
         <header class="content-header">
           <h2>Puan Gecmisi</h2>
+          <p class="muted">Haftalik Odul/Ceza: <strong><%= weeklyPointWeekStart %> - <%= weeklyPointWeekEnd %></strong></p>
         </header>
 
         <section class="panel">
+          <form method="get" action="/student/points" class="row center">
+            <label>Hafta Baslangici</label>
+            <input type="date" name="weekStart" value="<%= weeklyPointWeekStart %>" required />
+            <button type="submit">Haftayi Getir</button>
+            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Excel Indir</a>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalik Odul/Ceza Sonuclari</h3>
+          <% if (!weeklyPointEvaluations.length) { %>
+          <p class="muted">Secili hafta icin odul/ceza degerlendirmesi bulunmuyor.</p>
+          <% } %>
+          <% if (weeklyPointEvaluations.length) { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th>Toplam Gorev</th>
+                  <th>Yapilan</th>
+                  <th>Oran</th>
+                  <th>Sonuc</th>
+                  <th>Puan</th>
+                  <th>Aciklama</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyPointEvaluations.forEach((e) => { %>
+                <tr>
+                  <td><%= e.categoryName %></td>
+                  <td><%= e.dueCount %></td>
+                  <td><%= e.doneCount %></td>
+                  <td>%<%= e.completionRate.toFixed(1) %></td>
+                  <td><%= e.resultType === 'reward' ? 'Odul' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %></td>
+                  <td><%= e.pointsApplied %></td>
+                  <td><%= e.reasonText || '-' %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Son Puan Kayitlari</h3>
           <ul class="clean-list">
             <% pointLogs.forEach((p) => { %>
             <li>

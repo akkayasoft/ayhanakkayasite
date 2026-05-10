@@ -396,32 +396,35 @@
 
           <article class="panel">
             <h3>Haftalik Kategori Odul/Ceza Tanimla</h3>
-            <form method="post" action="/admin/weekly-rules" class="stack">
+            <form method="post" action="<%= weeklyRuleForm.action %>" class="stack">
               <input type="hidden" name="next" value="/admin/points" />
               <label>Hafta Baslangici</label>
-              <input type="date" name="weekStart" value="<%= weeklyRuleWeekStart %>" required />
+              <input type="date" name="weekStart" value="<%= weeklyRuleForm.weekStart %>" required />
 
               <label>Kategori</label>
               <select name="categoryId" required>
                 <option value="">Seciniz</option>
                 <% categories.forEach((c) => { %>
-                <option value="<%= c.id %>"><%= c.name %></option>
+                <option value="<%= c.id %>" <%= weeklyRuleForm.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
                 <% }) %>
               </select>
 
               <label>Odul Puani (>%80)</label>
-              <input type="number" name="rewardPoints" min="0" value="0" required />
+              <input type="number" name="rewardPoints" min="0" value="<%= weeklyRuleForm.rewardPoints %>" required />
 
               <label>Odul Aciklamasi</label>
-              <input type="text" name="rewardLabel" placeholder="Orn: Haftalik Matematik Odulu" />
+              <input type="text" name="rewardLabel" value="<%= weeklyRuleForm.rewardLabel %>" placeholder="Orn: Haftalik Matematik Odulu" />
 
               <label>Ceza Puani (%80 alti)</label>
-              <input type="number" name="penaltyPoints" min="0" value="0" required />
+              <input type="number" name="penaltyPoints" min="0" value="<%= weeklyRuleForm.penaltyPoints %>" required />
 
               <label>Ceza Aciklamasi</label>
-              <input type="text" name="penaltyLabel" placeholder="Orn: Haftalik Matematik Cezasi" />
+              <input type="text" name="penaltyLabel" value="<%= weeklyRuleForm.penaltyLabel %>" placeholder="Orn: Haftalik Matematik Cezasi" />
 
-              <button type="submit">Haftalik Kurali Kaydet</button>
+              <button type="submit"><%= weeklyRuleForm.submitText %></button>
+              <% if (weeklyRuleForm.isEdit) { %>
+              <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>">Vazgec</a>
+              <% } %>
             </form>
           </article>
         </section>
@@ -441,6 +444,7 @@
                   <th>Odul Aciklamasi</th>
                   <th>Ceza Puani</th>
                   <th>Ceza Aciklamasi</th>
+                  <th>Islem</th>
                 </tr>
               </thead>
               <tbody>
@@ -451,12 +455,34 @@
                   <td><%= r.rewardLabel || '-' %></td>
                   <td><%= r.penaltyPoints %></td>
                   <td><%= r.penaltyLabel || '-' %></td>
+                  <td>
+                    <div class="task-table-actions">
+                      <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>&weeklyRuleEditId=<%= r.id %>">Guncelle</a>
+                      <form method="post" action="/admin/weekly-rules/<%= r.id %>/delete" onsubmit="return confirm('Bu haftalik kural silinsin mi?')">
+                        <input type="hidden" name="next" value="/admin/points" />
+                        <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
+                        <button type="submit" class="danger">Sil</button>
+                      </form>
+                    </div>
+                  </td>
                 </tr>
                 <% }) %>
               </tbody>
             </table>
           </div>
           <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Puanlama Temizligi</h3>
+          <form method="post" action="/admin/points/cleanup-before" class="row center" onsubmit="return confirm('Bu islem geri alinmaz. Kesim tarihinden onceki puanlama verileri silinsin mi?')">
+            <input type="hidden" name="next" value="/admin/points" />
+            <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
+            <label>Kesim Tarihi</label>
+            <input type="date" name="cutoffDate" value="2026-05-11" required />
+            <button type="submit" class="danger">11.05.2026 Oncesini Sil</button>
+          </form>
+          <p class="muted">Kesim tarihinden onceki puan loglari, haftalik degerlendirmeler ve haftalik kurallar silinir.</p>
         </section>
 
         <section class="panel">
