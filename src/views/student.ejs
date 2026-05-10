@@ -99,6 +99,7 @@
             <p class="muted"><%= calendar.weekStart %> - <%= calendar.weekEnd %></p>
           </div>
           <div class="row">
+            <a class="button-link" href="/student/calendar/export?weekStart=<%= calendar.weekStart %>">Excel Indir</a>
             <a class="button-link" href="/student/calendar?weekStart=<%= calendar.prevWeekStart %>">Onceki Hafta</a>
             <a class="button-link" href="/student/calendar?weekStart=<%= calendar.nextWeekStart %>">Sonraki Hafta</a>
           </div>

@@ -1,6 +1,7 @@
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const ExcelJS = require('exceljs');
 const session = require('express-session');
 const pgSessionFactory = require('connect-pg-simple');
 const bcrypt = require('bcryptjs');
@@ -107,6 +108,99 @@ function todayDateString() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate, allTasks = null) {
+  const baseDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedWeekStart) ? requestedWeekStart : fallbackDate;
+  const weekStart = startOfWeek(baseDate);
+  const weekEnd = shiftDate(weekStart, 6);
+
+  const [calendarStatusesRes, calendarQuestionsRes, studentTasksRes] = await Promise.all([
+    query(
+      `
+        SELECT task_id AS "taskId", day, status
+        FROM task_statuses
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+      `,
+      [studentId, weekStart, weekEnd]
+    ),
+    query(
+      `
+        SELECT
+          day,
+          COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions",
+          COALESCE(SUM(duration_minutes), 0) AS "totalDuration"
+        FROM daily_questions
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+        GROUP BY day
+      `,
+      [studentId, weekStart, weekEnd]
+    ),
+    allTasks
+      ? Promise.resolve({ rows: [] })
+      : query(
+          `
+            SELECT
+              id,
+              title,
+              description,
+              category_id AS "categoryId",
+              student_id AS "studentId",
+              repeat_type AS "repeatType",
+              single_date AS "singleDate",
+              weekly_day AS "weeklyDay",
+              monthly_day AS "monthlyDay",
+              custom_dates AS "customDates",
+              start_date AS "startDate",
+              end_date AS "endDate",
+              is_archived AS "isArchived",
+              created_by AS "createdBy",
+              created_at AS "createdAt"
+            FROM tasks
+            WHERE student_id = $1
+            ORDER BY created_at DESC
+          `,
+          [studentId]
+        )
+  ]);
+
+  const questionByDay = new Map(
+    calendarQuestionsRes.rows.map((row) => [toDateOnly(row.day), row])
+  );
+  const statusByTaskAndDay = new Map(
+    calendarStatusesRes.rows.map((row) => [`${row.taskId}:${toDateOnly(row.day)}`, row.status])
+  );
+  const tasks = allTasks || studentTasksRes.rows.map(mapTask);
+  const days = getWeekDates(weekStart).map((day) => {
+    const dayDateObj = new Date(`${day}T00:00:00`);
+    const dueTasks = tasks.filter((task) => isTaskDueOnDate(task, dayDateObj, day));
+    const doneCount = dueTasks.filter(
+      (task) => statusByTaskAndDay.get(`${task.id}:${day}`) === 'done'
+    ).length;
+    const dayQuestion = questionByDay.get(day);
+
+    return {
+      date: day,
+      dayName: getDayName(day),
+      dueCount: dueTasks.length,
+      doneCount,
+      questionTotal: dayQuestion ? Number(dayQuestion.totalQuestions || 0) : 0,
+      durationMinutes: dayQuestion ? Number(dayQuestion.totalDuration || 0) : 0,
+      tasks: dueTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: statusByTaskAndDay.get(`${task.id}:${day}`) || 'not_set'
+      }))
+    };
+  });
+
+  return {
+    weekStart,
+    weekEnd,
+    prevWeekStart: shiftDate(weekStart, -7),
+    nextWeekStart: shiftDate(weekStart, 7),
+    days
+  };
 }
 
 function parseDateRange(from, to) {
@@ -1024,9 +1118,9 @@ async function getStudentViewModel(req, currentPage) {
 
   const categories = categoriesRes.rows;
   const statuses = statusesRes.rows;
+  const allTasks = tasksRes.rows.map(mapTask);
 
-  const tasksForToday = tasksRes.rows
-    .map(mapTask)
+  const tasksForToday = allTasks
     .filter((task) => isTaskDueOnDate(task, dateObj, today))
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
@@ -1048,72 +1142,12 @@ async function getStudentViewModel(req, currentPage) {
 
   let calendar = null;
   if (currentPage === 'calendar') {
-    const requestedWeekStart = normalizeText(req.query.weekStart);
-    const baseDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedWeekStart) ? requestedWeekStart : today;
-    const weekStart = startOfWeek(baseDate);
-    const weekEnd = shiftDate(weekStart, 6);
-
-    const [calendarStatusesRes, calendarQuestionsRes] = await Promise.all([
-      query(
-        `
-          SELECT task_id AS "taskId", day, status
-          FROM task_statuses
-          WHERE student_id = $1 AND day BETWEEN $2 AND $3
-        `,
-        [req.currentUser.id, weekStart, weekEnd]
-      ),
-      query(
-        `
-          SELECT
-            day,
-            COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions",
-            COALESCE(SUM(duration_minutes), 0) AS "totalDuration"
-          FROM daily_questions
-          WHERE student_id = $1 AND day BETWEEN $2 AND $3
-          GROUP BY day
-        `,
-        [req.currentUser.id, weekStart, weekEnd]
-      )
-    ]);
-
-    const questionByDay = new Map(
-      calendarQuestionsRes.rows.map((row) => [toDateOnly(row.day), row])
+    calendar = await buildStudentCalendar(
+      req.currentUser.id,
+      normalizeText(req.query.weekStart),
+      today,
+      allTasks
     );
-    const statusByTaskAndDay = new Map(
-      calendarStatusesRes.rows.map((row) => [`${row.taskId}:${toDateOnly(row.day)}`, row.status])
-    );
-
-    const allTasks = tasksRes.rows.map(mapTask);
-    const days = getWeekDates(weekStart).map((day) => {
-      const dayDateObj = new Date(`${day}T00:00:00`);
-      const dueTasks = allTasks.filter((task) => isTaskDueOnDate(task, dayDateObj, day));
-      const doneCountForDay = dueTasks.filter(
-        (task) => statusByTaskAndDay.get(`${task.id}:${day}`) === 'done'
-      ).length;
-      const dayQuestion = questionByDay.get(day);
-
-      return {
-        date: day,
-        dayName: getDayName(day),
-        dueCount: dueTasks.length,
-        doneCount: doneCountForDay,
-        questionTotal: dayQuestion ? Number(dayQuestion.totalQuestions || 0) : 0,
-        durationMinutes: dayQuestion ? Number(dayQuestion.totalDuration || 0) : 0,
-        tasks: dueTasks.map((task) => ({
-          id: task.id,
-          title: task.title,
-          status: statusByTaskAndDay.get(`${task.id}:${day}`) || 'not_set'
-        }))
-      };
-    });
-
-    calendar = {
-      weekStart,
-      weekEnd,
-      prevWeekStart: shiftDate(weekStart, -7),
-      nextWeekStart: shiftDate(weekStart, 7),
-      days
-    };
   }
 
   return {
@@ -1142,6 +1176,85 @@ app.get(
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
+  })
+);
+
+app.get(
+  '/student/calendar/export',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const today = todayDateString();
+    const calendar = await buildStudentCalendar(
+      req.currentUser.id,
+      normalizeText(req.query.weekStart),
+      today
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Ogrenci Takip';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('Haftalik Takvim');
+    sheet.columns = [
+      { header: 'Gun', key: 'dayName', width: 14 },
+      { header: 'Tarih', key: 'date', width: 13 },
+      { header: 'Gorev', key: 'dueCount', width: 10 },
+      { header: 'Tamamlanan', key: 'doneCount', width: 12 },
+      { header: 'Tamamlanmayan', key: 'notDoneCount', width: 14 },
+      { header: 'Soru', key: 'questionTotal', width: 10 },
+      { header: 'Sure (dk)', key: 'durationMinutes', width: 11 },
+      { header: 'Gorev Basliklari', key: 'taskTitles', width: 54 }
+    ];
+
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    calendar.days.forEach((day) => {
+      sheet.addRow({
+        dayName: day.dayName,
+        date: day.date,
+        dueCount: day.dueCount,
+        doneCount: day.doneCount,
+        notDoneCount: Math.max(day.dueCount - day.doneCount, 0),
+        questionTotal: day.questionTotal,
+        durationMinutes: day.durationMinutes,
+        taskTitles: day.tasks.length
+          ? day.tasks
+              .map((task) => {
+                if (task.status === 'done') return `${task.title} (Yapildi)`;
+                if (task.status === 'not_done') return `${task.title} (Yapilmadi)`;
+                return `${task.title} (Isaretlenmedi)`;
+              })
+              .join(', ')
+          : '-'
+      });
+    });
+
+    sheet.addRow({});
+    const summaryLabelRow = sheet.addRow({
+      dayName: 'Hafta Ozeti',
+      dueCount: calendar.days.reduce((sum, day) => sum + day.dueCount, 0),
+      doneCount: calendar.days.reduce((sum, day) => sum + day.doneCount, 0),
+      notDoneCount: calendar.days.reduce((sum, day) => sum + Math.max(day.dueCount - day.doneCount, 0), 0),
+      questionTotal: calendar.days.reduce((sum, day) => sum + day.questionTotal, 0),
+      durationMinutes: calendar.days.reduce((sum, day) => sum + day.durationMinutes, 0),
+      taskTitles: `${calendar.weekStart} - ${calendar.weekEnd}`
+    });
+    summaryLabelRow.font = { bold: true };
+
+    sheet.eachRow((row) => {
+      row.alignment = { vertical: 'top', wrapText: true };
+    });
+
+    const fileName = `haftalik-gorevler-${calendar.weekStart}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    await workbook.xlsx.write(res);
+    return res.end();
   })
 );
 
