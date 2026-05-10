@@ -238,6 +238,14 @@ function formatRepeat(task) {
   return '-';
 }
 
+function formatTaskSchedule(task) {
+  const repeatText = formatRepeat(task);
+  if (task.startDate && task.endDate) return `${repeatText} | ${task.startDate} - ${task.endDate}`;
+  if (task.startDate) return `${repeatText} | Baslangic: ${task.startDate}`;
+  if (task.endDate) return `${repeatText} | Bitis: ${task.endDate}`;
+  return `${repeatText} | Tarih siniri yok`;
+}
+
 function isTaskDueOnDate(task, dateObj, dateStr) {
   if (task.isArchived) return false;
   if (task.startDate && dateStr < task.startDate) return false;
@@ -1146,6 +1154,7 @@ async function getStudentViewModel(req, currentPage) {
       return {
         ...task,
         categoryName: category ? category.name : 'Kategori Yok',
+        scheduleText: formatTaskSchedule(task),
         todayStatus: status || null
       };
     });

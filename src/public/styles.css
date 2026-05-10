@@ -419,6 +419,10 @@ tbody tr:nth-child(even) {
   min-width: 0;
 }
 
+.task-meta {
+  font-size: 0.85rem;
+}
+
 .task-actions {
   display: inline-flex;
   align-items: center;
