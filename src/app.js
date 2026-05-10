@@ -98,6 +98,24 @@ function getWeekDates(weekStart) {
   return Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index));
 }
 
+function getDateRangeInclusive(startDate, endDate, maxDays = 366) {
+  const days = [];
+  let cursor = startDate;
+  let count = 0;
+
+  while (cursor <= endDate) {
+    days.push(cursor);
+    cursor = shiftDate(cursor, 1);
+    count += 1;
+
+    if (count > maxDays) {
+      return null;
+    }
+  }
+
+  return days;
+}
+
 function getDayName(dateStr) {
   const names = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
   const d = new Date(`${dateStr}T00:00:00`);
@@ -240,6 +258,7 @@ function formatRepeat(task) {
 
 function formatTaskSchedule(task) {
   const repeatText = formatRepeat(task);
+  if (task.repeatType === 'once') return repeatText;
   if (task.startDate && task.endDate) return `${repeatText} | ${task.startDate} - ${task.endDate}`;
   if (task.startDate) return `${repeatText} | Baslangic: ${task.startDate}`;
   if (task.endDate) return `${repeatText} | Bitis: ${task.endDate}`;
@@ -878,7 +897,9 @@ app.post(
       }
       singleDateVal = singleDate;
     } else if (repeatType === 'daily') {
-      // Her gun tekrar eden gorev icin ek bir tarih alani zorunlu degil.
+      if (!startDate || !endDate) {
+        return adminRedirect(req, res, { error: 'Her gun gorev icin baslangic ve bitis tarihi zorunlu.' });
+      }
     } else if (repeatType === 'weekly') {
       if (weeklyDay === '') {
         return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
@@ -901,6 +922,52 @@ app.post(
       customDatesVal = parsedDates;
     } else {
       return adminRedirect(req, res, { error: 'Gecersiz tekrar tipi.' });
+    }
+
+    if (repeatType === 'daily') {
+      const dayList = getDateRangeInclusive(startDate, endDate);
+      if (!dayList || dayList.length === 0) {
+        return adminRedirect(req, res, { error: 'Tarih araligi gecersiz veya cok uzun.' });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        for (const day of dayList) {
+          await client.query(
+            `
+              INSERT INTO tasks (
+                id,
+                title,
+                description,
+                category_id,
+                student_id,
+                repeat_type,
+                single_date,
+                weekly_day,
+                monthly_day,
+                custom_dates,
+                start_date,
+                end_date,
+                is_archived,
+                created_by
+              )
+              VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+            `,
+            [makeId('task'), title, description, categoryId, studentId, day, req.currentUser.id]
+          );
+        }
+
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+
+      return adminRedirect(req, res, { message: `${dayList.length} adet gunluk gorev olusturuldu.` });
     }
 
     await query(
