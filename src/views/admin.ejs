@@ -401,6 +401,14 @@
               <label>Hafta Baslangici</label>
               <input type="date" name="weekStart" value="<%= weeklyRuleForm.weekStart %>" required />
 
+              <label>Ogrenci</label>
+              <select name="studentId" required>
+                <option value="">Seciniz</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>" <%= weeklyRuleForm.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+                <% }) %>
+              </select>
+
               <label>Kategori</label>
               <select name="categoryId" required>
                 <option value="">Seciniz</option>
@@ -439,6 +447,7 @@
             <table>
               <thead>
                 <tr>
+                  <th>Ogrenci</th>
                   <th>Kategori</th>
                   <th>Odul Puani</th>
                   <th>Odul Aciklamasi</th>
@@ -450,6 +459,7 @@
               <tbody>
                 <% weeklyRules.forEach((r) => { %>
                 <tr>
+                  <td><%= r.studentName || 'Tum Ogrenciler' %></td>
                   <td><%= r.categoryName %></td>
                   <td><%= r.rewardPoints %></td>
                   <td><%= r.rewardLabel || '-' %></td>

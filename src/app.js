@@ -688,6 +688,7 @@ async function getAdminViewModel(req, currentPage) {
     action: '/admin/weekly-rules',
     submitText: 'Haftalik Kurali Kaydet',
     weekStart: weeklyRuleWeekStart,
+    studentId: '',
     categoryId: '',
     rewardPoints: 0,
     penaltyPoints: 0,
@@ -702,17 +703,20 @@ async function getAdminViewModel(req, currentPage) {
             r.id,
             r.week_start AS "weekStart",
             r.category_id AS "categoryId",
+            r.student_id AS "studentId",
             r.reward_points AS "rewardPoints",
             r.penalty_points AS "penaltyPoints",
             r.reward_label AS "rewardLabel",
             r.penalty_label AS "penaltyLabel",
             r.created_at AS "createdAt",
             r.updated_at AS "updatedAt",
+            u.name AS "studentName",
             c.name AS "categoryName"
           FROM weekly_category_rules r
+          LEFT JOIN users u ON u.id = r.student_id
           JOIN categories c ON c.id = r.category_id
           WHERE r.week_start = $1
-          ORDER BY c.name ASC
+          ORDER BY u.name ASC NULLS FIRST, c.name ASC
         `,
         [weeklyRuleWeekStart]
       ),
@@ -751,6 +755,7 @@ async function getAdminViewModel(req, currentPage) {
         action: `/admin/weekly-rules/${editingRule.id}/update`,
         submitText: 'Haftalik Kurali Guncelle',
         weekStart: toDateOnly(editingRule.weekStart) || weeklyRuleWeekStart,
+        studentId: editingRule.studentId || '',
         categoryId: editingRule.categoryId,
         rewardPoints: Number(editingRule.rewardPoints || 0),
         penaltyPoints: Number(editingRule.penaltyPoints || 0),
@@ -1345,60 +1350,87 @@ app.post(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
+    const studentId = normalizeText(req.body.studentId);
     const categoryId = normalizeText(req.body.categoryId);
     const rewardPoints = Number.parseInt(req.body.rewardPoints, 10);
     const penaltyPoints = Number.parseInt(req.body.penaltyPoints, 10);
     const rewardLabel = normalizeText(req.body.rewardLabel);
     const penaltyLabel = normalizeText(req.body.penaltyLabel);
 
-    if (!weekStart || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta ve kategori zorunlu.', weekStart: weekStart || '' });
+    if (!weekStart || !studentId || !categoryId) {
+      return adminRedirect(req, res, { error: 'Hafta, ogrenci ve kategori zorunlu.', weekStart: weekStart || '' });
     }
 
     if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
       return adminRedirect(req, res, { error: 'Odul/ceza puani 0 veya daha buyuk bir tam sayi olmali.', weekStart });
     }
 
-    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
-    if (categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kategori bulunamadi.', weekStart });
+    const [studentRes, categoryRes] = await Promise.all([
+      query(`SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`, [studentId]),
+      query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
+    ]);
+    if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Ogrenci veya kategori bulunamadi.', weekStart });
     }
 
-    await query(
+    const existingRes = await query(
       `
-        INSERT INTO weekly_category_rules (
-          id,
-          week_start,
-          category_id,
-          reward_points,
-          penalty_points,
-          reward_label,
-          penalty_label,
-          created_by
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        ON CONFLICT (week_start, category_id)
-        DO UPDATE SET
-          reward_points = EXCLUDED.reward_points,
-          penalty_points = EXCLUDED.penalty_points,
-          reward_label = EXCLUDED.reward_label,
-          penalty_label = EXCLUDED.penalty_label,
-          created_by = EXCLUDED.created_by,
-          updated_at = NOW()
+        SELECT id
+        FROM weekly_category_rules
+        WHERE week_start = $1
+          AND student_id = $2
+          AND category_id = $3
+        LIMIT 1
       `,
-      [
-        makeId('wcr'),
-        weekStart,
-        categoryId,
-        rewardPoints,
-        penaltyPoints,
-        rewardLabel,
-        penaltyLabel,
-        req.currentUser.id
-      ]
+      [weekStart, studentId, categoryId]
     );
 
-    return adminRedirect(req, res, { message: 'Haftalik kategori kurali kaydedildi.', weekStart });
+    if (existingRes.rowCount > 0) {
+      await query(
+        `
+          UPDATE weekly_category_rules
+          SET
+            reward_points = $1,
+            penalty_points = $2,
+            reward_label = $3,
+            penalty_label = $4,
+            created_by = $5,
+            updated_at = NOW()
+          WHERE id = $6
+        `,
+        [rewardPoints, penaltyPoints, rewardLabel, penaltyLabel, req.currentUser.id, existingRes.rows[0].id]
+      );
+    } else {
+      await query(
+        `
+          INSERT INTO weekly_category_rules (
+            id,
+            week_start,
+            category_id,
+            student_id,
+            reward_points,
+            penalty_points,
+            reward_label,
+            penalty_label,
+            created_by
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        `,
+        [
+          makeId('wcr'),
+          weekStart,
+          categoryId,
+          studentId,
+          rewardPoints,
+          penaltyPoints,
+          rewardLabel,
+          penaltyLabel,
+          req.currentUser.id
+        ]
+      );
+    }
+
+    return adminRedirect(req, res, { message: 'Ogrenciye ozel haftalik kategori kurali kaydedildi.', weekStart });
   })
 );
 
@@ -1408,30 +1440,51 @@ app.post(
   asyncHandler(async (req, res) => {
     const { ruleId } = req.params;
     const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
+    const studentId = normalizeText(req.body.studentId);
     const categoryId = normalizeText(req.body.categoryId);
     const rewardPoints = Number.parseInt(req.body.rewardPoints, 10);
     const penaltyPoints = Number.parseInt(req.body.penaltyPoints, 10);
     const rewardLabel = normalizeText(req.body.rewardLabel);
     const penaltyLabel = normalizeText(req.body.penaltyLabel);
 
-    if (!weekStart || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta ve kategori zorunlu.', weekStart: weekStart || '' });
+    if (!weekStart || !studentId || !categoryId) {
+      return adminRedirect(req, res, { error: 'Hafta, ogrenci ve kategori zorunlu.', weekStart: weekStart || '' });
     }
 
     if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
       return adminRedirect(req, res, { error: 'Odul/ceza puani 0 veya daha buyuk bir tam sayi olmali.', weekStart });
     }
 
-    const [ruleRes, categoryRes] = await Promise.all([
+    const [ruleRes, studentRes, categoryRes] = await Promise.all([
       query(`SELECT id FROM weekly_category_rules WHERE id = $1 LIMIT 1`, [ruleId]),
+      query(`SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`, [studentId]),
       query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
     ]);
 
     if (ruleRes.rowCount === 0) {
       return adminRedirect(req, res, { error: 'Guncellenecek haftalik kural bulunamadi.', weekStart });
     }
-    if (categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kategori bulunamadi.', weekStart });
+    if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Ogrenci veya kategori bulunamadi.', weekStart });
+    }
+
+    const duplicateRes = await query(
+      `
+        SELECT id
+        FROM weekly_category_rules
+        WHERE week_start = $1
+          AND student_id = $2
+          AND category_id = $3
+          AND id <> $4
+        LIMIT 1
+      `,
+      [weekStart, studentId, categoryId, ruleId]
+    );
+    if (duplicateRes.rowCount > 0) {
+      return adminRedirect(req, res, {
+        error: 'Bu hafta, ogrenci ve kategori icin zaten bir kural var.',
+        weekStart
+      });
     }
 
     try {
@@ -1441,27 +1494,38 @@ app.post(
           SET
             week_start = $1,
             category_id = $2,
-            reward_points = $3,
-            penalty_points = $4,
-            reward_label = $5,
-            penalty_label = $6,
-            created_by = $7,
+            student_id = $3,
+            reward_points = $4,
+            penalty_points = $5,
+            reward_label = $6,
+            penalty_label = $7,
+            created_by = $8,
             updated_at = NOW()
-          WHERE id = $8
+          WHERE id = $9
         `,
-        [weekStart, categoryId, rewardPoints, penaltyPoints, rewardLabel, penaltyLabel, req.currentUser.id, ruleId]
+        [
+          weekStart,
+          categoryId,
+          studentId,
+          rewardPoints,
+          penaltyPoints,
+          rewardLabel,
+          penaltyLabel,
+          req.currentUser.id,
+          ruleId
+        ]
       );
     } catch (err) {
       if (err.code === '23505') {
         return adminRedirect(req, res, {
-          error: 'Bu hafta ve kategori icin zaten bir kural var.',
+          error: 'Bu hafta, ogrenci ve kategori icin zaten bir kural var.',
           weekStart
         });
       }
       throw err;
     }
 
-    return adminRedirect(req, res, { message: 'Haftalik kategori kurali guncellendi.', weekStart });
+    return adminRedirect(req, res, { message: 'Ogrenciye ozel haftalik kategori kurali guncellendi.', weekStart });
   })
 );
 
@@ -1555,29 +1619,6 @@ app.post(
     try {
       await client.query('BEGIN');
 
-      const rulesRes = await client.query(
-        `
-          SELECT
-            r.week_start AS "weekStart",
-            r.category_id AS "categoryId",
-            r.reward_points AS "rewardPoints",
-            r.penalty_points AS "penaltyPoints",
-            r.reward_label AS "rewardLabel",
-            r.penalty_label AS "penaltyLabel",
-            c.name AS "categoryName"
-          FROM weekly_category_rules r
-          JOIN categories c ON c.id = r.category_id
-          WHERE r.week_start = $1
-          ORDER BY c.name ASC
-        `,
-        [weekStart]
-      );
-
-      if (!rulesRes.rowCount) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Bu hafta icin kategori odul/ceza tanimi yok.', weekStart });
-      }
-
       const studentsRes = await client.query(
         `
           SELECT id, name
@@ -1594,11 +1635,51 @@ app.post(
         return adminRedirect(req, res, { error: 'Degerlendirilecek ogrenci bulunamadi.', weekStart });
       }
 
-      const ruleByCategory = new Map(
-        rulesRes.rows.map((rule) => [rule.categoryId, rule])
-      );
-      const categoryIds = Array.from(ruleByCategory.keys());
       const studentIds = studentsRes.rows.map((row) => row.id);
+      const rulesRes = await client.query(
+        `
+          SELECT
+            r.week_start AS "weekStart",
+            r.category_id AS "categoryId",
+            r.student_id AS "studentId",
+            r.reward_points AS "rewardPoints",
+            r.penalty_points AS "penaltyPoints",
+            r.reward_label AS "rewardLabel",
+            r.penalty_label AS "penaltyLabel",
+            c.name AS "categoryName"
+          FROM weekly_category_rules r
+          JOIN categories c ON c.id = r.category_id
+          WHERE r.week_start = $1
+            AND (r.student_id IS NULL OR r.student_id = ANY($2))
+          ORDER BY c.name ASC
+        `,
+        [weekStart, studentIds]
+      );
+
+      if (!rulesRes.rowCount) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: 'Bu hafta icin kategori odul/ceza tanimi yok.', weekStart });
+      }
+
+      const genericRuleByCategory = new Map();
+      const specificRuleByStudentCategory = new Map();
+      for (const rule of rulesRes.rows) {
+        if (rule.studentId) {
+          specificRuleByStudentCategory.set(`${rule.studentId}:${rule.categoryId}`, rule);
+        } else if (!genericRuleByCategory.has(rule.categoryId)) {
+          genericRuleByCategory.set(rule.categoryId, rule);
+        }
+      }
+      const categoryIds = Array.from(
+        new Set([
+          ...Array.from(genericRuleByCategory.keys()),
+          ...Array.from(specificRuleByStudentCategory.values()).map((rule) => rule.categoryId)
+        ])
+      );
+      if (!categoryIds.length) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: 'Secili ogrenciler icin uygulanabilir kural bulunamadi.', weekStart });
+      }
       const weekDates = getWeekDates(weekStart);
 
       const tasksRes = await client.query(
@@ -1668,14 +1749,20 @@ app.post(
 
       for (const student of studentsRes.rows) {
         const studentTasks = tasksByStudent.get(student.id) || [];
+        const studentRuleCategoryIds = categoryIds.filter(
+          (categoryId) =>
+            specificRuleByStudentCategory.has(`${student.id}:${categoryId}`) ||
+            genericRuleByCategory.has(categoryId)
+        );
+        const studentRuleCategorySet = new Set(studentRuleCategoryIds);
         const metricsByCategory = new Map(
-          categoryIds.map((categoryId) => [categoryId, { due: 0, done: 0 }])
+          studentRuleCategoryIds.map((categoryId) => [categoryId, { due: 0, done: 0 }])
         );
 
         for (const day of weekDates) {
           const dayObj = new Date(`${day}T00:00:00`);
           const dueTasks = studentTasks.filter(
-            (task) => ruleByCategory.has(task.categoryId) && isTaskDueOnDate(task, dayObj, day)
+            (task) => studentRuleCategorySet.has(task.categoryId) && isTaskDueOnDate(task, dayObj, day)
           );
 
           for (const dueTask of dueTasks) {
@@ -1689,7 +1776,12 @@ app.post(
           }
         }
 
-        for (const [categoryId, rule] of ruleByCategory.entries()) {
+        for (const categoryId of studentRuleCategoryIds) {
+          const rule =
+            specificRuleByStudentCategory.get(`${student.id}:${categoryId}`) ||
+            genericRuleByCategory.get(categoryId);
+          if (!rule) continue;
+
           const alreadyCalculated = existingSet.has(`${student.id}:${categoryId}`);
           if (alreadyCalculated) {
             skippedCount += 1;

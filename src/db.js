@@ -112,15 +112,27 @@ async function initDb() {
       id TEXT PRIMARY KEY,
       week_start DATE NOT NULL,
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      student_id TEXT NULL REFERENCES users(id) ON DELETE CASCADE,
       reward_points INTEGER NOT NULL DEFAULT 0 CHECK (reward_points >= 0),
       penalty_points INTEGER NOT NULL DEFAULT 0 CHECK (penalty_points >= 0),
       reward_label TEXT NOT NULL DEFAULT '',
       penalty_label TEXT NOT NULL DEFAULT '',
       created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (week_start, category_id)
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  await query(`ALTER TABLE weekly_category_rules ADD COLUMN IF NOT EXISTS student_id TEXT`);
+  await query(`ALTER TABLE weekly_category_rules DROP CONSTRAINT IF EXISTS weekly_category_rules_student_id_fkey`);
+  await query(`
+    ALTER TABLE weekly_category_rules
+    ADD CONSTRAINT weekly_category_rules_student_id_fkey
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+  `);
+  await query(`ALTER TABLE weekly_category_rules DROP CONSTRAINT IF EXISTS weekly_category_rules_week_start_category_id_key`);
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS weekly_category_rules_week_category_student_unique
+    ON weekly_category_rules (week_start, category_id, COALESCE(student_id, ''))
   `);
 
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS category_id TEXT`);
