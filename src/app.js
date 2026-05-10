@@ -265,6 +265,16 @@ function formatTaskSchedule(task) {
   return '-';
 }
 
+function getTaskSortDate(task) {
+  if (task.singleDate) return task.singleDate;
+  if (Array.isArray(task.customDates) && task.customDates.length) {
+    return [...task.customDates].sort()[0];
+  }
+  if (task.startDate) return task.startDate;
+  if (task.endDate) return task.endDate;
+  return '9999-12-31';
+}
+
 function isTaskDueOnDate(task, dateObj, dateStr) {
   if (task.isArchived) return false;
   if (task.startDate && dateStr < task.startDate) return false;
@@ -648,7 +658,14 @@ async function getAdminViewModel(req, currentPage) {
     students,
     categories,
     tasks,
-    activeTasks: tasks.filter((t) => !t.isArchived),
+    activeTasks: tasks
+      .filter((t) => !t.isArchived)
+      .sort((a, b) => {
+        const aDate = getTaskSortDate(a);
+        const bDate = getTaskSortDate(b);
+        if (aDate !== bDate) return aDate.localeCompare(bDate);
+        return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+      }),
     archivedTasks: tasks.filter((t) => t.isArchived),
     taskForm,
     pointLogs,
