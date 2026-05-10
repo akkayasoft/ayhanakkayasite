@@ -51,9 +51,9 @@
 
         <section class="panel compact-panel">
           <div class="legend-row">
-            <span class="legend-item"><span class="dot done"></span> Yapilan</span>
-            <span class="legend-item"><span class="dot not-done"></span> Yapilmayan</span>
-            <span class="legend-item"><span class="dot open"></span> Isaretlenmeyen</span>
+            <span class="legend-item"><span class="dot done"></span> ✓</span>
+            <span class="legend-item"><span class="dot not-done"></span> ✕</span>
+            <span class="legend-item"><span class="dot open"></span> ○</span>
           </div>
         </section>
 
@@ -62,33 +62,39 @@
           <p class="muted">Aktif gorev yok.</p>
           <% } %>
 
-          <% activeTasks.forEach((task) => { %>
-          <form method="post" action="/student/tasks/<%= task.id %>/status" class="task task-card <%= task.todayStatus?.status === 'done' ? 'done' : task.todayStatus?.status === 'not_done' ? 'not-done' : 'open' %>">
-            <div>
-              <div class="row space-between center">
-                <h3><%= task.title %></h3>
-                <span class="status-pill <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
-                  <%= task.todayStatus?.status === 'done' ? 'Yapildi' : task.todayStatus?.status === 'not_done' ? 'Yapilmadi' : 'Isaretlenmedi' %>
-                </span>
+          <% if (activeTasks.length) { %>
+          <ul class="task-list">
+            <% activeTasks.forEach((task) => { %>
+            <li class="task-item <%= task.todayStatus?.status === 'done' ? 'done' : task.todayStatus?.status === 'not_done' ? 'not-done' : 'open' %>">
+              <div class="task-main">
+                <div class="row space-between center">
+                  <h3><%= task.title %></h3>
+                  <span class="task-state-icon <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
+                    <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>
+                  </span>
+                </div>
+                <p class="muted"><%= task.categoryName %></p>
+                <% if (task.description) { %>
+                <p><%= task.description %></p>
+                <% } %>
               </div>
-              <p class="muted"><%= task.categoryName %></p>
-              <p><%= task.description %></p>
-            </div>
 
-            <div class="stack">
-              <label>Durum</label>
-              <select name="status" required>
-                <option value="done" <%= task.todayStatus?.status === 'done' ? 'selected' : '' %>>Yapildi</option>
-                <option value="not_done" <%= task.todayStatus?.status === 'not_done' ? 'selected' : '' %>>Yapilmadi</option>
-              </select>
-
-              <label>Not</label>
-              <input type="text" name="note" value="<%= task.todayStatus?.note || '' %>" />
-
-              <button type="submit">Kaydet</button>
-            </div>
-          </form>
-          <% }) %>
+              <div class="task-actions">
+                <form method="post" action="/student/tasks/<%= task.id %>/status">
+                  <input type="hidden" name="status" value="done" />
+                  <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                  <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
+                </form>
+                <form method="post" action="/student/tasks/<%= task.id %>/status">
+                  <input type="hidden" name="status" value="not_done" />
+                  <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                  <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
+                </form>
+              </div>
+            </li>
+            <% }) %>
+          </ul>
+          <% } %>
         </section>
         <% } %>
 
