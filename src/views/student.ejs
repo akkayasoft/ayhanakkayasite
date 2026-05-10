@@ -63,38 +63,49 @@
           <% } %>
 
           <% if (activeTasks.length) { %>
-          <ul class="task-list">
-            <% activeTasks.forEach((task) => { %>
-            <li class="task-item <%= task.todayStatus?.status === 'done' ? 'done' : task.todayStatus?.status === 'not_done' ? 'not-done' : 'open' %>">
-              <div class="task-main">
-                <div class="row space-between center">
-                  <h3><%= task.title %></h3>
-                  <span class="task-state-icon <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
-                    <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>
-                  </span>
-                </div>
-                <p class="muted"><%= task.categoryName %></p>
-                <p class="muted task-meta"><%= task.scheduleText %></p>
-                <% if (task.description) { %>
-                <p><%= task.description %></p>
-                <% } %>
-              </div>
-
-              <div class="task-actions">
-                <form method="post" action="/student/tasks/<%= task.id %>/status">
-                  <input type="hidden" name="status" value="done" />
-                  <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
-                  <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
-                </form>
-                <form method="post" action="/student/tasks/<%= task.id %>/status">
-                  <input type="hidden" name="status" value="not_done" />
-                  <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
-                  <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
-                </form>
-              </div>
-            </li>
-            <% }) %>
-          </ul>
+          <div class="table-wrap">
+            <table class="task-table">
+              <thead>
+                <tr>
+                  <th>Durum</th>
+                  <th>Baslik</th>
+                  <th>Kategori</th>
+                  <th>Tarih</th>
+                  <th>Aciklama</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% activeTasks.forEach((task) => { %>
+                <tr>
+                  <td>
+                    <span class="task-state-icon <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
+                      <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>
+                    </span>
+                  </td>
+                  <td><strong><%= task.title %></strong></td>
+                  <td><%= task.categoryName %></td>
+                  <td class="task-meta"><%= task.scheduleText %></td>
+                  <td><%= task.description || '-' %></td>
+                  <td>
+                    <div class="task-table-actions">
+                      <form method="post" action="/student/tasks/<%= task.id %>/status">
+                        <input type="hidden" name="status" value="done" />
+                        <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                        <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
+                      </form>
+                      <form method="post" action="/student/tasks/<%= task.id %>/status">
+                        <input type="hidden" name="status" value="not_done" />
+                        <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                        <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
           <% } %>
         </section>
         <% } %>

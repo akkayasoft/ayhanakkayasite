@@ -423,6 +423,24 @@ tbody tr:nth-child(even) {
   font-size: 0.85rem;
 }
 
+.task-table {
+  min-width: 920px;
+}
+
+.task-table td {
+  vertical-align: top;
+}
+
+.task-table-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.task-table-actions form {
+  margin: 0;
+}
+
 .task-actions {
   display: inline-flex;
   align-items: center;
@@ -641,5 +659,9 @@ tr.day-bad {
 
   .task-actions {
     justify-content: flex-end;
+  }
+
+  .task-table-actions .icon-btn {
+    width: 34px;
   }
 }
