@@ -1380,6 +1380,12 @@ async function getStudentViewModel(req, currentPage) {
 
   const activeTasks = allTasks
     .filter((task) => !task.isArchived)
+    .sort((a, b) => {
+      const aDate = getTaskSortDate(a);
+      const bDate = getTaskSortDate(b);
+      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+    })
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
       const status = statuses.find((s) => s.taskId === task.id);
