@@ -238,86 +238,91 @@
         <header class="content-header">
           <h2>Gorev Yonetimi</h2>
         </header>
+
         <section class="panel">
-          <h3><%= taskForm.isEdit ? 'Gorev Guncelle' : 'Gorev Olustur' %></h3>
-          <form method="post" action="<%= taskForm.action %>" class="grid two">
-            <input type="hidden" name="next" value="<%= tasksPagePath %>" />
-            <div class="stack">
-              <label>Gorev Basligi</label>
-              <input type="text" name="title" value="<%= taskForm.title %>" required />
+          <details>
+            <summary class="summary-toggle"><strong>Yeni Gorev Olustur</strong></summary>
+            <form method="post" action="/admin/tasks" class="grid two">
+              <input type="hidden" name="next" value="<%= tasksPagePath %>" />
+              <div class="stack">
+                <label>Gorev Basligi</label>
+                <input type="text" name="title" required />
 
-              <label>Aciklama</label>
-              <textarea name="description"><%= taskForm.description %></textarea>
+                <label>Aciklama</label>
+                <textarea name="description"></textarea>
 
-              <label>Kategori</label>
-              <select name="categoryId" required>
-                <option value="">Seciniz</option>
-                <% categories.forEach((c) => { %>
-                <option value="<%= c.id %>" <%= taskForm.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
-                <% }) %>
-              </select>
+                <label>Kategori</label>
+                <select name="categoryId" required>
+                  <option value="">Seciniz</option>
+                  <% categories.forEach((c) => { %>
+                  <option value="<%= c.id %>"><%= c.name %></option>
+                  <% }) %>
+                </select>
 
-              <label>Ogrenci</label>
-              <select name="studentId" required>
-                <option value="">Seciniz</option>
-                <% students.forEach((s) => { %>
-                <option value="<%= s.id %>" <%= taskForm.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
-                <% }) %>
-              </select>
-            </div>
+                <label>Ogrenci</label>
+                <select name="studentId" required>
+                  <option value="">Seciniz</option>
+                  <% students.forEach((s) => { %>
+                  <option value="<%= s.id %>"><%= s.name %></option>
+                  <% }) %>
+                </select>
+              </div>
 
-            <div class="stack">
-              <label>Tekrar Tipi</label>
-              <select name="repeatType" required>
-                <option value="once" <%= taskForm.repeatType === 'once' ? 'selected' : '' %>>Tek Seferlik</option>
-                <option value="daily" <%= taskForm.repeatType === 'daily' ? 'selected' : '' %>>Her Gun</option>
-                <option value="weekly" <%= taskForm.repeatType === 'weekly' ? 'selected' : '' %>>Haftalik</option>
-                <option value="monthly" <%= taskForm.repeatType === 'monthly' ? 'selected' : '' %>>Aylik</option>
-                <option value="custom" <%= taskForm.repeatType === 'custom' ? 'selected' : '' %>>Ozel Tarihler</option>
-              </select>
+              <div class="stack">
+                <label>Tekrar Tipi</label>
+                <select name="repeatType" required>
+                  <option value="once">Tek Seferlik</option>
+                  <option value="daily">Her Gun</option>
+                  <option value="weekly">Haftalik</option>
+                  <option value="monthly">Aylik</option>
+                  <option value="custom">Ozel Tarihler</option>
+                </select>
 
-              <label>Tek Seferlik Tarih</label>
-              <input type="date" name="singleDate" value="<%= taskForm.singleDate %>" />
+                <label>Tek Seferlik Tarih</label>
+                <input type="date" name="singleDate" />
 
-              <label>Haftalik Gun (0-6)</label>
-              <input type="number" min="0" max="6" name="weeklyDay" value="<%= taskForm.weeklyDay %>" />
+                <label>Haftalik Gun (0-6)</label>
+                <input type="number" min="0" max="6" name="weeklyDay" />
 
-              <label>Aylik Gun (1-31)</label>
-              <input type="number" min="1" max="31" name="monthlyDay" value="<%= taskForm.monthlyDay %>" />
+                <label>Aylik Gun (1-31)</label>
+                <input type="number" min="1" max="31" name="monthlyDay" />
 
-              <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
-              <input type="text" name="customDates" value="<%= taskForm.customDates %>" placeholder="2026-05-10,2026-05-20" />
+                <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+                <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
 
-              <label>Baslangic Tarihi</label>
-              <input type="date" name="startDate" value="<%= taskForm.startDate %>" />
+                <label>Baslangic Tarihi</label>
+                <input type="date" name="startDate" />
 
-              <label>Bitis Tarihi</label>
-              <input type="date" name="endDate" value="<%= taskForm.endDate %>" />
-              <p class="muted">Not: Her Gun seceneginde bu araliktaki her gun icin ayri gorev olusturulur.</p>
+                <label>Bitis Tarihi</label>
+                <input type="date" name="endDate" />
 
-              <button type="submit"><%= taskForm.submitText %></button>
-              <% if (taskForm.isEdit) { %>
-              <a class="button-link" href="<%= tasksPagePath %>">Vazgec</a>
-              <% } %>
-            </div>
-          </form>
+                <button type="submit">Gorevi Kaydet</button>
+              </div>
+            </form>
+          </details>
         </section>
 
         <section class="panel">
-          <h3>Aktif Gorevler</h3>
-          <form method="get" action="/admin/tasks" class="row center">
-            <label for="activeTaskStudentId">Ogrenci</label>
-            <select id="activeTaskStudentId" name="activeTaskStudentId">
-              <option value="">Tum Ogrenciler</option>
-              <% students.forEach((s) => { %>
-              <option value="<%= s.id %>" <%= activeTaskFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
-              <% }) %>
-            </select>
-            <button type="submit">Filtrele</button>
-            <% if (activeTaskFilters.studentId) { %>
-            <a class="button-link" href="/admin/tasks">Temizle</a>
-            <% } %>
-          </form>
+          <div class="datatable-toolbar">
+            <form method="get" action="/admin/tasks" class="row center">
+              <label for="activeTaskStudentId">Ogrenci</label>
+              <select id="activeTaskStudentId" name="activeTaskStudentId">
+                <option value="">Tum Ogrenciler</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>" <%= activeTaskFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+                <% }) %>
+              </select>
+              <button type="submit">Filtrele</button>
+              <% if (activeTaskFilters.studentId) { %>
+              <a class="button-link" href="/admin/tasks">Temizle</a>
+              <% } %>
+            </form>
+            <div class="datatable-search">
+              <label for="taskSearchInput">Tabloda Ara</label>
+              <input id="taskSearchInput" type="text" placeholder="Baslik, konu, ogrenci, kategori..." />
+            </div>
+          </div>
+
           <% if (!activeTasks.length) { %>
           <p class="muted">Aktif gorev yok.</p>
           <% } %>
@@ -382,8 +387,9 @@
               <p class="muted">Toplu guncelleme sadece secili gorevlere uygulanir.</p>
             </div>
           </form>
+
           <div class="table-wrap">
-            <table class="task-table">
+            <table class="task-table" id="adminTasksTable">
               <thead>
                 <tr>
                   <th><input id="bulkSelectAll" type="checkbox" /></th>
@@ -391,27 +397,97 @@
                   <th>Konu</th>
                   <th>Ogrenci</th>
                   <th>Kategori</th>
+                  <th>Tekrar</th>
                   <th>Tarih</th>
                   <th>Islem</th>
                 </tr>
               </thead>
               <tbody>
                 <% activeTasks.forEach((t) => { %>
-                <tr>
+                <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
+                <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>">
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
                   <td><strong><%= t.title %></strong></td>
                   <td><%= t.description || '-' %></td>
                   <td><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
                   <td><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td><%= t.repeatText %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
-                      <a class="button-link" href="/admin/tasks?editTaskId=<%= t.id %><%= activeTaskFilters.studentId ? `&activeTaskStudentId=${activeTaskFilters.studentId}` : '' %>">Guncelle</a>
+                      <button type="button" class="button-link quick-edit-trigger" data-task-id="<%= t.id %>">Hizli Duzenle</button>
                       <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
                         <input type="hidden" name="next" value="<%= tasksPagePath %>" />
                         <button type="submit" class="danger">Sil</button>
                       </form>
                     </div>
+                  </td>
+                </tr>
+                <tr class="task-edit-row" data-task-edit-id="<%= t.id %>" hidden>
+                  <td colspan="8">
+                    <form method="post" action="/admin/tasks/<%= t.id %>/update" class="task-inline-form">
+                      <input type="hidden" name="next" value="<%= tasksPagePath %>" />
+                      <div class="task-inline-grid">
+                        <label>Baslik</label>
+                        <input type="text" name="title" value="<%= t.title %>" required />
+
+                        <label>Aciklama</label>
+                        <textarea name="description"><%= t.description || '' %></textarea>
+
+                        <label>Kategori</label>
+                        <select name="categoryId" required>
+                          <option value="">Seciniz</option>
+                          <% categories.forEach((c) => { %>
+                          <option value="<%= c.id %>" <%= t.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                          <% }) %>
+                        </select>
+
+                        <label>Ogrenci</label>
+                        <select name="studentId" required>
+                          <option value="">Seciniz</option>
+                          <% students.forEach((s) => { %>
+                          <option value="<%= s.id %>" <%= t.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
+                          <% }) %>
+                        </select>
+
+                        <label>Tekrar Tipi</label>
+                        <select name="repeatType" required>
+                          <% if (t.repeatType === 'daily') { %>
+                          <option value="daily" selected disabled>Her Gun (duzenleme disi)</option>
+                          <% } %>
+                          <option value="once" <%= t.repeatType === 'once' ? 'selected' : '' %>>Tek Seferlik</option>
+                          <option value="weekly" <%= t.repeatType === 'weekly' ? 'selected' : '' %>>Haftalik</option>
+                          <option value="monthly" <%= t.repeatType === 'monthly' ? 'selected' : '' %>>Aylik</option>
+                          <option value="custom" <%= t.repeatType === 'custom' ? 'selected' : '' %>>Ozel Tarihler</option>
+                        </select>
+                        <% if (t.repeatType === 'daily') { %>
+                        <label></label>
+                        <p class="muted">Not: Her Gun tipi sadece yeni gorev olusturmada desteklenir.</p>
+                        <% } %>
+
+                        <label>Tek Seferlik Tarih</label>
+                        <input type="date" name="singleDate" value="<%= t.singleDate || '' %>" />
+
+                        <label>Haftalik Gun (0-6)</label>
+                        <input type="number" min="0" max="6" name="weeklyDay" value="<%= t.weeklyDay ?? '' %>" />
+
+                        <label>Aylik Gun (1-31)</label>
+                        <input type="number" min="1" max="31" name="monthlyDay" value="<%= t.monthlyDay ?? '' %>" />
+
+                        <label>Ozel Tarihler</label>
+                        <input type="text" name="customDates" value="<%= Array.isArray(t.customDates) ? t.customDates.join(',') : '' %>" placeholder="2026-05-10,2026-05-20" />
+
+                        <label>Baslangic Tarihi</label>
+                        <input type="date" name="startDate" value="<%= t.startDate || '' %>" />
+
+                        <label>Bitis Tarihi</label>
+                        <input type="date" name="endDate" value="<%= t.endDate || '' %>" />
+                      </div>
+                      <div class="task-inline-actions">
+                        <button type="submit">Kaydet</button>
+                        <button type="button" class="quick-close-btn close-edit-trigger" data-task-id="<%= t.id %>">Kapat</button>
+                      </div>
+                    </form>
                   </td>
                 </tr>
                 <% }) %>
@@ -421,20 +497,63 @@
           <script>
             (() => {
               const selectAll = document.getElementById('bulkSelectAll');
-              if (!selectAll) return;
               const checkboxes = Array.from(
                 document.querySelectorAll('input[name="taskIds"][form="bulkTaskForm"]')
               );
+              const searchInput = document.getElementById('taskSearchInput');
+              const dataRows = Array.from(document.querySelectorAll('.task-data-row'));
+              const editRows = Array.from(document.querySelectorAll('.task-edit-row'));
+
+              const findEditRow = (taskId) =>
+                editRows.find((row) => row.getAttribute('data-task-edit-id') === taskId);
+
               const syncHeader = () => {
+                if (!selectAll) return;
                 selectAll.checked = checkboxes.length > 0 && checkboxes.every((input) => input.checked);
               };
-              selectAll.addEventListener('change', () => {
-                checkboxes.forEach((input) => {
-                  input.checked = selectAll.checked;
+
+              if (selectAll) {
+                selectAll.addEventListener('change', () => {
+                  checkboxes.forEach((input) => {
+                    input.checked = selectAll.checked;
+                  });
                 });
-              });
+              }
+
               checkboxes.forEach((input) => {
                 input.addEventListener('change', syncHeader);
+              });
+
+              const applySearch = () => {
+                const term = String((searchInput && searchInput.value) || '').toLowerCase().trim();
+                dataRows.forEach((row) => {
+                  const text = row.getAttribute('data-search') || '';
+                  const visible = !term || text.includes(term);
+                  row.hidden = !visible;
+                  const editRow = findEditRow(row.getAttribute('data-task-id'));
+                  if (!visible && editRow) editRow.hidden = true;
+                });
+              };
+
+              if (searchInput) {
+                searchInput.addEventListener('input', applySearch);
+              }
+
+              document.querySelectorAll('.quick-edit-trigger').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                  const taskId = btn.getAttribute('data-task-id');
+                  const editRow = findEditRow(taskId);
+                  if (!editRow) return;
+                  editRow.hidden = !editRow.hidden;
+                });
+              });
+
+              document.querySelectorAll('.close-edit-trigger').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                  const taskId = btn.getAttribute('data-task-id');
+                  const editRow = findEditRow(taskId);
+                  if (editRow) editRow.hidden = true;
+                });
               });
             })();
           </script>

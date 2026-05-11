@@ -2238,7 +2238,7 @@ async function getStudentViewModel(req, currentPage) {
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
   const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
-  const [tasksRes, statusesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, detailNotesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2267,6 +2267,14 @@ async function getStudentViewModel(req, currentPage) {
       `
         SELECT task_id AS "taskId", student_id AS "studentId", day, status, note
         FROM task_statuses
+        WHERE student_id = $1 AND day = $2
+      `,
+      [req.currentUser.id, today]
+    ),
+    query(
+      `
+        SELECT task_id AS "taskId", detail
+        FROM task_detail_notes
         WHERE student_id = $1 AND day = $2
       `,
       [req.currentUser.id, today]
@@ -2332,6 +2340,7 @@ async function getStudentViewModel(req, currentPage) {
 
   const categories = categoriesRes.rows;
   const statuses = statusesRes.rows;
+  const detailByTaskId = new Map(detailNotesRes.rows.map((row) => [row.taskId, row.detail || '']));
   const allTasks = tasksRes.rows.map(mapTask);
 
   const activeTasks = allTasks
@@ -2349,7 +2358,8 @@ async function getStudentViewModel(req, currentPage) {
         ...task,
         categoryName: category ? category.name : 'Kategori Yok',
         scheduleText: formatTaskSchedule(task),
-        todayStatus: status || null
+        todayStatus: status || null,
+        studyDetail: detailByTaskId.has(task.id) ? detailByTaskId.get(task.id) : (status?.note || '')
       };
     });
 
@@ -2623,6 +2633,37 @@ app.get(
 
     await workbook.xlsx.write(res);
     return res.end();
+  })
+);
+
+app.post(
+  '/student/tasks/:taskId/detail',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const detail = normalizeText(req.body.detail);
+    const today = todayDateString();
+
+    const taskRes = await query(
+      `SELECT id FROM tasks WHERE id = $1 AND student_id = $2 AND is_archived = false LIMIT 1`,
+      [taskId, req.currentUser.id]
+    );
+
+    if (taskRes.rowCount === 0) {
+      return res.redirect('/student/dashboard?error=Gorev%20bulunamadi.');
+    }
+
+    await query(
+      `
+        INSERT INTO task_detail_notes (id, task_id, student_id, day, detail)
+        VALUES ($1,$2,$3,$4,$5)
+        ON CONFLICT (task_id, student_id, day)
+        DO UPDATE SET detail = EXCLUDED.detail, updated_at = NOW()
+      `,
+      [makeId('detail'), taskId, req.currentUser.id, today, detail]
+    );
+
+    return res.redirect('/student/dashboard?message=Konu%20detayi%20kaydedildi.');
   })
 );
 

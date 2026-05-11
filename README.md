@@ -58,6 +58,21 @@ Uygulama acilisinda gerekli tablolari otomatik olusturur ve ilk admin kullanicis
    - Gecici olarak gerekiyorsa `DATABASE_SSL_REJECT_UNAUTHORIZED=false`
 9. Deploy ve restart et.
 
+### Tek Komut Deploy (Kalici Ayar)
+- Ayrintili dokuman: `DEPLOY.md`
+- Bir kere ayarla:
+  - `cp .env.production.example .env.deploy`
+  - `.env.deploy` icinde Hostinger SSH/deploy alanlarini doldur
+- Sonra deploy:
+  - `npm run deploy:prod`
+- Sadece kontrol:
+  - `npm run deploy:prod:dry`
+
+### Otomatik Deploy (main push)
+- Workflow: `.github/workflows/deploy-hostinger.yml`
+- `main` branch'ine her push sonrasi Hostinger deploy tetiklenir.
+- Gerekli GitHub secrets listesi `DEPLOY.md` icinde.
+
 ## GitHub Push
 ```bash
 git remote add origin <REPO_URL>

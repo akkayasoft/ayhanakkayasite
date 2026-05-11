@@ -91,6 +91,18 @@ async function initDb() {
   `);
 
   await query(`
+    CREATE TABLE IF NOT EXISTS task_detail_notes (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (task_id, student_id, day)
+    )
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS daily_questions (
       id TEXT PRIMARY KEY,
       student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

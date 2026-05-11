@@ -375,6 +375,31 @@ button.ghost {
   background: #ffffff;
 }
 
+.summary-toggle {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 12px;
+}
+
+.summary-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.datatable-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.datatable-search {
+  display: grid;
+  gap: 6px;
+  min-width: 280px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -503,6 +528,50 @@ tbody tr:hover {
 
 .task-table td {
   vertical-align: top;
+}
+
+.task-detail-form {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.task-detail-form .button-link {
+  width: fit-content;
+}
+
+.task-edit-row > td {
+  background: #f8fbff;
+  padding: 0;
+}
+
+.task-inline-form {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.task-inline-grid {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.task-inline-grid textarea {
+  min-height: 62px;
+}
+
+.task-inline-actions {
+  margin-top: 10px;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.quick-close-btn {
+  background: #edf2fa;
+  color: #29466f;
+  border: 1px solid #bfd0e8;
+  box-shadow: none;
 }
 
 #bulkTaskForm {
@@ -718,6 +787,10 @@ tr.day-bad {
   .grid.three,
   .kpi-grid,
   .task {
+    grid-template-columns: 1fr;
+  }
+
+  .task-inline-grid {
     grid-template-columns: 1fr;
   }
 }

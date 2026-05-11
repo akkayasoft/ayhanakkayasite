@@ -70,6 +70,7 @@
                   <th>Durum</th>
                   <th>Baslik</th>
                   <th>Kategori</th>
+                  <th>Konu Detayi</th>
                   <th>Tarih</th>
                   <th>Aciklama</th>
                   <th>Islem</th>
@@ -85,18 +86,30 @@
                   </td>
                   <td><strong><%= task.title %></strong></td>
                   <td><%= task.categoryName %></td>
+                  <td>
+                    <form method="post" action="/student/tasks/<%= task.id %>/detail" class="task-detail-form">
+                      <input
+                        type="text"
+                        name="detail"
+                        value="<%= task.studyDetail || '' %>"
+                        placeholder="Bugun calistigin alt konu / not"
+                        maxlength="300"
+                      />
+                      <button type="submit" class="button-link">Kaydet</button>
+                    </form>
+                  </td>
                   <td class="task-meta"><%= task.scheduleText %></td>
                   <td><%= task.description || '-' %></td>
                   <td>
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
-                        <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                        <input type="hidden" name="note" value="<%= task.studyDetail || task.todayStatus?.note || '' %>" />
                         <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
                       </form>
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="not_done" />
-                        <input type="hidden" name="note" value="<%= task.todayStatus?.note || '' %>" />
+                        <input type="hidden" name="note" value="<%= task.studyDetail || task.todayStatus?.note || '' %>" />
                         <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
                       </form>
                     </div>

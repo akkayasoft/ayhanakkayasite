@@ -1,0 +1,65 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required secrets
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_RESTART_COMMAND: ${{ secrets.HOSTINGER_RESTART_COMMAND }}
+        run: |
+          set -euo pipefail
+          test -n "$HOSTINGER_SSH_HOST"
+          test -n "$HOSTINGER_SSH_USER"
+          test -n "$HOSTINGER_APP_DIR"
+          test -n "$HOSTINGER_SSH_KEY"
+          test -n "$HOSTINGER_RESTART_COMMAND"
+
+      - name: Configure SSH
+        env:
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf "%s" "$HOSTINGER_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$PORT" "$HOSTINGER_SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+          HOSTINGER_RESTART_COMMAND: ${{ secrets.HOSTINGER_RESTART_COMMAND }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          ssh -p "$PORT" "${HOSTINGER_SSH_USER}@${HOSTINGER_SSH_HOST}" \
+            HOSTINGER_APP_DIR="$HOSTINGER_APP_DIR" \
+            DEPLOY_BRANCH="$DEPLOY_BRANCH" \
+            HOSTINGER_RESTART_COMMAND="$HOSTINGER_RESTART_COMMAND" \
+            "bash -s" <<'EOF'
+          set -euo pipefail
+          cd "$HOSTINGER_APP_DIR"
+          git fetch --all --prune
+          git checkout "$DEPLOY_BRANCH"
+          git pull --ff-only origin "$DEPLOY_BRANCH"
+          npm ci --omit=dev || npm install --omit=dev
+          eval "$HOSTINGER_RESTART_COMMAND"
+          EOF
