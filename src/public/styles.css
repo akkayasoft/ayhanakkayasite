@@ -570,10 +570,6 @@ tbody tr:hover {
   min-width: 220px;
 }
 
-.task-detail-form .button-link {
-  width: fit-content;
-}
-
 .student-task-table {
   min-width: 1260px;
 }
@@ -609,10 +605,6 @@ tbody tr:hover {
 .student-task-table .task-detail-form input[type='text'] {
   width: 270px;
   min-width: 220px;
-}
-
-.student-task-table .task-detail-form .button-link {
-  white-space: nowrap;
 }
 
 .student-task-table tr.task-row-success td {
@@ -932,8 +924,7 @@ tr.day-bad {
     grid-template-columns: 1fr;
   }
 
-  .student-task-table .task-detail-form input[type='text'],
-  .student-task-table .task-detail-form .button-link {
+  .student-task-table .task-detail-form input[type='text'] {
     width: auto;
   }
 }
