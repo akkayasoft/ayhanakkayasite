@@ -407,87 +407,19 @@
                 <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
                 <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>">
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
-                  <td><strong><%= t.title %></strong></td>
-                  <td><%= t.description || '-' %></td>
-                  <td><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
-                  <td><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td class="editable-cell" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
+                  <td class="editable-cell" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
+                  <td class="editable-cell" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
+                  <td class="editable-cell" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td><%= t.repeatText %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
-                      <button type="button" class="button-link quick-edit-trigger" data-task-id="<%= t.id %>">Hizli Duzenle</button>
                       <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
                         <input type="hidden" name="next" value="<%= tasksPagePath %>" />
                         <button type="submit" class="danger">Sil</button>
                       </form>
                     </div>
-                  </td>
-                </tr>
-                <tr class="task-edit-row" data-task-edit-id="<%= t.id %>" hidden>
-                  <td colspan="8">
-                    <form method="post" action="/admin/tasks/<%= t.id %>/update" class="task-inline-form">
-                      <input type="hidden" name="next" value="<%= tasksPagePath %>" />
-                      <div class="task-inline-grid">
-                        <label>Baslik</label>
-                        <input type="text" name="title" value="<%= t.title %>" required />
-
-                        <label>Aciklama</label>
-                        <textarea name="description"><%= t.description || '' %></textarea>
-
-                        <label>Kategori</label>
-                        <select name="categoryId" required>
-                          <option value="">Seciniz</option>
-                          <% categories.forEach((c) => { %>
-                          <option value="<%= c.id %>" <%= t.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
-                          <% }) %>
-                        </select>
-
-                        <label>Ogrenci</label>
-                        <select name="studentId" required>
-                          <option value="">Seciniz</option>
-                          <% students.forEach((s) => { %>
-                          <option value="<%= s.id %>" <%= t.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
-                          <% }) %>
-                        </select>
-
-                        <label>Tekrar Tipi</label>
-                        <select name="repeatType" required>
-                          <% if (t.repeatType === 'daily') { %>
-                          <option value="daily" selected disabled>Her Gun (duzenleme disi)</option>
-                          <% } %>
-                          <option value="once" <%= t.repeatType === 'once' ? 'selected' : '' %>>Tek Seferlik</option>
-                          <option value="weekly" <%= t.repeatType === 'weekly' ? 'selected' : '' %>>Haftalik</option>
-                          <option value="monthly" <%= t.repeatType === 'monthly' ? 'selected' : '' %>>Aylik</option>
-                          <option value="custom" <%= t.repeatType === 'custom' ? 'selected' : '' %>>Ozel Tarihler</option>
-                        </select>
-                        <% if (t.repeatType === 'daily') { %>
-                        <label></label>
-                        <p class="muted">Not: Her Gun tipi sadece yeni gorev olusturmada desteklenir.</p>
-                        <% } %>
-
-                        <label>Tek Seferlik Tarih</label>
-                        <input type="date" name="singleDate" value="<%= t.singleDate || '' %>" />
-
-                        <label>Haftalik Gun (0-6)</label>
-                        <input type="number" min="0" max="6" name="weeklyDay" value="<%= t.weeklyDay ?? '' %>" />
-
-                        <label>Aylik Gun (1-31)</label>
-                        <input type="number" min="1" max="31" name="monthlyDay" value="<%= t.monthlyDay ?? '' %>" />
-
-                        <label>Ozel Tarihler</label>
-                        <input type="text" name="customDates" value="<%= Array.isArray(t.customDates) ? t.customDates.join(',') : '' %>" placeholder="2026-05-10,2026-05-20" />
-
-                        <label>Baslangic Tarihi</label>
-                        <input type="date" name="startDate" value="<%= t.startDate || '' %>" />
-
-                        <label>Bitis Tarihi</label>
-                        <input type="date" name="endDate" value="<%= t.endDate || '' %>" />
-                      </div>
-                      <div class="task-inline-actions">
-                        <button type="submit">Kaydet</button>
-                        <button type="button" class="quick-close-btn close-edit-trigger" data-task-id="<%= t.id %>">Kapat</button>
-                      </div>
-                    </form>
                   </td>
                 </tr>
                 <% }) %>
@@ -502,10 +434,9 @@
               );
               const searchInput = document.getElementById('taskSearchInput');
               const dataRows = Array.from(document.querySelectorAll('.task-data-row'));
-              const editRows = Array.from(document.querySelectorAll('.task-edit-row'));
-
-              const findEditRow = (taskId) =>
-                editRows.find((row) => row.getAttribute('data-task-edit-id') === taskId);
+              const editableCells = Array.from(document.querySelectorAll('.editable-cell'));
+              const studentOptions = <%- JSON.stringify(students.map((s) => ({ value: s.id, label: s.name }))) %>;
+              const categoryOptions = <%- JSON.stringify(categories.map((c) => ({ value: c.id, label: c.name }))) %>;
 
               const syncHeader = () => {
                 if (!selectAll) return;
@@ -530,8 +461,6 @@
                   const text = row.getAttribute('data-search') || '';
                   const visible = !term || text.includes(term);
                   row.hidden = !visible;
-                  const editRow = findEditRow(row.getAttribute('data-task-id'));
-                  if (!visible && editRow) editRow.hidden = true;
                 });
               };
 
@@ -539,20 +468,134 @@
                 searchInput.addEventListener('input', applySearch);
               }
 
-              document.querySelectorAll('.quick-edit-trigger').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                  const taskId = btn.getAttribute('data-task-id');
-                  const editRow = findEditRow(taskId);
-                  if (!editRow) return;
-                  editRow.hidden = !editRow.hidden;
-                });
-              });
+              const escapeHtml = (value) =>
+                String(value || '')
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
 
-              document.querySelectorAll('.close-edit-trigger').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                  const taskId = btn.getAttribute('data-task-id');
-                  const editRow = findEditRow(taskId);
-                  if (editRow) editRow.hidden = true;
+              const refreshRowSearch = (row) => {
+                const title = row.querySelector('[data-field="title"]')?.textContent || '';
+                const desc = row.querySelector('[data-field="description"]')?.textContent || '';
+                const student = row.querySelector('[data-field="studentId"]')?.textContent || '';
+                const category = row.querySelector('[data-field="categoryId"]')?.textContent || '';
+                row.setAttribute('data-search', `${title} ${desc} ${student} ${category}`.toLowerCase());
+              };
+
+              const finishEdit = (cell, originalMarkup) => {
+                cell.classList.remove('is-editing');
+                if (originalMarkup != null) {
+                  cell.innerHTML = originalMarkup;
+                }
+              };
+
+              const saveCell = async (cell, newValue, displayValue, originalMarkup) => {
+                if (cell.classList.contains('is-saving')) return;
+                const row = cell.closest('.task-data-row');
+                if (!row) return;
+                const taskId = row.getAttribute('data-task-id');
+                const field = cell.getAttribute('data-field');
+                const oldValue = cell.getAttribute('data-value') || '';
+                const normalized = String(newValue || '').trim();
+
+                if (normalized === oldValue) {
+                  finishEdit(cell, originalMarkup);
+                  return;
+                }
+
+                cell.classList.add('is-saving');
+                try {
+                  const body = new URLSearchParams({ field, value: normalized });
+                  const response = await fetch(`/admin/tasks/${taskId}/cell-update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.ok) {
+                    throw new Error(data.error || 'Kayit basarisiz.');
+                  }
+
+                  cell.setAttribute('data-value', data.value || '');
+                  if (field === 'title') {
+                    cell.innerHTML = `<strong>${escapeHtml(data.display)}</strong>`;
+                  } else {
+                    cell.textContent = data.display || '-';
+                  }
+                  refreshRowSearch(row);
+                } catch (err) {
+                  alert(err.message || 'Kayit basarisiz.');
+                  if (field === 'title') {
+                    cell.innerHTML = `<strong>${escapeHtml(oldValue)}</strong>`;
+                  } else if (field === 'description') {
+                    cell.textContent = oldValue || '-';
+                  } else {
+                    cell.textContent = displayValue;
+                  }
+                } finally {
+                  cell.classList.remove('is-saving');
+                  cell.classList.remove('is-editing');
+                }
+              };
+
+              editableCells.forEach((cell) => {
+                cell.addEventListener('click', () => {
+                  if (cell.classList.contains('is-editing')) return;
+
+                  const field = cell.getAttribute('data-field');
+                  const currentValue = cell.getAttribute('data-value') || '';
+                  const currentDisplay = cell.textContent.trim();
+                  const originalMarkup = cell.innerHTML;
+                  cell.classList.add('is-editing');
+
+                  if (field === 'studentId' || field === 'categoryId') {
+                    const options = field === 'studentId' ? studentOptions : categoryOptions;
+                    const select = document.createElement('select');
+                    select.className = 'cell-editor';
+                    options.forEach((item) => {
+                      const option = document.createElement('option');
+                      option.value = item.value;
+                      option.textContent = item.label;
+                      if (item.value === currentValue) option.selected = true;
+                      select.appendChild(option);
+                    });
+                    cell.innerHTML = '';
+                    cell.appendChild(select);
+                    select.focus();
+                    select.addEventListener('change', () => {
+                      const selected = options.find((item) => item.value === select.value);
+                      saveCell(cell, select.value, selected ? selected.label : currentDisplay, originalMarkup);
+                    });
+                    select.addEventListener('blur', () => {
+                      if (!cell.classList.contains('is-saving')) {
+                        finishEdit(cell, originalMarkup);
+                      }
+                    });
+                    return;
+                  }
+
+                  const input = document.createElement('input');
+                  input.type = 'text';
+                  input.className = 'cell-editor';
+                  input.value = currentValue;
+                  cell.innerHTML = '';
+                  cell.appendChild(input);
+                  input.focus();
+                  input.select();
+
+                  const commit = () => saveCell(cell, input.value, currentDisplay, originalMarkup);
+                  input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      commit();
+                    }
+                    if (event.key === 'Escape') {
+                      finishEdit(cell, originalMarkup);
+                    }
+                  });
+                  input.addEventListener('blur', commit);
                 });
               });
             })();

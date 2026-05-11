@@ -1313,6 +1313,57 @@ app.post(
 );
 
 app.post(
+  '/admin/tasks/:taskId/cell-update',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const field = normalizeText(req.body.field);
+    const value = normalizeText(req.body.value);
+
+    const taskRes = await query(`SELECT id FROM tasks WHERE id = $1 LIMIT 1`, [taskId]);
+    if (taskRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Gorev bulunamadi.' });
+    }
+
+    if (field === 'title') {
+      if (!value) {
+        return res.status(400).json({ ok: false, error: 'Baslik bos olamaz.' });
+      }
+      await query(`UPDATE tasks SET title = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: value });
+    }
+
+    if (field === 'description') {
+      await query(`UPDATE tasks SET description = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: value || '-' });
+    }
+
+    if (field === 'studentId') {
+      const studentRes = await query(
+        `SELECT id, name FROM users WHERE id = $1 AND role = 'student' LIMIT 1`,
+        [value]
+      );
+      if (studentRes.rowCount === 0) {
+        return res.status(400).json({ ok: false, error: 'Ogrenci gecersiz.' });
+      }
+      await query(`UPDATE tasks SET student_id = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: studentRes.rows[0].name });
+    }
+
+    if (field === 'categoryId') {
+      const categoryRes = await query(`SELECT id, name FROM categories WHERE id = $1 LIMIT 1`, [value]);
+      if (categoryRes.rowCount === 0) {
+        return res.status(400).json({ ok: false, error: 'Kategori gecersiz.' });
+      }
+      await query(`UPDATE tasks SET category_id = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: categoryRes.rows[0].name });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
+  })
+);
+
+app.post(
   '/admin/tasks/bulk-update',
   requireRole('admin'),
   asyncHandler(async (req, res) => {

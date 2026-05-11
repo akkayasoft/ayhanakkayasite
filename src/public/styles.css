@@ -530,6 +530,28 @@ tbody tr:hover {
   vertical-align: top;
 }
 
+.editable-cell {
+  cursor: pointer;
+  position: relative;
+}
+
+.editable-cell:hover {
+  background: #eef5ff;
+}
+
+.editable-cell.is-editing {
+  padding: 6px;
+}
+
+.editable-cell.is-saving {
+  opacity: 0.65;
+}
+
+.cell-editor {
+  width: 100%;
+  min-width: 120px;
+}
+
 .task-detail-form {
   display: grid;
   gap: 6px;
