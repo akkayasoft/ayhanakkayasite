@@ -406,6 +406,12 @@ button.ghost {
   min-width: 280px;
 }
 
+.datatable-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 10px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -862,6 +868,10 @@ tr.day-bad {
   .task-inline-grid {
     grid-template-columns: 1fr;
   }
+
+  .datatable-filter-row {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -900,6 +910,10 @@ tr.day-bad {
 
   .task-table-actions .icon-btn {
     width: 34px;
+  }
+
+  .datatable-filter-row {
+    grid-template-columns: 1fr;
   }
 
   .student-task-table .task-detail-form input[type='text'],

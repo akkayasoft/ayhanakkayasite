@@ -58,6 +58,28 @@
         </section>
 
         <section class="panel">
+          <% if (activeTasks.length) { %>
+          <div class="datatable-filter-row">
+            <div class="datatable-search">
+              <label for="studentTaskTitleFilter">Baslik</label>
+              <input id="studentTaskTitleFilter" type="text" placeholder="Basliga gore filtrele" />
+            </div>
+            <div class="datatable-search">
+              <label for="studentTaskCategoryFilter">Kategori</label>
+              <select id="studentTaskCategoryFilter">
+                <option value="">Tum Kategoriler</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.name %>"><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="datatable-search">
+              <label for="studentTaskDateFilter">Tarih</label>
+              <input id="studentTaskDateFilter" type="text" placeholder="YYYY-MM-DD" />
+            </div>
+          </div>
+          <% } %>
+
           <% if (!activeTasks.length) { %>
           <p class="muted">Aktif gorev yok.</p>
           <% } %>
@@ -78,7 +100,7 @@
               </thead>
               <tbody>
                 <% activeTasks.forEach((task) => { %>
-                <tr>
+                <tr class="student-task-row" data-title="<%= (task.title || '').toLowerCase() %>" data-category="<%= (task.categoryName || '').toLowerCase() %>" data-date="<%= (task.scheduleText || '').toLowerCase() %>">
                   <td>
                     <span class="task-state-icon <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>
@@ -119,6 +141,35 @@
               </tbody>
             </table>
           </div>
+          <script>
+            (() => {
+              const titleInput = document.getElementById('studentTaskTitleFilter');
+              const categoryInput = document.getElementById('studentTaskCategoryFilter');
+              const dateInput = document.getElementById('studentTaskDateFilter');
+              const rows = Array.from(document.querySelectorAll('.student-task-row'));
+              if (!rows.length) return;
+
+              const applyFilters = () => {
+                const title = String((titleInput && titleInput.value) || '').toLowerCase().trim();
+                const category = String((categoryInput && categoryInput.value) || '').toLowerCase().trim();
+                const date = String((dateInput && dateInput.value) || '').toLowerCase().trim();
+
+                rows.forEach((row) => {
+                  const rowTitle = row.getAttribute('data-title') || '';
+                  const rowCategory = row.getAttribute('data-category') || '';
+                  const rowDate = row.getAttribute('data-date') || '';
+                  const matchTitle = !title || rowTitle.includes(title);
+                  const matchCategory = !category || rowCategory.includes(category);
+                  const matchDate = !date || rowDate.includes(date);
+                  row.hidden = !(matchTitle && matchCategory && matchDate);
+                });
+              };
+
+              if (titleInput) titleInput.addEventListener('input', applyFilters);
+              if (categoryInput) categoryInput.addEventListener('change', applyFilters);
+              if (dateInput) dateInput.addEventListener('input', applyFilters);
+            })();
+          </script>
           <% } %>
         </section>
         <% } %>

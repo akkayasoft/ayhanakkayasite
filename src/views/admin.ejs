@@ -326,9 +326,28 @@
               <a class="button-link" href="/admin/tasks/<%= taskSection %>">Temizle</a>
               <% } %>
             </form>
-            <div class="datatable-search">
-              <label for="taskSearchInput">Tabloda Ara</label>
-              <input id="taskSearchInput" type="text" placeholder="Baslik, konu, ogrenci, kategori..." />
+            <div class="datatable-filter-row">
+              <div class="datatable-search">
+                <label for="taskSearchInput">Genel Ara</label>
+                <input id="taskSearchInput" type="text" placeholder="Baslik, konu, ogrenci, kategori..." />
+              </div>
+              <div class="datatable-search">
+                <label for="taskTitleFilter">Baslik</label>
+                <input id="taskTitleFilter" type="text" placeholder="Basliga gore filtrele" />
+              </div>
+              <div class="datatable-search">
+                <label for="taskCategoryFilter">Kategori</label>
+                <select id="taskCategoryFilter">
+                  <option value="">Tum Kategoriler</option>
+                  <% categories.forEach((c) => { %>
+                  <option value="<%= c.name %>"><%= c.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="datatable-search">
+                <label for="taskDateFilter">Tarih</label>
+                <input id="taskDateFilter" type="text" placeholder="YYYY-MM-DD" />
+              </div>
             </div>
           </div>
 
@@ -417,7 +436,7 @@
               <tbody>
                 <% activeTasks.forEach((t) => { %>
                 <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
-                <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>">
+                <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>" data-title="<%= (t.title || '').toLowerCase() %>" data-category="<%= (t.category ? t.category.name : '').toLowerCase() %>" data-date="<%= (t.dateText || '').toLowerCase() %>">
                   <% if (isUpdatePage) { %>
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
                   <% } %>
@@ -447,6 +466,9 @@
                 document.querySelectorAll('input[name="taskIds"][form="bulkTaskForm"]')
               );
               const searchInput = document.getElementById('taskSearchInput');
+              const titleFilterInput = document.getElementById('taskTitleFilter');
+              const categoryFilterInput = document.getElementById('taskCategoryFilter');
+              const dateFilterInput = document.getElementById('taskDateFilter');
               const dataRows = Array.from(document.querySelectorAll('.task-data-row'));
               const editableCells = Array.from(document.querySelectorAll('.editable-cell'));
               const studentOptions = <%- JSON.stringify(students.map((s) => ({ value: s.id, label: s.name }))) %>;
@@ -473,15 +495,34 @@
 
               const applySearch = () => {
                 const term = String((searchInput && searchInput.value) || '').toLowerCase().trim();
+                const titleTerm = String((titleFilterInput && titleFilterInput.value) || '').toLowerCase().trim();
+                const categoryTerm = String((categoryFilterInput && categoryFilterInput.value) || '').toLowerCase().trim();
+                const dateTerm = String((dateFilterInput && dateFilterInput.value) || '').toLowerCase().trim();
                 dataRows.forEach((row) => {
                   const text = row.getAttribute('data-search') || '';
-                  const visible = !term || text.includes(term);
+                  const titleText = row.getAttribute('data-title') || '';
+                  const categoryText = row.getAttribute('data-category') || '';
+                  const dateText = row.getAttribute('data-date') || '';
+                  const matchSearch = !term || text.includes(term);
+                  const matchTitle = !titleTerm || titleText.includes(titleTerm);
+                  const matchCategory = !categoryTerm || categoryText.includes(categoryTerm);
+                  const matchDate = !dateTerm || dateText.includes(dateTerm);
+                  const visible = matchSearch && matchTitle && matchCategory && matchDate;
                   row.hidden = !visible;
                 });
               };
 
               if (searchInput) {
                 searchInput.addEventListener('input', applySearch);
+              }
+              if (titleFilterInput) {
+                titleFilterInput.addEventListener('input', applySearch);
+              }
+              if (categoryFilterInput) {
+                categoryFilterInput.addEventListener('change', applySearch);
+              }
+              if (dateFilterInput) {
+                dateFilterInput.addEventListener('input', applySearch);
               }
 
               const escapeHtml = (value) =>
@@ -497,7 +538,11 @@
                 const desc = row.querySelector('[data-field="description"]')?.textContent || '';
                 const student = row.querySelector('[data-field="studentId"]')?.textContent || '';
                 const category = row.querySelector('[data-field="categoryId"]')?.textContent || '';
+                const date = row.querySelector('td:nth-child(<%= isUpdatePage ? 6 : 5 %>)')?.textContent || '';
                 row.setAttribute('data-search', `${title} ${desc} ${student} ${category}`.toLowerCase());
+                row.setAttribute('data-title', title.toLowerCase());
+                row.setAttribute('data-category', category.toLowerCase());
+                row.setAttribute('data-date', date.toLowerCase());
               };
 
               const finishEdit = (cell, originalMarkup) => {
