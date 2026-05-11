@@ -100,7 +100,12 @@
               </thead>
               <tbody>
                 <% activeTasks.forEach((task) => { %>
-                <tr class="student-task-row" data-title="<%= (task.title || '').toLowerCase() %>" data-category="<%= (task.categoryName || '').toLowerCase() %>" data-date="<%= (task.scheduleText || '').toLowerCase() %>">
+                <tr
+                  class="student-task-row <%= task.todayStatus?.status === 'done' ? 'task-row-success' : task.todayStatus?.status === 'not_done' ? 'task-row-error' : '' %>"
+                  data-title="<%= (task.title || '').toLowerCase() %>"
+                  data-category="<%= (task.categoryName || '').toLowerCase() %>"
+                  data-date="<%= (task.scheduleText || '').toLowerCase() %>"
+                >
                   <td>
                     <span class="task-state-icon <%= task.todayStatus?.status === 'done' ? 'ok' : task.todayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>

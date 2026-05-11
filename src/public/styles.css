@@ -615,6 +615,22 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+.student-task-table tr.task-row-success td {
+  background: #e9f8ef !important;
+}
+
+.student-task-table tr.task-row-error td {
+  background: #fdecef !important;
+}
+
+.student-task-table tr.task-row-success:hover td {
+  background: #def3e7 !important;
+}
+
+.student-task-table tr.task-row-error:hover td {
+  background: #f9e2e7 !important;
+}
+
 .task-edit-row > td {
   background: #f8fbff;
   padding: 0;
