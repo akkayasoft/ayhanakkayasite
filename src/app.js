@@ -832,7 +832,10 @@ app.get('/admin/tasks', requireRole('admin'), (req, res) => {
 app.get(
   '/admin/tasks/:section',
   requireRole('admin'),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req, res, next) => {
+    if (req.params.section === 'export-active') {
+      return next();
+    }
     const allowedSections = new Set(['create', 'update', 'active']);
     const section = allowedSections.has(req.params.section) ? req.params.section : 'active';
     const pageMap = {
@@ -842,6 +845,59 @@ app.get(
     };
     const viewModel = await getAdminViewModel(req, pageMap[section]);
     return res.render('admin', viewModel);
+  })
+);
+
+app.get(
+  '/admin/tasks/export-active',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const viewModel = await getAdminViewModel(req, 'tasks-active');
+    const tasks = viewModel.activeTasks || [];
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Ogrenci Takip';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('Aktif Gorevler');
+    sheet.columns = [
+      { header: 'Baslik', key: 'title', width: 32 },
+      { header: 'Konu', key: 'description', width: 42 },
+      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Kategori', key: 'categoryName', width: 20 },
+      { header: 'Tarih', key: 'dateText', width: 26 },
+      { header: 'Tekrar', key: 'repeatText', width: 24 },
+      { header: 'Arsivde Mi', key: 'archivedText', width: 12 }
+    ];
+
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    tasks.forEach((task) => {
+      sheet.addRow({
+        title: task.title || '',
+        description: task.description || '',
+        studentName: task.student ? task.student.name : 'Ogrenci yok',
+        categoryName: task.category ? task.category.name : 'Kategori yok',
+        dateText: task.dateText || '',
+        repeatText: task.repeatText || '',
+        archivedText: task.isArchived ? 'Evet' : 'Hayir'
+      });
+    });
+
+    sheet.eachRow((row) => {
+      row.alignment = { vertical: 'top', wrapText: true };
+    });
+
+    const fileName = `aktif-gorevler-${todayDateString()}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    await workbook.xlsx.write(res);
+    return res.end();
   })
 );
 

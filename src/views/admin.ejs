@@ -239,6 +239,7 @@
         <% const isUpdatePage = taskSection === 'update'; %>
         <% const isActivePage = taskSection === 'active'; %>
         <% const isInlineEditPage = isUpdatePage || isActivePage; %>
+        <% const activeTaskExportPath = activeTaskFilters.studentId ? `/admin/tasks/export-active?activeTaskStudentId=${activeTaskFilters.studentId}` : '/admin/tasks/export-active'; %>
         <header class="content-header">
           <h2>Gorev Yonetimi</h2>
           <div class="row">
@@ -325,6 +326,9 @@
               <button type="submit">Filtrele</button>
               <% if (activeTaskFilters.studentId) { %>
               <a class="button-link" href="/admin/tasks/<%= taskSection %>">Temizle</a>
+              <% } %>
+              <% if (isActivePage) { %>
+              <a class="button-link" href="<%= activeTaskExportPath %>">Excel Indir</a>
               <% } %>
             </form>
             <div class="datatable-filter-row">
