@@ -308,7 +308,7 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|tasks|points|reports)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|points|reports|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -821,11 +821,35 @@ async function getAdminViewModel(req, currentPage) {
 
 app.get('/admin', requireRole('admin'), (req, res) => res.redirect('/admin/dashboard'));
 
+app.get('/admin/tasks', requireRole('admin'), (req, res) => {
+  const studentId = normalizeText(req.query.activeTaskStudentId);
+  if (studentId) {
+    return res.redirect(`/admin/tasks/active?activeTaskStudentId=${encodeURIComponent(studentId)}`);
+  }
+  return res.redirect('/admin/tasks/active');
+});
+
+app.get(
+  '/admin/tasks/:section',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const allowedSections = new Set(['create', 'update', 'active']);
+    const section = allowedSections.has(req.params.section) ? req.params.section : 'active';
+    const pageMap = {
+      create: 'tasks-create',
+      update: 'tasks-update',
+      active: 'tasks-active'
+    };
+    const viewModel = await getAdminViewModel(req, pageMap[section]);
+    return res.render('admin', viewModel);
+  })
+);
+
 app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'tasks', 'points', 'reports']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'points', 'reports']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);

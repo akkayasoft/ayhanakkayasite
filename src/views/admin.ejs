@@ -20,7 +20,7 @@
           <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Ogrenciler</a>
           <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanici Yonetimi</a>
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
-          <a href="/admin/tasks" class="menu-link <%= currentPage === 'tasks' ? 'active' : '' %>">Gorevler</a>
+          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Gorevler</a>
           <a href="/admin/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Islemleri</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
@@ -233,78 +233,87 @@
         </section>
         <% } %>
 
-        <% if (currentPage === 'tasks') { %>
-        <% const tasksPagePath = activeTaskFilters.studentId ? `/admin/tasks?activeTaskStudentId=${activeTaskFilters.studentId}` : '/admin/tasks'; %>
+        <% if (['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage)) { %>
+        <% const taskSection = currentPage === 'tasks-create' ? 'create' : currentPage === 'tasks-update' ? 'update' : 'active'; %>
+        <% const tasksPagePath = activeTaskFilters.studentId ? `/admin/tasks/${taskSection}?activeTaskStudentId=${activeTaskFilters.studentId}` : `/admin/tasks/${taskSection}`; %>
+        <% const isUpdatePage = taskSection === 'update'; %>
+        <% const isActivePage = taskSection === 'active'; %>
         <header class="content-header">
           <h2>Gorev Yonetimi</h2>
+          <div class="row">
+            <a href="/admin/tasks/create" class="button-link <%= taskSection === 'create' ? 'active' : '' %>">Gorev Olustur</a>
+            <a href="/admin/tasks/update" class="button-link <%= taskSection === 'update' ? 'active' : '' %>">Gorev Guncelle</a>
+            <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Aktif Gorevler</a>
+          </div>
         </header>
 
+        <% if (taskSection === 'create') { %>
         <section class="panel">
-          <details>
-            <summary class="summary-toggle"><strong>Yeni Gorev Olustur</strong></summary>
-            <form method="post" action="/admin/tasks" class="grid two">
-              <input type="hidden" name="next" value="<%= tasksPagePath %>" />
-              <div class="stack">
-                <label>Gorev Basligi</label>
-                <input type="text" name="title" required />
+          <h3>Yeni Gorev Olustur</h3>
+          <form method="post" action="/admin/tasks" class="grid two">
+            <input type="hidden" name="next" value="<%= tasksPagePath %>" />
+            <div class="stack">
+              <label>Gorev Basligi</label>
+              <input type="text" name="title" required />
 
-                <label>Aciklama</label>
-                <textarea name="description"></textarea>
+              <label>Aciklama</label>
+              <textarea name="description"></textarea>
 
-                <label>Kategori</label>
-                <select name="categoryId" required>
-                  <option value="">Seciniz</option>
-                  <% categories.forEach((c) => { %>
-                  <option value="<%= c.id %>"><%= c.name %></option>
-                  <% }) %>
-                </select>
+              <label>Kategori</label>
+              <select name="categoryId" required>
+                <option value="">Seciniz</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.id %>"><%= c.name %></option>
+                <% }) %>
+              </select>
 
-                <label>Ogrenci</label>
-                <select name="studentId" required>
-                  <option value="">Seciniz</option>
-                  <% students.forEach((s) => { %>
-                  <option value="<%= s.id %>"><%= s.name %></option>
-                  <% }) %>
-                </select>
-              </div>
+              <label>Ogrenci</label>
+              <select name="studentId" required>
+                <option value="">Seciniz</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>"><%= s.name %></option>
+                <% }) %>
+              </select>
+            </div>
 
-              <div class="stack">
-                <label>Tekrar Tipi</label>
-                <select name="repeatType" required>
-                  <option value="once">Tek Seferlik</option>
-                  <option value="daily">Her Gun</option>
-                  <option value="weekly">Haftalik</option>
-                  <option value="monthly">Aylik</option>
-                  <option value="custom">Ozel Tarihler</option>
-                </select>
+            <div class="stack">
+              <label>Tekrar Tipi</label>
+              <select name="repeatType" required>
+                <option value="once">Tek Seferlik</option>
+                <option value="daily">Her Gun</option>
+                <option value="weekly">Haftalik</option>
+                <option value="monthly">Aylik</option>
+                <option value="custom">Ozel Tarihler</option>
+              </select>
 
-                <label>Tek Seferlik Tarih</label>
-                <input type="date" name="singleDate" />
+              <label>Tek Seferlik Tarih</label>
+              <input type="date" name="singleDate" />
 
-                <label>Haftalik Gun (0-6)</label>
-                <input type="number" min="0" max="6" name="weeklyDay" />
+              <label>Haftalik Gun (0-6)</label>
+              <input type="number" min="0" max="6" name="weeklyDay" />
 
-                <label>Aylik Gun (1-31)</label>
-                <input type="number" min="1" max="31" name="monthlyDay" />
+              <label>Aylik Gun (1-31)</label>
+              <input type="number" min="1" max="31" name="monthlyDay" />
 
-                <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
-                <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
+              <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+              <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
 
-                <label>Baslangic Tarihi</label>
-                <input type="date" name="startDate" />
+              <label>Baslangic Tarihi</label>
+              <input type="date" name="startDate" />
 
-                <label>Bitis Tarihi</label>
-                <input type="date" name="endDate" />
+              <label>Bitis Tarihi</label>
+              <input type="date" name="endDate" />
 
-                <button type="submit">Gorevi Kaydet</button>
-              </div>
-            </form>
-          </details>
+              <button type="submit">Gorevi Kaydet</button>
+            </div>
+          </form>
         </section>
+        <% } %>
 
+        <% if (isUpdatePage || isActivePage) { %>
         <section class="panel">
           <div class="datatable-toolbar">
-            <form method="get" action="/admin/tasks" class="row center">
+            <form method="get" action="/admin/tasks/<%= taskSection %>" class="row center">
               <label for="activeTaskStudentId">Ogrenci</label>
               <select id="activeTaskStudentId" name="activeTaskStudentId">
                 <option value="">Tum Ogrenciler</option>
@@ -314,7 +323,7 @@
               </select>
               <button type="submit">Filtrele</button>
               <% if (activeTaskFilters.studentId) { %>
-              <a class="button-link" href="/admin/tasks">Temizle</a>
+              <a class="button-link" href="/admin/tasks/<%= taskSection %>">Temizle</a>
               <% } %>
             </form>
             <div class="datatable-search">
@@ -327,6 +336,7 @@
           <p class="muted">Aktif gorev yok.</p>
           <% } %>
           <% if (activeTasks.length) { %>
+          <% if (isUpdatePage) { %>
           <form id="bulkTaskForm" method="post" action="/admin/tasks/bulk-update" class="grid two">
             <input type="hidden" name="next" value="<%= tasksPagePath %>" />
             <div class="stack">
@@ -387,12 +397,15 @@
               <p class="muted">Toplu guncelleme sadece secili gorevlere uygulanir.</p>
             </div>
           </form>
+          <% } %>
 
           <div class="table-wrap">
-            <table class="task-table" id="adminTasksTable">
+            <table class="task-table <%= isUpdatePage ? 'has-bulk-select' : '' %>" id="adminTasksTable">
               <thead>
                 <tr>
+                  <% if (isUpdatePage) { %>
                   <th><input id="bulkSelectAll" type="checkbox" /></th>
+                  <% } %>
                   <th>Baslik</th>
                   <th>Konu</th>
                   <th>Ogrenci</th>
@@ -405,11 +418,13 @@
                 <% activeTasks.forEach((t) => { %>
                 <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
                 <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>">
+                  <% if (isUpdatePage) { %>
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
-                  <td class="editable-cell" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
-                  <td class="editable-cell" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
-                  <td class="editable-cell" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
-                  <td class="editable-cell" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <% } %>
+                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
+                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
+                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
+                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
@@ -426,6 +441,7 @@
           </div>
           <script>
             (() => {
+              const isUpdatePage = <%= isUpdatePage ? 'true' : 'false' %>;
               const selectAll = document.getElementById('bulkSelectAll');
               const checkboxes = Array.from(
                 document.querySelectorAll('input[name="taskIds"][form="bulkTaskForm"]')
@@ -441,7 +457,7 @@
                 selectAll.checked = checkboxes.length > 0 && checkboxes.every((input) => input.checked);
               };
 
-              if (selectAll) {
+              if (selectAll && isUpdatePage) {
                 selectAll.addEventListener('change', () => {
                   checkboxes.forEach((input) => {
                     input.checked = selectAll.checked;
@@ -449,9 +465,11 @@
                 });
               }
 
-              checkboxes.forEach((input) => {
-                input.addEventListener('change', syncHeader);
-              });
+              if (isUpdatePage) {
+                checkboxes.forEach((input) => {
+                  input.addEventListener('change', syncHeader);
+                });
+              }
 
               const applySearch = () => {
                 const term = String((searchInput && searchInput.value) || '').toLowerCase().trim();
@@ -539,6 +557,7 @@
               };
 
               editableCells.forEach((cell) => {
+                if (!isUpdatePage) return;
                 cell.addEventListener('click', () => {
                   if (cell.classList.contains('is-editing')) return;
 
@@ -600,6 +619,7 @@
           </script>
           <% } %>
         </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'points') { %>

@@ -349,6 +349,12 @@ button.ghost {
   transform: translateY(-1px);
 }
 
+.button-link.active {
+  background: #d4e3fa;
+  border-color: #95b5e6;
+  color: #183e76;
+}
+
 .alert {
   border-radius: 10px;
   padding: 11px;
@@ -520,8 +526,8 @@ tbody tr:hover {
   min-width: 920px;
 }
 
-.task-table th:first-child,
-.task-table td:first-child {
+.task-table.has-bulk-select th:first-child,
+.task-table.has-bulk-select td:first-child {
   width: 42px;
   text-align: center;
 }
