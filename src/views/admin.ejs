@@ -397,7 +397,6 @@
                   <th>Konu</th>
                   <th>Ogrenci</th>
                   <th>Kategori</th>
-                  <th>Tekrar</th>
                   <th>Tarih</th>
                   <th>Islem</th>
                 </tr>
@@ -411,7 +410,6 @@
                   <td class="editable-cell" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
                   <td class="editable-cell" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
                   <td class="editable-cell" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
-                  <td><%= t.repeatText %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
