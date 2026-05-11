@@ -310,6 +310,31 @@
             </div>
           </form>
         </section>
+
+        <section class="panel">
+          <h3>Herhangi Bir Haftayi Kopyala</h3>
+          <form method="post" action="/admin/tasks/copy-week" class="grid two">
+            <input type="hidden" name="next" value="<%= tasksPagePath %>" />
+            <div class="stack">
+              <label>Kaynak Hafta (bu haftadan kopyala)</label>
+              <input type="date" name="sourceWeekStart" value="<%= weeklyRuleWeekStart %>" required />
+
+              <label>Hedef Hafta (bu haftaya kopyala)</label>
+              <input type="date" name="targetWeekStart" value="<%= weeklyRuleNextWeekStart %>" required />
+            </div>
+            <div class="stack">
+              <label>Ogrenci (opsiyonel)</label>
+              <select name="studentId">
+                <option value="">Tum Ogrenciler</option>
+                <% students.forEach((s) => { %>
+                <option value="<%= s.id %>"><%= s.name %></option>
+                <% }) %>
+              </select>
+              <p class="muted">Kaynak haftadaki gorev plani, gun offset'i korunarak hedef haftaya tek seferlik gorevler olarak kopyalanir.</p>
+              <button type="submit">Haftayi Kopyala</button>
+            </div>
+          </form>
+        </section>
         <% } %>
 
         <% if (isUpdatePage || isActivePage) { %>

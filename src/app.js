@@ -1282,6 +1282,169 @@ app.post(
 );
 
 app.post(
+  '/admin/tasks/copy-week',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const sourceWeekInput = normalizeText(req.body.sourceWeekStart);
+    const targetWeekInput = normalizeText(req.body.targetWeekStart);
+    const studentId = normalizeText(req.body.studentId);
+
+    const sourceWeekStart = normalizeWeekStart(sourceWeekInput, null);
+    const targetWeekStart = normalizeWeekStart(targetWeekInput, null);
+
+    if (!sourceWeekStart || !targetWeekStart) {
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta tarihleri gecersiz.' });
+    }
+
+    if (sourceWeekStart === targetWeekStart) {
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta ayni olamaz.' });
+    }
+
+    if (studentId) {
+      const studentRes = await query(
+        `SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`,
+        [studentId]
+      );
+      if (studentRes.rowCount === 0) {
+        return adminRedirect(req, res, { error: 'Ogrenci secimi gecersiz.' });
+      }
+    }
+
+    const tasksRes = await query(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          category_id AS "categoryId",
+          student_id AS "studentId",
+          repeat_type AS "repeatType",
+          single_date AS "singleDate",
+          weekly_day AS "weeklyDay",
+          monthly_day AS "monthlyDay",
+          custom_dates AS "customDates",
+          start_date AS "startDate",
+          end_date AS "endDate",
+          is_archived AS "isArchived",
+          created_by AS "createdBy",
+          created_at AS "createdAt"
+        FROM tasks
+        WHERE is_archived = false
+          AND ($1::text = '' OR student_id = $1)
+      `,
+      [studentId]
+    );
+
+    const tasks = tasksRes.rows.map(mapTask);
+    const targetWeekEnd = shiftDate(targetWeekStart, 6);
+    const existingOnceRes = await query(
+      `
+        SELECT
+          title,
+          category_id AS "categoryId",
+          student_id AS "studentId",
+          single_date AS "singleDate"
+        FROM tasks
+        WHERE repeat_type = 'once'
+          AND is_archived = false
+          AND single_date BETWEEN $1 AND $2
+          AND ($3::text = '' OR student_id = $3)
+      `,
+      [targetWeekStart, targetWeekEnd, studentId]
+    );
+
+    const makeKey = (tStudentId, tCategoryId, tTitle, tDate) =>
+      JSON.stringify([tStudentId, tCategoryId, tTitle || '', tDate]);
+
+    const existingKeys = new Set(
+      existingOnceRes.rows.map((row) =>
+        makeKey(row.studentId, row.categoryId, row.title, toDateOnly(row.singleDate))
+      )
+    );
+
+    const planned = [];
+    for (let offset = 0; offset < 7; offset += 1) {
+      const sourceDay = shiftDate(sourceWeekStart, offset);
+      const targetDay = shiftDate(targetWeekStart, offset);
+      const sourceDateObj = new Date(`${sourceDay}T00:00:00`);
+      const dueTasks = tasks.filter((task) => isTaskDueOnDate(task, sourceDateObj, sourceDay));
+
+      dueTasks.forEach((task) => {
+        planned.push({
+          title: task.title,
+          description: task.description || '',
+          categoryId: task.categoryId,
+          studentId: task.studentId,
+          targetDay
+        });
+      });
+    }
+
+    if (!planned.length) {
+      return adminRedirect(req, res, { message: 'Kaynak haftada kopyalanacak gorev bulunamadi.' });
+    }
+
+    let insertedCount = 0;
+    let skippedCount = 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const item of planned) {
+        const key = makeKey(item.studentId, item.categoryId, item.title, item.targetDay);
+        if (existingKeys.has(key)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        await client.query(
+          `
+            INSERT INTO tasks (
+              id,
+              title,
+              description,
+              category_id,
+              student_id,
+              repeat_type,
+              single_date,
+              weekly_day,
+              monthly_day,
+              custom_dates,
+              start_date,
+              end_date,
+              is_archived,
+              created_by
+            )
+            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+          `,
+          [
+            makeId('task'),
+            item.title,
+            item.description,
+            item.categoryId,
+            item.studentId,
+            item.targetDay,
+            req.currentUser.id
+          ]
+        );
+
+        existingKeys.add(key);
+        insertedCount += 1;
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    return adminRedirect(req, res, {
+      message: `${insertedCount} gorev hedef haftaya kopyalandi. ${skippedCount} gorev zaten var oldugu icin atlandi.`
+    });
+  })
+);
+
+app.post(
   '/admin/tasks/:taskId/update',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
