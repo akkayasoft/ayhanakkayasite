@@ -73,6 +73,12 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
+function normalizeIdList(value) {
+  const values = Array.isArray(value) ? value : [value];
+  const ids = values.map((item) => normalizeText(item)).filter(Boolean);
+  return [...new Set(ids)];
+}
+
 function toDateOnly(value) {
   if (!value) return '';
   if (typeof value === 'string') return value.slice(0, 10);
@@ -302,11 +308,13 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|tasks|points|reports)$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|tasks|points|reports)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
-  return res.redirect(queryString ? `${nextPath}?${queryString}` : nextPath);
+  if (!queryString) return res.redirect(nextPath);
+  const separator = nextPath.includes('?') ? '&' : '?';
+  return res.redirect(`${nextPath}${separator}${queryString}`);
 }
 
 function mapUser(row) {
@@ -1301,6 +1309,152 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Gorev guncellendi.' });
+  })
+);
+
+app.post(
+  '/admin/tasks/bulk-update',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const taskIds = normalizeIdList(req.body.taskIds);
+    const categoryId = normalizeText(req.body.categoryId);
+    const studentId = normalizeText(req.body.studentId);
+    const repeatType = normalizeText(req.body.repeatType);
+    const singleDate = normalizeText(req.body.singleDate);
+    const weeklyDay = normalizeText(req.body.weeklyDay);
+    const monthlyDay = normalizeText(req.body.monthlyDay);
+    const customDates = normalizeText(req.body.customDates);
+    const startDate = normalizeText(req.body.startDate);
+    const endDate = normalizeText(req.body.endDate);
+    const archiveAction = normalizeText(req.body.archiveAction) || 'keep';
+
+    if (!taskIds.length) {
+      return adminRedirect(req, res, { error: 'Toplu guncelleme icin en az bir gorev secin.' });
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+    }
+
+    if (categoryId) {
+      const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+      if (categoryRes.rowCount === 0) {
+        return adminRedirect(req, res, { error: 'Kategori gecersiz.' });
+      }
+    }
+
+    if (studentId) {
+      const studentRes = await query(
+        `SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`,
+        [studentId]
+      );
+      if (studentRes.rowCount === 0) {
+        return adminRedirect(req, res, { error: 'Ogrenci gecersiz.' });
+      }
+    }
+
+    const setClauses = [];
+    const values = [];
+
+    if (categoryId) {
+      values.push(categoryId);
+      setClauses.push(`category_id = $${values.length}`);
+    }
+
+    if (studentId) {
+      values.push(studentId);
+      setClauses.push(`student_id = $${values.length}`);
+    }
+
+    if (repeatType) {
+      if (!['once', 'weekly', 'monthly', 'custom'].includes(repeatType)) {
+        return adminRedirect(req, res, {
+          error: 'Toplu guncellemede tekrar tipi olarak Tek Seferlik, Haftalik, Aylik veya Ozel secin.'
+        });
+      }
+
+      let singleDateVal = null;
+      let weeklyDayVal = null;
+      let monthlyDayVal = null;
+      let customDatesVal = [];
+
+      if (repeatType === 'once') {
+        if (!singleDate) {
+          return adminRedirect(req, res, { error: 'Tek seferlik icin tarih zorunlu.' });
+        }
+        singleDateVal = singleDate;
+      } else if (repeatType === 'weekly') {
+        if (weeklyDay === '') {
+          return adminRedirect(req, res, { error: 'Haftalik icin gun zorunlu.' });
+        }
+        weeklyDayVal = Number(weeklyDay);
+      } else if (repeatType === 'monthly') {
+        if (!monthlyDay) {
+          return adminRedirect(req, res, { error: 'Aylik icin gun zorunlu.' });
+        }
+        monthlyDayVal = Number(monthlyDay);
+      } else if (repeatType === 'custom') {
+        const parsedDates = customDates
+          .split(',')
+          .map((d) => d.trim())
+          .filter(Boolean);
+
+        if (!parsedDates.length) {
+          return adminRedirect(req, res, { error: 'Ozel tekrar icin en az bir tarih girin.' });
+        }
+        customDatesVal = parsedDates;
+      }
+
+      values.push(repeatType);
+      setClauses.push(`repeat_type = $${values.length}`);
+      values.push(singleDateVal);
+      setClauses.push(`single_date = $${values.length}`);
+      values.push(weeklyDayVal);
+      setClauses.push(`weekly_day = $${values.length}`);
+      values.push(monthlyDayVal);
+      setClauses.push(`monthly_day = $${values.length}`);
+      values.push(customDatesVal);
+      setClauses.push(`custom_dates = $${values.length}`);
+    }
+
+    if (startDate) {
+      values.push(startDate);
+      setClauses.push(`start_date = $${values.length}`);
+    }
+
+    if (endDate) {
+      values.push(endDate);
+      setClauses.push(`end_date = $${values.length}`);
+    }
+
+    if (archiveAction === 'archive' || archiveAction === 'unarchive') {
+      values.push(archiveAction === 'archive');
+      setClauses.push(`is_archived = $${values.length}`);
+    } else if (archiveAction !== 'keep') {
+      return adminRedirect(req, res, { error: 'Arsiv islemi gecersiz.' });
+    }
+
+    if (!setClauses.length) {
+      return adminRedirect(req, res, { error: 'Toplu guncelleme icin en az bir alan secin.' });
+    }
+
+    values.push(taskIds);
+    const updated = await query(
+      `
+        UPDATE tasks
+        SET ${setClauses.join(', ')}
+        WHERE id = ANY($${values.length}::text[])
+      `,
+      values
+    );
+
+    if (updated.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Secili gorevler bulunamadi.' });
+    }
+
+    return adminRedirect(req, res, {
+      message: `${updated.rowCount}/${taskIds.length} gorev toplu olarak guncellendi.`
+    });
   })
 );
 

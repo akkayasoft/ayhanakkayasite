@@ -286,6 +286,19 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(31, 75, 143, 0.14);
 }
 
+input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: var(--primary);
+  box-shadow: none;
+}
+
+input[type='checkbox']:focus {
+  box-shadow: none;
+}
+
 textarea {
   min-height: 88px;
   resize: vertical;
@@ -482,8 +495,24 @@ tbody tr:hover {
   min-width: 920px;
 }
 
+.task-table th:first-child,
+.task-table td:first-child {
+  width: 42px;
+  text-align: center;
+}
+
 .task-table td {
   vertical-align: top;
+}
+
+#bulkTaskForm {
+  margin-bottom: 12px;
+}
+
+#bulkTaskForm h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #213754;
 }
 
 .task-table-actions {
@@ -707,6 +736,10 @@ tr.day-bad {
   select,
   textarea {
     width: 100%;
+  }
+
+  input[type='checkbox'] {
+    width: 16px;
   }
 
   .row {
