@@ -238,6 +238,7 @@
         <% const tasksPagePath = activeTaskFilters.studentId ? `/admin/tasks/${taskSection}?activeTaskStudentId=${activeTaskFilters.studentId}` : `/admin/tasks/${taskSection}`; %>
         <% const isUpdatePage = taskSection === 'update'; %>
         <% const isActivePage = taskSection === 'active'; %>
+        <% const isInlineEditPage = isUpdatePage || isActivePage; %>
         <header class="content-header">
           <h2>Gorev Yonetimi</h2>
           <div class="row">
@@ -440,10 +441,10 @@
                   <% if (isUpdatePage) { %>
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
                   <% } %>
-                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
-                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
-                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
-                  <td class="<%= isUpdatePage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
@@ -461,6 +462,7 @@
           <script>
             (() => {
               const isUpdatePage = <%= isUpdatePage ? 'true' : 'false' %>;
+              const isInlineEditPage = <%= isInlineEditPage ? 'true' : 'false' %>;
               const selectAll = document.getElementById('bulkSelectAll');
               const checkboxes = Array.from(
                 document.querySelectorAll('input[name="taskIds"][form="bulkTaskForm"]')
@@ -602,7 +604,7 @@
               };
 
               editableCells.forEach((cell) => {
-                if (!isUpdatePage) return;
+                if (!isInlineEditPage) return;
                 cell.addEventListener('click', () => {
                   if (cell.classList.contains('is-editing')) return;
 
