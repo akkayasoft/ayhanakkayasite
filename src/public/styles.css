@@ -562,6 +562,47 @@ tbody tr:hover {
   width: fit-content;
 }
 
+.student-task-table {
+  min-width: 1260px;
+}
+
+.student-task-table th,
+.student-task-table td {
+  white-space: nowrap;
+}
+
+.student-task-table .single-line-cell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-task-table .task-meta {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-task-table .task-table-actions {
+  flex-wrap: nowrap;
+}
+
+.student-task-table .task-detail-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 360px;
+}
+
+.student-task-table .task-detail-form input[type='text'] {
+  width: 270px;
+  min-width: 220px;
+}
+
+.student-task-table .task-detail-form .button-link {
+  white-space: nowrap;
+}
+
 .task-edit-row > td {
   background: #f8fbff;
   padding: 0;
@@ -853,5 +894,10 @@ tr.day-bad {
 
   .task-table-actions .icon-btn {
     width: 34px;
+  }
+
+  .student-task-table .task-detail-form input[type='text'],
+  .student-task-table .task-detail-form .button-link {
+    width: auto;
   }
 }

@@ -64,7 +64,7 @@
 
           <% if (activeTasks.length) { %>
           <div class="table-wrap">
-            <table class="task-table">
+            <table class="task-table student-task-table">
               <thead>
                 <tr>
                   <th>Durum</th>
@@ -84,8 +84,8 @@
                       <%= task.todayStatus?.status === 'done' ? '✓' : task.todayStatus?.status === 'not_done' ? '✕' : '○' %>
                     </span>
                   </td>
-                  <td><strong><%= task.title %></strong></td>
-                  <td><%= task.categoryName %></td>
+                  <td class="single-line-cell"><strong><%= task.title %></strong></td>
+                  <td class="single-line-cell"><%= task.categoryName %></td>
                   <td>
                     <form method="post" action="/student/tasks/<%= task.id %>/detail" class="task-detail-form">
                       <input
@@ -99,7 +99,7 @@
                     </form>
                   </td>
                   <td class="task-meta"><%= task.scheduleText %></td>
-                  <td><%= task.description || '-' %></td>
+                  <td class="single-line-cell"><%= task.description || '-' %></td>
                   <td>
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
