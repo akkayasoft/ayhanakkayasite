@@ -129,9 +129,17 @@ function getDayName(dateStr) {
 }
 
 function todayDateString() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
+  return dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+}
+
+function dateStringInTimeZone(timeZone = 'Europe/Istanbul') {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(new Date());
 }
 
 function isDateOnly(value) {
@@ -380,6 +388,15 @@ app.use(
     return next();
   })
 );
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/admin') || req.path.startsWith('/student')) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  return next();
+});
 
 function requireAuth(req, res, next) {
   if (!req.currentUser) {
@@ -2526,13 +2543,14 @@ app.get(
 );
 
 async function getStudentViewModel(req, currentPage) {
-  const today = todayDateString();
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const todayDateObj = new Date(`${today}T00:00:00`);
   const weeklyPointWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const weeklyPointWeekEnd = shiftDate(weeklyPointWeekStart, 6);
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
   const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
-  const [tasksRes, statusesRes, detailNotesRes, todayQuestionRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, detailNotesRes, latestStatusesRes, latestDetailNotesRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2560,35 +2578,80 @@ async function getStudentViewModel(req, currentPage) {
     query(
       `
         SELECT task_id AS "taskId", student_id AS "studentId", day, status, note
-        FROM task_statuses
-        WHERE student_id = $1 AND day = $2
+        FROM (
+          SELECT
+            task_id,
+            student_id,
+            day,
+            status,
+            note,
+            ROW_NUMBER() OVER (
+              PARTITION BY task_id, student_id, day
+              ORDER BY updated_at DESC, id DESC
+            ) AS rn
+          FROM task_statuses
+          WHERE student_id = $1 AND day = $2
+        ) latest
+        WHERE rn = 1
       `,
       [req.currentUser.id, today]
     ),
     query(
       `
         SELECT task_id AS "taskId", detail
-        FROM task_detail_notes
-        WHERE student_id = $1 AND day = $2
+        FROM (
+          SELECT
+            task_id,
+            detail,
+            ROW_NUMBER() OVER (
+              PARTITION BY task_id, student_id, day
+              ORDER BY updated_at DESC, id DESC
+            ) AS rn
+          FROM task_detail_notes
+          WHERE student_id = $1 AND day = $2
+        ) latest
+        WHERE rn = 1
       `,
       [req.currentUser.id, today]
     ),
     query(
       `
-        SELECT
-          id,
-          student_id AS "studentId",
-          day,
-          category_id AS "categoryId",
-          lesson_name AS "lessonName",
-          correct_count AS "correctCount",
-          wrong_count AS "wrongCount",
-          duration_minutes AS "durationMinutes"
-        FROM daily_questions
-        WHERE student_id = $1 AND day = $2
-        LIMIT 1
+        SELECT task_id AS "taskId", day, status, note
+        FROM (
+          SELECT
+            task_id,
+            day,
+            status,
+            note,
+            ROW_NUMBER() OVER (
+              PARTITION BY task_id
+              ORDER BY day DESC, updated_at DESC, id DESC
+            ) AS rn
+          FROM task_statuses
+          WHERE student_id = $1
+        ) latest
+        WHERE rn = 1
       `,
-      [req.currentUser.id, today]
+      [req.currentUser.id]
+    ),
+    query(
+      `
+        SELECT task_id AS "taskId", day, detail
+        FROM (
+          SELECT
+            task_id,
+            day,
+            detail,
+            ROW_NUMBER() OVER (
+              PARTITION BY task_id
+              ORDER BY day DESC, updated_at DESC, id DESC
+            ) AS rn
+          FROM task_detail_notes
+          WHERE student_id = $1
+        ) latest
+        WHERE rn = 1
+      `,
+      [req.currentUser.id]
     ),
     query(
       `
@@ -2634,11 +2697,13 @@ async function getStudentViewModel(req, currentPage) {
 
   const categories = categoriesRes.rows;
   const statuses = statusesRes.rows;
-  const detailByTaskId = new Map(detailNotesRes.rows.map((row) => [row.taskId, row.detail || '']));
+  const todayDetailByTaskId = new Map(detailNotesRes.rows.map((row) => [row.taskId, row.detail || '']));
+  const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
+  const latestDetailByTaskId = new Map(latestDetailNotesRes.rows.map((row) => [row.taskId, row]));
   const allTasks = tasksRes.rows.map(mapTask);
 
   const activeTasks = allTasks
-    .filter((task) => !task.isArchived)
+    .filter((task) => !task.isArchived && isTaskDueOnDate(task, todayDateObj, today))
     .sort((a, b) => {
       const aDate = getTaskSortDate(a);
       const bDate = getTaskSortDate(b);
@@ -2647,17 +2712,27 @@ async function getStudentViewModel(req, currentPage) {
     })
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
-      const status = statuses.find((s) => s.taskId === task.id);
+      const todayStatus = statuses.find((s) => s.taskId === task.id) || null;
+      const latestStatus = latestStatusByTaskId.get(task.id) || null;
+      const displayStatus = todayStatus || latestStatus;
+      const latestDetail = latestDetailByTaskId.get(task.id);
+      const studyDetail = todayDetailByTaskId.has(task.id)
+        ? todayDetailByTaskId.get(task.id)
+        : (latestDetail?.detail || displayStatus?.note || '');
       return {
         ...task,
         categoryName: category ? category.name : 'Kategori Yok',
         scheduleText: formatTaskSchedule(task),
-        todayStatus: status || null,
-        studyDetail: detailByTaskId.has(task.id) ? detailByTaskId.get(task.id) : (status?.note || '')
+        todayStatus,
+        displayStatus,
+        displayStatusDay: displayStatus ? toDateOnly(displayStatus.day) : '',
+        displayStatusIsToday: Boolean(todayStatus),
+        studyDetail
       };
     });
 
   const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
+  const completedTasks = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done');
   const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
   const questionHistory = questionHistoryRes.rows.map((row) => ({
     ...row,
@@ -2713,8 +2788,9 @@ async function getStudentViewModel(req, currentPage) {
     today,
     categories,
     activeTasks,
+    completedTasks,
     doneCount,
-    questionEntry: todayQuestionRes.rowCount ? todayQuestionRes.rows[0] : null,
+    questionEntry: null,
     questionHistory,
     calendar,
     pointLogs,
@@ -2936,7 +3012,7 @@ app.post(
   asyncHandler(async (req, res) => {
     const { taskId } = req.params;
     const detail = normalizeText(req.body.detail);
-    const today = todayDateString();
+    const day = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
 
     const taskRes = await query(
       `SELECT id FROM tasks WHERE id = $1 AND student_id = $2 AND is_archived = false LIMIT 1`,
@@ -2954,7 +3030,7 @@ app.post(
         ON CONFLICT (task_id, student_id, day)
         DO UPDATE SET detail = EXCLUDED.detail, updated_at = NOW()
       `,
-      [makeId('detail'), taskId, req.currentUser.id, today, detail]
+      [makeId('detail'), taskId, req.currentUser.id, day, detail]
     );
 
     return res.redirect('/student/dashboard?message=Konu%20detayi%20kaydedildi.');
@@ -2968,7 +3044,7 @@ app.post(
     const { taskId } = req.params;
     const status = normalizeText(req.body.status);
     const note = normalizeText(req.body.note);
-    const today = todayDateString();
+    const day = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
 
     if (!['done', 'not_done'].includes(status)) {
       return res.redirect('/student/dashboard?error=Gecersiz%20durum.');
@@ -2990,7 +3066,17 @@ app.post(
         ON CONFLICT (task_id, student_id, day)
         DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note, updated_at = NOW()
       `,
-      [makeId('status'), taskId, req.currentUser.id, today, status, note]
+      [makeId('status'), taskId, req.currentUser.id, day, status, note]
+    );
+
+    await query(
+      `
+        INSERT INTO task_detail_notes (id, task_id, student_id, day, detail)
+        VALUES ($1,$2,$3,$4,$5)
+        ON CONFLICT (task_id, student_id, day)
+        DO UPDATE SET detail = EXCLUDED.detail, updated_at = NOW()
+      `,
+      [makeId('detail'), taskId, req.currentUser.id, day, note]
     );
 
     return res.redirect('/student/dashboard?message=Gorev%20durumu%20guncellendi.');
@@ -3003,7 +3089,7 @@ app.post(
   asyncHandler(async (req, res) => {
     const categoryId = normalizeText(req.body.categoryId);
     const lessonName = normalizeText(req.body.lessonName);
-    const day = normalizeText(req.body.day) || todayDateString();
+    const day = normalizeText(req.body.day) || dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
     const correctCount = Number(req.body.correctCount);
     const wrongCount = Number(req.body.wrongCount);
     const durationMinutes = Number(req.body.durationMinutes);
@@ -3039,20 +3125,11 @@ app.post(
           id, student_id, day, category_id, lesson_name, correct_count, wrong_count, duration_minutes, count, note
         )
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'')
-        ON CONFLICT (student_id, day)
-        DO UPDATE SET
-          category_id = EXCLUDED.category_id,
-          lesson_name = EXCLUDED.lesson_name,
-          correct_count = EXCLUDED.correct_count,
-          wrong_count = EXCLUDED.wrong_count,
-          duration_minutes = EXCLUDED.duration_minutes,
-          count = EXCLUDED.count,
-          updated_at = NOW()
       `,
       [makeId('q'), req.currentUser.id, day, categoryId, lessonName, correctCount, wrongCount, durationMinutes, correctCount + wrongCount]
     );
 
-    return res.redirect('/student/questions?message=Gunluk%20soru%20kaydi%20guncellendi.');
+    return res.redirect('/student/questions?message=Soru%20kaydi%20kaydedildi.');
   })
 );
 

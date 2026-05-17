@@ -114,10 +114,11 @@ async function initDb() {
       duration_minutes INTEGER NOT NULL DEFAULT 0 CHECK (duration_minutes >= 0),
       count INTEGER NOT NULL CHECK (count >= 0),
       note TEXT NOT NULL DEFAULT '',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (student_id, day)
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE daily_questions DROP CONSTRAINT IF EXISTS daily_questions_student_id_day_key`);
+  await query(`ALTER TABLE daily_questions DROP CONSTRAINT IF EXISTS daily_questions_student_day_category_lesson_key`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS weekly_category_rules (
