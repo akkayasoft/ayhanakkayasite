@@ -924,7 +924,76 @@ tr.day-bad {
     grid-template-columns: 1fr;
   }
 
-  .student-task-table .task-detail-form input[type='text'] {
-    width: auto;
+  .student-task-table {
+    min-width: 0;
+  }
+
+  .student-task-table thead {
+    display: none;
+  }
+
+  .student-task-table,
+  .student-task-table tbody,
+  .student-task-table tr,
+  .student-task-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .student-task-table tbody tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff !important;
+  }
+
+  .student-task-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border-bottom: 1px dashed #d8e1ef;
+    white-space: normal;
+  }
+
+  .student-task-table td:last-child {
+    border-bottom: none;
+  }
+
+  .student-task-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    min-width: 78px;
+    flex-shrink: 0;
+  }
+
+  .student-task-table .status-cell {
+    align-items: center;
+  }
+
+  .student-task-table .single-line-cell,
+  .student-task-table .task-meta {
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .student-task-table .task-table-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .student-task-table .task-table-actions form {
+    flex: 1 1 auto;
+    min-width: 76px;
+  }
+
+  .student-task-table .task-table-actions button {
+    width: 100%;
   }
 }

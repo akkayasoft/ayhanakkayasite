@@ -137,7 +137,7 @@
                   data-category="<%= (task.categoryName || '').toLowerCase() %>"
                   data-date="<%= (task.scheduleText || '').toLowerCase() %>"
                 >
-                  <td>
+                  <td data-label="Durum" class="status-cell">
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.displayStatus?.status === 'done' ? '✓' : task.displayStatus?.status === 'not_done' ? '✕' : '○' %>
                     </span>
@@ -145,11 +145,11 @@
                     <small class="muted"><%= task.displayStatusDay %></small>
                     <% } %>
                   </td>
-                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
-                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
-                  <td class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
-                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
-                  <td>
+                  <td data-label="Baslik" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
+                  <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
+                  <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
+                  <td data-label="Aciklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
+                  <td data-label="Islem">
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
