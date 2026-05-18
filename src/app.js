@@ -2562,7 +2562,7 @@ async function getStudentViewModel(req, currentPage) {
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
   const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
-  const [tasksRes, statusesRes, detailNotesRes, latestStatusesRes, latestDetailNotesRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, detailNotesRes, latestStatusesRes, latestDetailNotesRes, latestDetailHintsRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2667,6 +2667,27 @@ async function getStudentViewModel(req, currentPage) {
     ),
     query(
       `
+        SELECT title, category_id AS "categoryId", detail
+        FROM (
+          SELECT
+            t.title,
+            t.category_id,
+            n.detail,
+            ROW_NUMBER() OVER (
+              PARTITION BY t.title, t.category_id
+              ORDER BY n.day DESC, n.updated_at DESC, n.id DESC
+            ) AS rn
+          FROM task_detail_notes n
+          JOIN tasks t ON t.id = n.task_id
+          WHERE n.student_id = $1
+            AND TRIM(COALESCE(n.detail, '')) <> ''
+        ) latest
+        WHERE rn = 1
+      `,
+      [req.currentUser.id]
+    ),
+    query(
+      `
         SELECT
           dq.id,
           dq.student_id AS "studentId",
@@ -2712,6 +2733,12 @@ async function getStudentViewModel(req, currentPage) {
   const todayDetailByTaskId = new Map(detailNotesRes.rows.map((row) => [row.taskId, row.detail || '']));
   const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
   const latestDetailByTaskId = new Map(latestDetailNotesRes.rows.map((row) => [row.taskId, row]));
+  const detailHintByTaskKey = new Map(
+    latestDetailHintsRes.rows.map((row) => [
+      `${String(row.title || '').trim().toLowerCase()}::${String(row.categoryId || '').trim()}`,
+      row.detail || ''
+    ])
+  );
   const allTasks = tasksRes.rows.map(mapTask);
 
   const activeTasks = allTasks
@@ -2728,9 +2755,11 @@ async function getStudentViewModel(req, currentPage) {
       const latestStatus = latestStatusByTaskId.get(task.id) || null;
       const displayStatus = todayStatus || latestStatus;
       const latestDetail = latestDetailByTaskId.get(task.id);
+      const detailHintKey = `${String(task.title || '').trim().toLowerCase()}::${String(task.categoryId || '').trim()}`;
+      const crossTaskDetailHint = detailHintByTaskKey.get(detailHintKey) || '';
       const studyDetail = todayDetailByTaskId.has(task.id)
         ? todayDetailByTaskId.get(task.id)
-        : (latestDetail?.detail || displayStatus?.note || '');
+        : (latestDetail?.detail || crossTaskDetailHint || displayStatus?.note || '');
       return {
         ...task,
         categoryName: category ? category.name : 'Kategori Yok',
