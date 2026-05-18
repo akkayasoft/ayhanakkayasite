@@ -42,6 +42,37 @@
           <p class="muted"><%= today %></p>
         </header>
 
+        <section class="panel">
+          <h3>Gunluk Gorev Ekle</h3>
+          <form method="post" action="/student/tasks" class="grid two">
+            <input type="hidden" name="next" value="/student/dashboard" />
+            <div class="stack">
+              <label>Gorev Basligi</label>
+              <input type="text" name="title" required />
+            </div>
+            <div class="stack">
+              <label>Kategori</label>
+              <select name="categoryId" required>
+                <option value="">Kategori Sec</option>
+                <% categories.forEach((c) => { %>
+                <option value="<%= c.id %>"><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="stack">
+              <label>Tarih</label>
+              <input type="date" name="singleDate" value="<%= today %>" required />
+            </div>
+            <div class="stack">
+              <label>Aciklama</label>
+              <input type="text" name="description" maxlength="200" placeholder="Istege bagli aciklama" />
+            </div>
+            <div>
+              <button type="submit">Gorev Ekle</button>
+            </div>
+          </form>
+        </section>
+
         <section class="kpi-grid">
           <article class="kpi"><p class="kpi-label">Toplam Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
           <article class="kpi"><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= doneCount %></p></article>

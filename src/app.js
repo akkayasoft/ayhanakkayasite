@@ -325,6 +325,18 @@ function adminRedirect(req, res, queryParams) {
   return res.redirect(`${nextPath}${separator}${queryString}`);
 }
 
+function studentRedirect(req, res, queryParams) {
+  const params = new URLSearchParams(queryParams);
+  const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
+  const nextPath = /^\/student\/(dashboard|questions|points|calendar)(\?.*)?$/.test(requestedNext)
+    ? requestedNext
+    : '/student/dashboard';
+  const queryString = params.toString();
+  if (!queryString) return res.redirect(nextPath);
+  const separator = nextPath.includes('?') ? '&' : '?';
+  return res.redirect(`${nextPath}${separator}${queryString}`);
+}
+
 function mapUser(row) {
   return {
     id: row.id,
@@ -3003,6 +3015,63 @@ app.get(
 
     await workbook.xlsx.write(res);
     return res.end();
+  })
+);
+
+app.post(
+  '/student/tasks',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const title = normalizeText(req.body.title);
+    const description = normalizeText(req.body.description);
+    const categoryId = normalizeText(req.body.categoryId);
+    const singleDate = normalizeText(req.body.singleDate) || dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+
+    if (!title || !categoryId) {
+      return studentRedirect(req, res, { error: 'Gorev basligi ve kategori zorunlu.' });
+    }
+
+    if (!isDateOnly(singleDate)) {
+      return studentRedirect(req, res, { error: 'Gorev tarihi gecersiz.' });
+    }
+
+    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+    if (categoryRes.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
+    }
+
+    await query(
+      `
+        INSERT INTO tasks (
+          id,
+          title,
+          description,
+          category_id,
+          student_id,
+          repeat_type,
+          single_date,
+          weekly_day,
+          monthly_day,
+          custom_dates,
+          start_date,
+          end_date,
+          is_archived,
+          created_by
+        )
+        VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+      `,
+      [
+        makeId('task'),
+        title,
+        description,
+        categoryId,
+        req.currentUser.id,
+        singleDate,
+        req.currentUser.id
+      ]
+    );
+
+    return studentRedirect(req, res, { message: 'Gunluk gorev eklendi.' });
   })
 );
 
