@@ -2701,7 +2701,6 @@ async function getStudentViewModel(req, currentPage) {
     });
 
   const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
-  const completedTasks = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done');
   const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
   const questionHistory = questionHistoryRes.rows.map((row) => ({
     ...row,
@@ -2757,7 +2756,6 @@ async function getStudentViewModel(req, currentPage) {
     today,
     categories,
     activeTasks,
-    completedTasks,
     doneCount,
     questionEntry: null,
     questionHistory,
