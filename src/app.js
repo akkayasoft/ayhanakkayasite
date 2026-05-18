@@ -3050,6 +3050,66 @@ app.post(
 );
 
 app.post(
+  '/student/tasks/:taskId/cell-update',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const field = normalizeText(req.body.field);
+    const value = normalizeText(req.body.value);
+
+    const taskRes = await query(
+      `
+        SELECT id
+        FROM tasks
+        WHERE id = $1
+          AND student_id = $2
+          AND created_by = $2
+          AND repeat_type = 'once'
+          AND is_archived = false
+        LIMIT 1
+      `,
+      [taskId, req.currentUser.id]
+    );
+
+    if (taskRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Bu gorev guncellenemez.' });
+    }
+
+    if (field === 'title') {
+      if (!value) {
+        return res.status(400).json({ ok: false, error: 'Baslik bos olamaz.' });
+      }
+      await query(`UPDATE tasks SET title = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: value });
+    }
+
+    if (field === 'description') {
+      await query(`UPDATE tasks SET description = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: value || '-' });
+    }
+
+    if (field === 'categoryId') {
+      const categoryRes = await query(`SELECT id, name FROM categories WHERE id = $1 LIMIT 1`, [value]);
+      if (categoryRes.rowCount === 0) {
+        return res.status(400).json({ ok: false, error: 'Kategori gecersiz.' });
+      }
+      await query(`UPDATE tasks SET category_id = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: categoryRes.rows[0].name });
+    }
+
+    if (field === 'singleDate') {
+      if (!isDateOnly(value)) {
+        return res.status(400).json({ ok: false, error: 'Tarih formati gecersiz.' });
+      }
+      await query(`UPDATE tasks SET single_date = $1 WHERE id = $2`, [value, taskId]);
+      return res.json({ ok: true, value, display: value });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
+  })
+);
+
+app.post(
   '/student/tasks/:taskId/update',
   requireRole('student'),
   asyncHandler(async (req, res) => {

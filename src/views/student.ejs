@@ -212,7 +212,7 @@
           <% } %>
           <% if (studentManagedTasks.length) { %>
           <div class="table-wrap">
-            <table>
+            <table class="task-table" id="studentManagedTasksTable">
               <thead>
                 <tr>
                   <th>Baslik</th>
@@ -224,29 +224,13 @@
               </thead>
               <tbody>
                 <% studentManagedTasks.forEach((task) => { %>
-                <tr>
-                  <td>
-                    <input type="text" form="editTask_<%= task.id %>" name="title" value="<%= task.title %>" required />
-                  </td>
-                  <td>
-                    <select form="editTask_<%= task.id %>" name="categoryId" required>
-                      <% categories.forEach((c) => { %>
-                      <option value="<%= c.id %>" <%= c.id === task.categoryId ? 'selected' : '' %>><%= c.name %></option>
-                      <% }) %>
-                    </select>
-                  </td>
-                  <td>
-                    <input type="date" form="editTask_<%= task.id %>" name="singleDate" value="<%= task.singleDate || today %>" required />
-                  </td>
-                  <td>
-                    <input type="text" form="editTask_<%= task.id %>" name="description" value="<%= task.description || '' %>" maxlength="200" />
-                  </td>
+                <tr class="student-managed-row" data-task-id="<%= task.id %>">
+                  <td class="editable-cell" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
+                  <td class="editable-cell" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName || 'Kategori Yok' %></td>
+                  <td class="editable-cell" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.singleDate || today %></td>
+                  <td class="editable-cell" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td>
                     <div class="task-table-actions">
-                      <form id="editTask_<%= task.id %>" method="post" action="/student/tasks/<%= task.id %>/update">
-                        <input type="hidden" name="next" value="/student/dashboard" />
-                        <button type="submit">Kaydet</button>
-                      </form>
                       <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
                         <input type="hidden" name="next" value="/student/dashboard" />
                         <button type="submit" class="danger">Sil</button>
@@ -258,6 +242,126 @@
               </tbody>
             </table>
           </div>
+          <script>
+            (() => {
+              const cells = Array.from(document.querySelectorAll('.student-managed-row .editable-cell'));
+              const categoryOptions = <%- JSON.stringify(categories.map((c) => ({ value: c.id, label: c.name }))) %>;
+              if (!cells.length) return;
+
+              const escapeHtml = (value) =>
+                String(value || '')
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+
+              const finishEdit = (cell, originalMarkup) => {
+                cell.classList.remove('is-editing');
+                if (originalMarkup != null) {
+                  cell.innerHTML = originalMarkup;
+                }
+              };
+
+              const saveCell = async (cell, newValue, originalMarkup) => {
+                if (cell.classList.contains('is-saving')) return;
+                const row = cell.closest('.student-managed-row');
+                if (!row) return;
+                const taskId = row.getAttribute('data-task-id');
+                const field = cell.getAttribute('data-field');
+                const previousValue = cell.getAttribute('data-value') || '';
+                const normalized = String(newValue || '').trim();
+
+                if (normalized === previousValue) {
+                  finishEdit(cell, originalMarkup);
+                  return;
+                }
+
+                cell.classList.add('is-saving');
+                try {
+                  const body = new URLSearchParams({ field, value: normalized });
+                  const response = await fetch(`/student/tasks/${taskId}/cell-update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.ok) {
+                    throw new Error(data.error || 'Kayit basarisiz.');
+                  }
+
+                  cell.setAttribute('data-value', data.value || '');
+                  if (field === 'title') {
+                    cell.innerHTML = `<strong>${escapeHtml(data.display)}</strong>`;
+                  } else {
+                    cell.textContent = data.display || '-';
+                  }
+                } catch (err) {
+                  alert(err.message || 'Kayit basarisiz.');
+                  finishEdit(cell, originalMarkup);
+                } finally {
+                  cell.classList.remove('is-saving');
+                  cell.classList.remove('is-editing');
+                }
+              };
+
+              cells.forEach((cell) => {
+                cell.addEventListener('click', () => {
+                  if (cell.classList.contains('is-editing')) return;
+
+                  const field = cell.getAttribute('data-field');
+                  const currentValue = cell.getAttribute('data-value') || '';
+                  const originalMarkup = cell.innerHTML;
+                  cell.classList.add('is-editing');
+
+                  if (field === 'categoryId') {
+                    const select = document.createElement('select');
+                    select.className = 'cell-editor';
+                    categoryOptions.forEach((item) => {
+                      const option = document.createElement('option');
+                      option.value = item.value;
+                      option.textContent = item.label;
+                      if (item.value === currentValue) option.selected = true;
+                      select.appendChild(option);
+                    });
+                    cell.innerHTML = '';
+                    cell.appendChild(select);
+                    select.focus();
+                    select.addEventListener('change', () => {
+                      saveCell(cell, select.value, originalMarkup);
+                    });
+                    select.addEventListener('blur', () => {
+                      if (!cell.classList.contains('is-saving')) {
+                        finishEdit(cell, originalMarkup);
+                      }
+                    });
+                    return;
+                  }
+
+                  const input = document.createElement('input');
+                  input.className = 'cell-editor';
+                  input.value = currentValue;
+                  input.type = field === 'singleDate' ? 'date' : 'text';
+                  cell.innerHTML = '';
+                  cell.appendChild(input);
+                  input.focus();
+                  if (field !== 'singleDate') input.select();
+
+                  const commit = () => saveCell(cell, input.value, originalMarkup);
+                  input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      commit();
+                    }
+                    if (event.key === 'Escape') {
+                      finishEdit(cell, originalMarkup);
+                    }
+                  });
+                  input.addEventListener('blur', commit);
+                });
+              });
+            })();
+          </script>
           <% } %>
         </section>
 
