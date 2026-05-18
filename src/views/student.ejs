@@ -132,6 +132,7 @@
                 <% activeTasks.forEach((task) => { %>
                 <tr
                   class="student-task-row <%= task.displayStatus?.status === 'done' ? 'task-row-success' : task.displayStatus?.status === 'not_done' ? 'task-row-error' : '' %>"
+                  data-task-id="<%= task.id %>"
                   data-title="<%= (task.title || '').toLowerCase() %>"
                   data-category="<%= (task.categoryName || '').toLowerCase() %>"
                   data-date="<%= (task.scheduleText || '').toLowerCase() %>"
@@ -144,10 +145,10 @@
                     <small class="muted"><%= task.displayStatusDay %></small>
                     <% } %>
                   </td>
-                  <td class="single-line-cell"><strong><%= task.title %></strong></td>
-                  <td class="single-line-cell"><%= task.categoryName %></td>
-                  <td class="task-meta"><%= task.scheduleText %></td>
-                  <td class="single-line-cell"><%= task.description || '-' %></td>
+                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
+                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
+                  <td class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
+                  <td class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td>
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
@@ -179,6 +180,8 @@
               const categoryInput = document.getElementById('studentTaskCategoryFilter');
               const dateInput = document.getElementById('studentTaskDateFilter');
               const rows = Array.from(document.querySelectorAll('.student-task-row'));
+              const editableCells = Array.from(document.querySelectorAll('.student-task-row .editable-cell'));
+              const categoryOptions = <%- JSON.stringify(categories.map((c) => ({ value: c.id, label: c.name }))) %>;
               if (!rows.length) return;
 
               const applyFilters = () => {
@@ -200,53 +203,6 @@
               if (titleInput) titleInput.addEventListener('input', applyFilters);
               if (categoryInput) categoryInput.addEventListener('change', applyFilters);
               if (dateInput) dateInput.addEventListener('input', applyFilters);
-            })();
-          </script>
-          <% } %>
-        </section>
-
-        <section class="panel">
-          <h3>Ekledigim Gorevleri Duzenle / Sil</h3>
-          <% if (!studentManagedTasks.length) { %>
-          <p class="muted">Duzenleyebilecegin gorev bulunmuyor.</p>
-          <% } %>
-          <% if (studentManagedTasks.length) { %>
-          <div class="table-wrap">
-            <table class="task-table" id="studentManagedTasksTable">
-              <thead>
-                <tr>
-                  <th>Baslik</th>
-                  <th>Kategori</th>
-                  <th>Tarih</th>
-                  <th>Aciklama</th>
-                  <th>Islem</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% studentManagedTasks.forEach((task) => { %>
-                <tr class="student-managed-row" data-task-id="<%= task.id %>">
-                  <td class="editable-cell" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
-                  <td class="editable-cell" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName || 'Kategori Yok' %></td>
-                  <td class="editable-cell" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.singleDate || today %></td>
-                  <td class="editable-cell" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
-                  <td>
-                    <div class="task-table-actions">
-                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
-                        <input type="hidden" name="next" value="/student/dashboard" />
-                        <button type="submit" class="danger">Sil</button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
-          <script>
-            (() => {
-              const cells = Array.from(document.querySelectorAll('.student-managed-row .editable-cell'));
-              const categoryOptions = <%- JSON.stringify(categories.map((c) => ({ value: c.id, label: c.name }))) %>;
-              if (!cells.length) return;
 
               const escapeHtml = (value) =>
                 String(value || '')
@@ -255,6 +211,15 @@
                   .replace(/>/g, '&gt;')
                   .replace(/"/g, '&quot;')
                   .replace(/'/g, '&#39;');
+
+              const refreshRowSearch = (row) => {
+                const title = row.querySelector('[data-field="title"]')?.textContent || '';
+                const category = row.querySelector('[data-field="categoryId"]')?.textContent || '';
+                const date = row.querySelector('[data-field="singleDate"]')?.textContent || '';
+                row.setAttribute('data-title', title.toLowerCase());
+                row.setAttribute('data-category', category.toLowerCase());
+                row.setAttribute('data-date', date.toLowerCase());
+              };
 
               const finishEdit = (cell, originalMarkup) => {
                 cell.classList.remove('is-editing');
@@ -265,7 +230,7 @@
 
               const saveCell = async (cell, newValue, originalMarkup) => {
                 if (cell.classList.contains('is-saving')) return;
-                const row = cell.closest('.student-managed-row');
+                const row = cell.closest('.student-task-row');
                 if (!row) return;
                 const taskId = row.getAttribute('data-task-id');
                 const field = cell.getAttribute('data-field');
@@ -296,6 +261,14 @@
                   } else {
                     cell.textContent = data.display || '-';
                   }
+                  if (field === 'description') {
+                    const noteInputs = Array.from(row.querySelectorAll('input[name="note"]'));
+                    noteInputs.forEach((input) => {
+                      input.value = data.value || '';
+                    });
+                  }
+                  refreshRowSearch(row);
+                  applyFilters();
                 } catch (err) {
                   alert(err.message || 'Kayit basarisiz.');
                   finishEdit(cell, originalMarkup);
@@ -305,7 +278,7 @@
                 }
               };
 
-              cells.forEach((cell) => {
+              editableCells.forEach((cell) => {
                 cell.addEventListener('click', () => {
                   if (cell.classList.contains('is-editing')) return;
 
@@ -327,9 +300,7 @@
                     cell.innerHTML = '';
                     cell.appendChild(select);
                     select.focus();
-                    select.addEventListener('change', () => {
-                      saveCell(cell, select.value, originalMarkup);
-                    });
+                    select.addEventListener('change', () => saveCell(cell, select.value, originalMarkup));
                     select.addEventListener('blur', () => {
                       if (!cell.classList.contains('is-saving')) {
                         finishEdit(cell, originalMarkup);

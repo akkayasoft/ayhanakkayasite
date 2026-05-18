@@ -2700,22 +2700,6 @@ async function getStudentViewModel(req, currentPage) {
       };
     });
 
-  const studentManagedTasks = allTasks
-    .filter((task) => !task.isArchived && task.createdBy === req.currentUser.id && task.repeatType === 'once')
-    .sort((a, b) => {
-      const aDate = getTaskSortDate(a);
-      const bDate = getTaskSortDate(b);
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
-    })
-    .map((task) => {
-      const category = categories.find((c) => c.id === task.categoryId);
-      return {
-        ...task,
-        categoryName: category ? category.name : 'Kategori Yok'
-      };
-    });
-
   const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
   const completedTasks = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done');
   const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
@@ -2774,7 +2758,6 @@ async function getStudentViewModel(req, currentPage) {
     categories,
     activeTasks,
     completedTasks,
-    studentManagedTasks,
     doneCount,
     questionEntry: null,
     questionHistory,
