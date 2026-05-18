@@ -2562,7 +2562,7 @@ async function getStudentViewModel(req, currentPage) {
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
   const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
-  const [tasksRes, statusesRes, detailNotesRes, latestStatusesRes, latestDetailNotesRes, latestDetailHintsRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, latestStatusesRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2610,24 +2610,6 @@ async function getStudentViewModel(req, currentPage) {
     ),
     query(
       `
-        SELECT task_id AS "taskId", detail
-        FROM (
-          SELECT
-            task_id,
-            detail,
-            ROW_NUMBER() OVER (
-              PARTITION BY task_id, student_id, day
-              ORDER BY updated_at DESC, id DESC
-            ) AS rn
-          FROM task_detail_notes
-          WHERE student_id = $1 AND day = $2
-        ) latest
-        WHERE rn = 1
-      `,
-      [req.currentUser.id, today]
-    ),
-    query(
-      `
         SELECT task_id AS "taskId", day, status, note
         FROM (
           SELECT
@@ -2641,46 +2623,6 @@ async function getStudentViewModel(req, currentPage) {
             ) AS rn
           FROM task_statuses
           WHERE student_id = $1
-        ) latest
-        WHERE rn = 1
-      `,
-      [req.currentUser.id]
-    ),
-    query(
-      `
-        SELECT task_id AS "taskId", day, detail
-        FROM (
-          SELECT
-            task_id,
-            day,
-            detail,
-            ROW_NUMBER() OVER (
-              PARTITION BY task_id
-              ORDER BY day DESC, updated_at DESC, id DESC
-            ) AS rn
-          FROM task_detail_notes
-          WHERE student_id = $1
-        ) latest
-        WHERE rn = 1
-      `,
-      [req.currentUser.id]
-    ),
-    query(
-      `
-        SELECT title, category_id AS "categoryId", detail
-        FROM (
-          SELECT
-            t.title,
-            t.category_id,
-            n.detail,
-            ROW_NUMBER() OVER (
-              PARTITION BY t.title, t.category_id
-              ORDER BY n.day DESC, n.updated_at DESC, n.id DESC
-            ) AS rn
-          FROM task_detail_notes n
-          JOIN tasks t ON t.id = n.task_id
-          WHERE n.student_id = $1
-            AND TRIM(COALESCE(n.detail, '')) <> ''
         ) latest
         WHERE rn = 1
       `,
@@ -2730,15 +2672,7 @@ async function getStudentViewModel(req, currentPage) {
 
   const categories = categoriesRes.rows;
   const statuses = statusesRes.rows;
-  const todayDetailByTaskId = new Map(detailNotesRes.rows.map((row) => [row.taskId, row.detail || '']));
   const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
-  const latestDetailByTaskId = new Map(latestDetailNotesRes.rows.map((row) => [row.taskId, row]));
-  const detailHintByTaskKey = new Map(
-    latestDetailHintsRes.rows.map((row) => [
-      `${String(row.title || '').trim().toLowerCase()}::${String(row.categoryId || '').trim()}`,
-      row.detail || ''
-    ])
-  );
   const allTasks = tasksRes.rows.map(mapTask);
 
   const activeTasks = allTasks
@@ -2754,12 +2688,6 @@ async function getStudentViewModel(req, currentPage) {
       const todayStatus = statuses.find((s) => s.taskId === task.id) || null;
       const latestStatus = latestStatusByTaskId.get(task.id) || null;
       const displayStatus = todayStatus || latestStatus;
-      const latestDetail = latestDetailByTaskId.get(task.id);
-      const detailHintKey = `${String(task.title || '').trim().toLowerCase()}::${String(task.categoryId || '').trim()}`;
-      const crossTaskDetailHint = detailHintByTaskKey.get(detailHintKey) || '';
-      const studyDetail = todayDetailByTaskId.has(task.id)
-        ? todayDetailByTaskId.get(task.id)
-        : (latestDetail?.detail || crossTaskDetailHint || displayStatus?.note || '');
       return {
         ...task,
         categoryName: category ? category.name : 'Kategori Yok',
@@ -2768,7 +2696,23 @@ async function getStudentViewModel(req, currentPage) {
         displayStatus,
         displayStatusDay: displayStatus ? toDateOnly(displayStatus.day) : '',
         displayStatusIsToday: Boolean(todayStatus),
-        studyDetail
+        canManage: task.createdBy === req.currentUser.id && task.repeatType === 'once'
+      };
+    });
+
+  const studentManagedTasks = allTasks
+    .filter((task) => !task.isArchived && task.createdBy === req.currentUser.id && task.repeatType === 'once')
+    .sort((a, b) => {
+      const aDate = getTaskSortDate(a);
+      const bDate = getTaskSortDate(b);
+      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+    })
+    .map((task) => {
+      const category = categories.find((c) => c.id === task.categoryId);
+      return {
+        ...task,
+        categoryName: category ? category.name : 'Kategori Yok'
       };
     });
 
@@ -2830,6 +2774,7 @@ async function getStudentViewModel(req, currentPage) {
     categories,
     activeTasks,
     completedTasks,
+    studentManagedTasks,
     doneCount,
     questionEntry: null,
     questionHistory,
@@ -3105,33 +3050,80 @@ app.post(
 );
 
 app.post(
-  '/student/tasks/:taskId/detail',
+  '/student/tasks/:taskId/update',
   requireRole('student'),
   asyncHandler(async (req, res) => {
     const { taskId } = req.params;
-    const detail = normalizeText(req.body.detail);
-    const day = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const title = normalizeText(req.body.title);
+    const description = normalizeText(req.body.description);
+    const categoryId = normalizeText(req.body.categoryId);
+    const singleDate = normalizeText(req.body.singleDate);
 
-    const taskRes = await query(
-      `SELECT id FROM tasks WHERE id = $1 AND student_id = $2 AND is_archived = false LIMIT 1`,
-      [taskId, req.currentUser.id]
-    );
+    if (!title || !categoryId || !isDateOnly(singleDate)) {
+      return studentRedirect(req, res, { error: 'Gorev guncelleme alanlari gecersiz.' });
+    }
+
+    const [taskRes, categoryRes] = await Promise.all([
+      query(
+        `
+          SELECT id
+          FROM tasks
+          WHERE id = $1
+            AND student_id = $2
+            AND created_by = $2
+            AND repeat_type = 'once'
+            AND is_archived = false
+          LIMIT 1
+        `,
+        [taskId, req.currentUser.id]
+      ),
+      query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
+    ]);
 
     if (taskRes.rowCount === 0) {
-      return res.redirect('/student/dashboard?error=Gorev%20bulunamadi.');
+      return studentRedirect(req, res, { error: 'Bu gorev guncellenemez.' });
+    }
+
+    if (categoryRes.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
     }
 
     await query(
       `
-        INSERT INTO task_detail_notes (id, task_id, student_id, day, detail)
-        VALUES ($1,$2,$3,$4,$5)
-        ON CONFLICT (task_id, student_id, day)
-        DO UPDATE SET detail = EXCLUDED.detail, updated_at = NOW()
+        UPDATE tasks
+        SET title = $1, description = $2, category_id = $3, single_date = $4
+        WHERE id = $5
       `,
-      [makeId('detail'), taskId, req.currentUser.id, day, detail]
+      [title, description, categoryId, singleDate, taskId]
     );
 
-    return res.redirect('/student/dashboard?message=Konu%20detayi%20kaydedildi.');
+    return studentRedirect(req, res, { message: 'Gorev guncellendi.' });
+  })
+);
+
+app.post(
+  '/student/tasks/:taskId/delete',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+
+    const deleted = await query(
+      `
+        DELETE FROM tasks
+        WHERE id = $1
+          AND student_id = $2
+          AND created_by = $2
+          AND repeat_type = 'once'
+          AND is_archived = false
+      `,
+      [taskId, req.currentUser.id]
+    );
+
+    if (deleted.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Bu gorev silinemedi.' });
+    }
+
+    return studentRedirect(req, res, { message: 'Gorev silindi.' });
   })
 );
 
@@ -3165,16 +3157,6 @@ app.post(
         DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note, updated_at = NOW()
       `,
       [makeId('status'), taskId, req.currentUser.id, day, status, note]
-    );
-
-    await query(
-      `
-        INSERT INTO task_detail_notes (id, task_id, student_id, day, detail)
-        VALUES ($1,$2,$3,$4,$5)
-        ON CONFLICT (task_id, student_id, day)
-        DO UPDATE SET detail = EXCLUDED.detail, updated_at = NOW()
-      `,
-      [makeId('detail'), taskId, req.currentUser.id, day, note]
     );
 
     return res.redirect('/student/dashboard?message=Gorev%20durumu%20guncellendi.');

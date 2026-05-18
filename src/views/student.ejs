@@ -123,7 +123,6 @@
                   <th>Durum</th>
                   <th>Baslik</th>
                   <th>Kategori</th>
-                  <th>Konu Detayi</th>
                   <th>Tarih</th>
                   <th>Aciklama</th>
                   <th>Islem</th>
@@ -147,31 +146,26 @@
                   </td>
                   <td class="single-line-cell"><strong><%= task.title %></strong></td>
                   <td class="single-line-cell"><%= task.categoryName %></td>
-                  <td>
-                    <form method="post" action="/student/tasks/<%= task.id %>/detail" class="task-detail-form">
-                      <input
-                        type="text"
-                        name="detail"
-                        value="<%= task.studyDetail || '' %>"
-                        placeholder="Bugun calistigin alt konu / not (Enter ile kaydet)"
-                        maxlength="300"
-                      />
-                    </form>
-                  </td>
                   <td class="task-meta"><%= task.scheduleText %></td>
                   <td class="single-line-cell"><%= task.description || '-' %></td>
                   <td>
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
-                        <input type="hidden" class="status-note-input" name="note" value="<%= task.studyDetail || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
+                        <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
                         <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
                       </form>
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="not_done" />
-                        <input type="hidden" class="status-note-input" name="note" value="<%= task.studyDetail || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
+                        <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
                         <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
                       </form>
+                      <% if (task.canManage) { %>
+                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
+                        <input type="hidden" name="next" value="/student/dashboard" />
+                        <button type="submit" class="icon-btn bad" title="Sil" aria-label="Sil">Sil</button>
+                      </form>
+                      <% } %>
                     </div>
                   </td>
                 </tr>
@@ -206,23 +200,64 @@
               if (titleInput) titleInput.addEventListener('input', applyFilters);
               if (categoryInput) categoryInput.addEventListener('change', applyFilters);
               if (dateInput) dateInput.addEventListener('input', applyFilters);
-
-              rows.forEach((row) => {
-                const detailInput = row.querySelector('input[name="detail"]');
-                const noteInputs = Array.from(row.querySelectorAll('.status-note-input'));
-                if (!detailInput || !noteInputs.length) return;
-
-                const syncNote = () => {
-                  noteInputs.forEach((noteInput) => {
-                    noteInput.value = detailInput.value;
-                  });
-                };
-
-                detailInput.addEventListener('input', syncNote);
-                syncNote();
-              });
             })();
           </script>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Ekledigim Gorevleri Duzenle / Sil</h3>
+          <% if (!studentManagedTasks.length) { %>
+          <p class="muted">Duzenleyebilecegin gorev bulunmuyor.</p>
+          <% } %>
+          <% if (studentManagedTasks.length) { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Baslik</th>
+                  <th>Kategori</th>
+                  <th>Tarih</th>
+                  <th>Aciklama</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% studentManagedTasks.forEach((task) => { %>
+                <tr>
+                  <td>
+                    <input type="text" form="editTask_<%= task.id %>" name="title" value="<%= task.title %>" required />
+                  </td>
+                  <td>
+                    <select form="editTask_<%= task.id %>" name="categoryId" required>
+                      <% categories.forEach((c) => { %>
+                      <option value="<%= c.id %>" <%= c.id === task.categoryId ? 'selected' : '' %>><%= c.name %></option>
+                      <% }) %>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="date" form="editTask_<%= task.id %>" name="singleDate" value="<%= task.singleDate || today %>" required />
+                  </td>
+                  <td>
+                    <input type="text" form="editTask_<%= task.id %>" name="description" value="<%= task.description || '' %>" maxlength="200" />
+                  </td>
+                  <td>
+                    <div class="task-table-actions">
+                      <form id="editTask_<%= task.id %>" method="post" action="/student/tasks/<%= task.id %>/update">
+                        <input type="hidden" name="next" value="/student/dashboard" />
+                        <button type="submit">Kaydet</button>
+                      </form>
+                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
+                        <input type="hidden" name="next" value="/student/dashboard" />
+                        <button type="submit" class="danger">Sil</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
           <% } %>
         </section>
 
@@ -238,7 +273,7 @@
                 <tr>
                   <th>Baslik</th>
                   <th>Kategori</th>
-                  <th>Konu Detayi</th>
+                  <th>Aciklama</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,7 +281,7 @@
                 <tr>
                   <td><strong><%= task.title %></strong></td>
                   <td><%= task.categoryName %></td>
-                  <td><%= task.studyDetail || '-' %></td>
+                  <td><%= task.description || '-' %></td>
                 </tr>
                 <% }) %>
               </tbody>
