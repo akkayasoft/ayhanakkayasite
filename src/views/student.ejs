@@ -205,17 +205,29 @@
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
                         <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
-                        <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">✓</button>
+                        <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                          </svg>
+                        </button>
                       </form>
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="not_done" />
                         <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
-                        <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">✕</button>
+                        <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+                          </svg>
+                        </button>
                       </form>
                       <% if (task.canManage) { %>
                       <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
                         <input type="hidden" name="next" value="/student/dashboard" />
-                        <button type="submit" class="icon-btn bad" title="Sil" aria-label="Sil">Sil</button>
+                        <button type="submit" class="icon-btn danger" title="Sil" aria-label="Sil">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M4 7h16M9 7V5h6v2m-8 0l1 12h8l1-12M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                          </svg>
+                        </button>
                       </form>
                       <% } %>
                     </div>
