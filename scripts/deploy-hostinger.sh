@@ -44,6 +44,7 @@ git checkout "$HOSTINGER_BRANCH"
 echo "[remote] pull..."
 git pull --ff-only origin "$HOSTINGER_BRANCH"
 echo "[remote] install dependencies..."
+rm -rf node_modules
 npm ci --omit=dev || npm install --omit=dev
 echo "[remote] restart..."
 eval "$HOSTINGER_RESTART_COMMAND"
