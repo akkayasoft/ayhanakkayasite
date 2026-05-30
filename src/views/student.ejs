@@ -44,15 +44,15 @@
 
         <section class="panel">
           <h3>Gunluk Gorev Ekle</h3>
-          <form method="post" action="/student/tasks" class="grid two">
+          <form id="studentTaskCreateForm" method="post" action="/student/tasks" class="grid two">
             <input type="hidden" name="next" value="/student/dashboard" />
             <div class="stack">
               <label>Gorev Basligi</label>
-              <input type="text" name="title" required />
+              <input type="text" name="title" minlength="2" maxlength="120" autocomplete="off" required />
             </div>
             <div class="stack">
               <label>Kategori</label>
-              <select name="categoryId" required>
+              <select id="studentTaskCategorySelect" name="categoryId" required>
                 <option value="">Kategori Sec</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>"><%= c.name %></option>
@@ -61,17 +61,68 @@
             </div>
             <div class="stack">
               <label>Tarih</label>
-              <input type="date" name="singleDate" value="<%= today %>" required />
+              <input id="studentTaskDateInput" type="date" name="singleDate" value="<%= today %>" required />
+              <div class="quick-date-row">
+                <button type="button" class="quick-date-btn" data-offset-days="0">Bugun</button>
+                <button type="button" class="quick-date-btn" data-offset-days="1">Yarin</button>
+                <button type="button" class="quick-date-btn" data-offset-days="7">+7 Gun</button>
+              </div>
             </div>
             <div class="stack">
               <label>Aciklama</label>
-              <input type="text" name="description" maxlength="200" placeholder="Istege bagli aciklama" />
+              <input type="text" name="description" maxlength="300" placeholder="Yaptiklarini kisaca yazabilirsin" />
             </div>
             <div>
-              <button type="submit">Gorev Ekle</button>
+              <button type="submit" data-default-label="Gorev Ekle">Gorev Ekle</button>
+              <p class="muted form-helper">Ayni gun, ayni kategori ve ayni baslikta cift kayit engellenir.</p>
             </div>
           </form>
         </section>
+        <script>
+          (() => {
+            const form = document.getElementById('studentTaskCreateForm');
+            if (!form) return;
+            const categorySelect = document.getElementById('studentTaskCategorySelect');
+            const dateInput = document.getElementById('studentTaskDateInput');
+            const quickDateButtons = Array.from(form.querySelectorAll('.quick-date-btn'));
+            const submitButton = form.querySelector('button[type="submit"]');
+            const categoryStorageKey = `student:lastTaskCategory:<%= user.id %>`;
+
+            if (categorySelect) {
+              const savedCategory = localStorage.getItem(categoryStorageKey);
+              if (savedCategory) {
+                const optionExists = Array.from(categorySelect.options).some((opt) => opt.value === savedCategory);
+                if (optionExists) categorySelect.value = savedCategory;
+              }
+              categorySelect.addEventListener('change', () => {
+                if (categorySelect.value) {
+                  localStorage.setItem(categoryStorageKey, categorySelect.value);
+                }
+              });
+            }
+
+            const dateStringByOffset = (offsetDays) => {
+              const date = new Date();
+              date.setDate(date.getDate() + offsetDays);
+              const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+              return local.toISOString().slice(0, 10);
+            };
+
+            quickDateButtons.forEach((button) => {
+              button.addEventListener('click', () => {
+                if (!dateInput) return;
+                const offset = Number(button.getAttribute('data-offset-days') || '0');
+                dateInput.value = dateStringByOffset(offset);
+              });
+            });
+
+            form.addEventListener('submit', () => {
+              if (!submitButton) return;
+              submitButton.disabled = true;
+              submitButton.textContent = 'Kaydediliyor...';
+            });
+          })();
+        </script>
 
         <section class="kpi-grid">
           <article class="kpi"><p class="kpi-label">Toplam Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>

@@ -806,6 +806,26 @@ tbody tr:hover {
   color: #445974;
 }
 
+.quick-date-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-date-btn {
+  background: #edf3fb;
+  color: #29466f;
+  border: 1px solid #bfd0e8;
+  box-shadow: none;
+  padding: 7px 10px;
+  font-size: 0.83rem;
+}
+
+.form-helper {
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+
 .dot {
   width: 11px;
   height: 11px;
@@ -995,5 +1015,10 @@ tr.day-bad {
 
   .student-task-table .task-table-actions button {
     width: 100%;
+  }
+
+  .quick-date-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

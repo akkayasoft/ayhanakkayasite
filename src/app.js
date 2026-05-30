@@ -73,6 +73,22 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
+function validateTaskTitle(value) {
+  const title = normalizeText(value);
+  if (!title) return { ok: false, error: 'Gorev basligi zorunlu.' };
+  if (title.length < 2) return { ok: false, error: 'Gorev basligi en az 2 karakter olmali.' };
+  if (title.length > 120) return { ok: false, error: 'Gorev basligi en fazla 120 karakter olabilir.' };
+  return { ok: true, value: title };
+}
+
+function validateTaskDescription(value) {
+  const description = normalizeText(value);
+  if (description.length > 300) {
+    return { ok: false, error: 'Aciklama en fazla 300 karakter olabilir.' };
+  }
+  return { ok: true, value: description };
+}
+
 function normalizeIdList(value) {
   const values = Array.isArray(value) ? value : [value];
   const ids = values.map((item) => normalizeText(item)).filter(Boolean);
@@ -2977,13 +2993,21 @@ app.post(
   '/student/tasks',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const title = normalizeText(req.body.title);
-    const description = normalizeText(req.body.description);
+    const titleValidation = validateTaskTitle(req.body.title);
+    if (!titleValidation.ok) {
+      return studentRedirect(req, res, { error: titleValidation.error });
+    }
+    const descriptionValidation = validateTaskDescription(req.body.description);
+    if (!descriptionValidation.ok) {
+      return studentRedirect(req, res, { error: descriptionValidation.error });
+    }
+    const title = titleValidation.value;
+    const description = descriptionValidation.value;
     const categoryId = normalizeText(req.body.categoryId);
     const singleDate = normalizeText(req.body.singleDate) || dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
 
-    if (!title || !categoryId) {
-      return studentRedirect(req, res, { error: 'Gorev basligi ve kategori zorunlu.' });
+    if (!categoryId) {
+      return studentRedirect(req, res, { error: 'Kategori zorunlu.' });
     }
 
     if (!isDateOnly(singleDate)) {
@@ -2993,6 +3017,24 @@ app.post(
     const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
     if (categoryRes.rowCount === 0) {
       return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
+    }
+
+    const duplicateTaskRes = await query(
+      `
+        SELECT id
+        FROM tasks
+        WHERE student_id = $1
+          AND category_id = $2
+          AND title = $3
+          AND repeat_type = 'once'
+          AND single_date = $4
+          AND is_archived = false
+        LIMIT 1
+      `,
+      [req.currentUser.id, categoryId, title, singleDate]
+    );
+    if (duplicateTaskRes.rowCount > 0) {
+      return studentRedirect(req, res, { error: 'Ayni gun icin ayni baslikta gorev zaten mevcut.' });
     }
 
     await query(
@@ -3057,16 +3099,21 @@ app.post(
     }
 
     if (field === 'title') {
-      if (!value) {
-        return res.status(400).json({ ok: false, error: 'Baslik bos olamaz.' });
+      const titleValidation = validateTaskTitle(value);
+      if (!titleValidation.ok) {
+        return res.status(400).json({ ok: false, error: titleValidation.error });
       }
-      await query(`UPDATE tasks SET title = $1 WHERE id = $2`, [value, taskId]);
-      return res.json({ ok: true, value, display: value });
+      await query(`UPDATE tasks SET title = $1 WHERE id = $2`, [titleValidation.value, taskId]);
+      return res.json({ ok: true, value: titleValidation.value, display: titleValidation.value });
     }
 
     if (field === 'description') {
-      await query(`UPDATE tasks SET description = $1 WHERE id = $2`, [value, taskId]);
-      return res.json({ ok: true, value, display: value || '-' });
+      const descriptionValidation = validateTaskDescription(value);
+      if (!descriptionValidation.ok) {
+        return res.status(400).json({ ok: false, error: descriptionValidation.error });
+      }
+      await query(`UPDATE tasks SET description = $1 WHERE id = $2`, [descriptionValidation.value, taskId]);
+      return res.json({ ok: true, value: descriptionValidation.value, display: descriptionValidation.value || '-' });
     }
 
     if (field === 'categoryId') {
@@ -3095,12 +3142,20 @@ app.post(
   requireRole('student'),
   asyncHandler(async (req, res) => {
     const { taskId } = req.params;
-    const title = normalizeText(req.body.title);
-    const description = normalizeText(req.body.description);
+    const titleValidation = validateTaskTitle(req.body.title);
+    if (!titleValidation.ok) {
+      return studentRedirect(req, res, { error: titleValidation.error });
+    }
+    const descriptionValidation = validateTaskDescription(req.body.description);
+    if (!descriptionValidation.ok) {
+      return studentRedirect(req, res, { error: descriptionValidation.error });
+    }
+    const title = titleValidation.value;
+    const description = descriptionValidation.value;
     const categoryId = normalizeText(req.body.categoryId);
     const singleDate = normalizeText(req.body.singleDate);
 
-    if (!title || !categoryId || !isDateOnly(singleDate)) {
+    if (!categoryId || !isDateOnly(singleDate)) {
       return studentRedirect(req, res, { error: 'Gorev guncelleme alanlari gecersiz.' });
     }
 
@@ -3251,6 +3306,18 @@ app.post(
     );
 
     return res.redirect('/student/questions?message=Soru%20kaydi%20kaydedildi.');
+  })
+);
+
+app.get(
+  '/healthz',
+  asyncHandler(async (_req, res) => {
+    await query('SELECT 1');
+    return res.json({
+      ok: true,
+      service: 'ogrenci-takip-app',
+      time: new Date().toISOString()
+    });
   })
 );
 
