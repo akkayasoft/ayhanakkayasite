@@ -239,13 +239,13 @@
         <% const isUpdatePage = taskSection === 'update'; %>
         <% const isActivePage = taskSection === 'active'; %>
         <% const isInlineEditPage = isUpdatePage || isActivePage; %>
-        <% const activeTaskExportPath = activeTaskFilters.studentId ? `/admin/tasks/export-active?activeTaskStudentId=${activeTaskFilters.studentId}` : '/admin/tasks/export-active'; %>
+        <% const allTaskExportPath = activeTaskFilters.studentId ? `/admin/tasks/export-active?activeTaskStudentId=${activeTaskFilters.studentId}` : '/admin/tasks/export-active'; %>
         <header class="content-header">
           <h2>Gorev Yonetimi</h2>
           <div class="row">
             <a href="/admin/tasks/create" class="button-link <%= taskSection === 'create' ? 'active' : '' %>">Gorev Olustur</a>
             <a href="/admin/tasks/update" class="button-link <%= taskSection === 'update' ? 'active' : '' %>">Gorev Guncelle</a>
-            <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Aktif Gorevler</a>
+            <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Tum Gorevler</a>
           </div>
         </header>
 
@@ -356,7 +356,7 @@
               <a class="button-link" href="/admin/tasks/<%= taskSection %>">Temizle</a>
               <% } %>
               <% if (isActivePage) { %>
-              <a class="button-link" href="<%= activeTaskExportPath %>">Excel Indir</a>
+              <a class="button-link" href="<%= allTaskExportPath %>">Excel Indir</a>
               <% } %>
             </form>
             <div class="datatable-filter-row">
@@ -384,10 +384,10 @@
             </div>
           </div>
 
-          <% if (!activeTasks.length) { %>
-          <p class="muted">Aktif gorev yok.</p>
+          <% if (!taskTableTasks.length) { %>
+          <p class="muted">Gorev yok.</p>
           <% } %>
-          <% if (activeTasks.length) { %>
+          <% if (taskTableTasks.length) { %>
           <% if (isUpdatePage) { %>
           <form id="bulkTaskForm" method="post" action="/admin/tasks/bulk-update" class="grid two">
             <input type="hidden" name="next" value="<%= tasksPagePath %>" />
@@ -468,7 +468,7 @@
                 </tr>
               </thead>
               <tbody>
-                <% activeTasks.forEach((t) => { %>
+                <% taskTableTasks.forEach((t) => { %>
                 <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
                 <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>" data-title="<%= (t.title || '').toLowerCase() %>" data-category="<%= (t.category ? t.category.name : '').toLowerCase() %>" data-date="<%= (t.dateText || '').toLowerCase() %>">
                   <% if (isUpdatePage) { %>

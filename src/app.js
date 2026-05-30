@@ -643,12 +643,12 @@ async function getAdminViewModel(req, currentPage) {
         estimatedTime: ''
       };
 
-  const sortedActiveTasks = tasks
-    .filter((t) => !t.isArchived)
-    .sort(compareTasksBySchedule);
-  const activeTasks = activeTaskStudentId
-    ? sortedActiveTasks.filter((t) => t.studentId === activeTaskStudentId)
-    : sortedActiveTasks;
+  const sortedAllTasks = [...tasks].sort(compareTasksBySchedule);
+  const taskTableTasks = activeTaskStudentId
+    ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
+    : sortedAllTasks;
+  const activeTasks = sortedAllTasks.filter((t) => !t.isArchived);
+  const archivedTasks = sortedAllTasks.filter((t) => t.isArchived);
 
     const [todayStatusesRes, todayQuestionsRes] = await Promise.all([
     query(
@@ -867,7 +867,8 @@ async function getAdminViewModel(req, currentPage) {
     categories,
     tasks,
     activeTasks,
-    archivedTasks: tasks.filter((t) => t.isArchived),
+    archivedTasks,
+    taskTableTasks,
     taskForm,
     activeTaskFilters: {
       studentId: activeTaskStudentId
@@ -931,13 +932,13 @@ app.get(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const viewModel = await getAdminViewModel(req, 'tasks-active');
-    const tasks = viewModel.activeTasks || [];
+    const tasks = viewModel.taskTableTasks || [];
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Ogrenci Takip';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet('Aktif Gorevler');
+    const sheet = workbook.addWorksheet('Tum Gorevler');
     sheet.columns = [
       { header: 'Baslik', key: 'title', width: 32 },
       { header: 'Konu', key: 'description', width: 42 },
@@ -969,7 +970,7 @@ app.get(
       row.alignment = { vertical: 'top', wrapText: true };
     });
 
-    const fileName = `aktif-gorevler-${todayDateString()}.xlsx`;
+    const fileName = `tum-gorevler-${todayDateString()}.xlsx`;
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
