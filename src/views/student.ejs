@@ -60,6 +60,13 @@
               </select>
             </div>
             <div class="stack">
+              <label>Plan Tipi</label>
+              <select id="studentTaskPlanningMode" name="planningMode" required>
+                <option value="single">Tek Gun</option>
+                <option value="multi_daily">Toplu Gunluk Plan</option>
+              </select>
+            </div>
+            <div id="studentTaskSingleDateFields" class="stack">
               <label>Tarih</label>
               <input id="studentTaskDateInput" type="date" name="singleDate" value="<%= today %>" required />
               <div class="quick-date-row">
@@ -68,13 +75,19 @@
                 <button type="button" class="quick-date-btn" data-offset-days="7">+7 Gun</button>
               </div>
             </div>
+            <div id="studentTaskRangeFields" class="stack form-block-hidden">
+              <label>Baslangic Tarihi</label>
+              <input id="studentTaskRangeStartInput" type="date" name="rangeStartDate" value="<%= today %>" />
+              <label>Kac Gun Surecek?</label>
+              <input id="studentTaskRangeDayCountInput" type="number" name="rangeDayCount" min="1" max="180" value="30" />
+            </div>
             <div class="stack">
               <label>Aciklama</label>
               <input type="text" name="description" maxlength="300" placeholder="Yaptiklarini kisaca yazabilirsin" />
             </div>
             <div>
               <button type="submit" data-default-label="Gorev Ekle">Gorev Ekle</button>
-              <p class="muted form-helper">Ayni gun, ayni kategori ve ayni baslikta cift kayit engellenir.</p>
+              <p class="muted form-helper">Ayni gun, ayni kategori ve ayni baslikta cift kayit engellenir. Toplu planda mevcut gunler atlanir.</p>
             </div>
           </form>
         </section>
@@ -83,7 +96,12 @@
             const form = document.getElementById('studentTaskCreateForm');
             if (!form) return;
             const categorySelect = document.getElementById('studentTaskCategorySelect');
+            const planningModeSelect = document.getElementById('studentTaskPlanningMode');
             const dateInput = document.getElementById('studentTaskDateInput');
+            const singleDateFields = document.getElementById('studentTaskSingleDateFields');
+            const rangeFields = document.getElementById('studentTaskRangeFields');
+            const rangeStartInput = document.getElementById('studentTaskRangeStartInput');
+            const rangeDayCountInput = document.getElementById('studentTaskRangeDayCountInput');
             const quickDateButtons = Array.from(form.querySelectorAll('.quick-date-btn'));
             const submitButton = form.querySelector('button[type="submit"]');
             const categoryStorageKey = `student:lastTaskCategory:<%= user.id %>`;
@@ -113,8 +131,34 @@
                 if (!dateInput) return;
                 const offset = Number(button.getAttribute('data-offset-days') || '0');
                 dateInput.value = dateStringByOffset(offset);
+                if (rangeStartInput && !rangeStartInput.value) {
+                  rangeStartInput.value = dateInput.value;
+                }
               });
             });
+
+            const updatePlanningModeUI = () => {
+              const isMulti = planningModeSelect && planningModeSelect.value === 'multi_daily';
+              if (singleDateFields) singleDateFields.classList.toggle('form-block-hidden', Boolean(isMulti));
+              if (rangeFields) rangeFields.classList.toggle('form-block-hidden', !isMulti);
+
+              if (dateInput) dateInput.required = !isMulti;
+              if (rangeStartInput) rangeStartInput.required = Boolean(isMulti);
+              if (rangeDayCountInput) rangeDayCountInput.required = Boolean(isMulti);
+
+              quickDateButtons.forEach((button) => {
+                button.disabled = Boolean(isMulti);
+              });
+
+              if (submitButton) {
+                submitButton.textContent = isMulti ? 'Toplu Gorev Olustur' : 'Gorev Ekle';
+              }
+            };
+
+            if (planningModeSelect) {
+              planningModeSelect.addEventListener('change', updatePlanningModeUI);
+            }
+            updatePlanningModeUI();
 
             form.addEventListener('submit', () => {
               if (!submitButton) return;

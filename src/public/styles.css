@@ -934,6 +934,17 @@ tbody tr:hover {
   font-size: 0.82rem;
 }
 
+.form-block-hidden {
+  display: none !important;
+}
+
+.quick-date-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .dot {
   width: 11px;
   height: 11px;

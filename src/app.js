@@ -3004,14 +3004,30 @@ app.post(
     const title = titleValidation.value;
     const description = descriptionValidation.value;
     const categoryId = normalizeText(req.body.categoryId);
+    const planningMode = normalizeText(req.body.planningMode) || 'single';
     const singleDate = normalizeText(req.body.singleDate) || dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const rangeStartDate = normalizeText(req.body.rangeStartDate) || singleDate;
+    const rangeDayCount = Number(req.body.rangeDayCount);
 
     if (!categoryId) {
       return studentRedirect(req, res, { error: 'Kategori zorunlu.' });
     }
 
-    if (!isDateOnly(singleDate)) {
+    if (!['single', 'multi_daily'].includes(planningMode)) {
+      return studentRedirect(req, res, { error: 'Plan tipi gecersiz.' });
+    }
+
+    if (planningMode === 'single' && !isDateOnly(singleDate)) {
       return studentRedirect(req, res, { error: 'Gorev tarihi gecersiz.' });
+    }
+
+    if (planningMode === 'multi_daily') {
+      if (!isDateOnly(rangeStartDate)) {
+        return studentRedirect(req, res, { error: 'Baslangic tarihi gecersiz.' });
+      }
+      if (!Number.isInteger(rangeDayCount) || rangeDayCount < 1 || rangeDayCount > 180) {
+        return studentRedirect(req, res, { error: 'Gun sayisi 1 ile 180 arasinda olmali.' });
+      }
     }
 
     const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
@@ -3019,56 +3035,133 @@ app.post(
       return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
     }
 
-    const duplicateTaskRes = await query(
+    if (planningMode === 'single') {
+      const duplicateTaskRes = await query(
+        `
+          SELECT id
+          FROM tasks
+          WHERE student_id = $1
+            AND category_id = $2
+            AND title = $3
+            AND repeat_type = 'once'
+            AND single_date = $4
+            AND is_archived = false
+          LIMIT 1
+        `,
+        [req.currentUser.id, categoryId, title, singleDate]
+      );
+      if (duplicateTaskRes.rowCount > 0) {
+        return studentRedirect(req, res, { error: 'Ayni gun icin ayni baslikta gorev zaten mevcut.' });
+      }
+
+      await query(
+        `
+          INSERT INTO tasks (
+            id,
+            title,
+            description,
+            category_id,
+            student_id,
+            repeat_type,
+            single_date,
+            weekly_day,
+            monthly_day,
+            custom_dates,
+            start_date,
+            end_date,
+            is_archived,
+            created_by
+          )
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+        `,
+        [
+          makeId('task'),
+          title,
+          description,
+          categoryId,
+          req.currentUser.id,
+          singleDate,
+          req.currentUser.id
+        ]
+      );
+
+      return studentRedirect(req, res, { message: 'Gunluk gorev eklendi.' });
+    }
+
+    const rangeEndDate = shiftDate(rangeStartDate, rangeDayCount - 1);
+    const dayList = getDateRangeInclusive(rangeStartDate, rangeEndDate, 200);
+    if (!dayList || !dayList.length) {
+      return studentRedirect(req, res, { error: 'Toplu plan tarih araligi gecersiz.' });
+    }
+
+    const existingRes = await query(
       `
-        SELECT id
+        SELECT single_date::text AS day
         FROM tasks
         WHERE student_id = $1
           AND category_id = $2
           AND title = $3
           AND repeat_type = 'once'
-          AND single_date = $4
           AND is_archived = false
-        LIMIT 1
+          AND single_date BETWEEN $4 AND $5
       `,
-      [req.currentUser.id, categoryId, title, singleDate]
+      [req.currentUser.id, categoryId, title, rangeStartDate, rangeEndDate]
     );
-    if (duplicateTaskRes.rowCount > 0) {
-      return studentRedirect(req, res, { error: 'Ayni gun icin ayni baslikta gorev zaten mevcut.' });
+    const existingDays = new Set(existingRes.rows.map((row) => row.day));
+    const daysToInsert = dayList.filter((day) => !existingDays.has(day));
+
+    if (!daysToInsert.length) {
+      return studentRedirect(req, res, { error: 'Secilen araliktaki gorevlerin tamami zaten mevcut.' });
     }
 
-    await query(
-      `
-        INSERT INTO tasks (
-          id,
-          title,
-          description,
-          category_id,
-          student_id,
-          repeat_type,
-          single_date,
-          weekly_day,
-          monthly_day,
-          custom_dates,
-          start_date,
-          end_date,
-          is_archived,
-          created_by
-        )
-        VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
-      `,
-      [
-        makeId('task'),
-        title,
-        description,
-        categoryId,
-        req.currentUser.id,
-        singleDate,
-        req.currentUser.id
-      ]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const day of daysToInsert) {
+        await client.query(
+          `
+            INSERT INTO tasks (
+              id,
+              title,
+              description,
+              category_id,
+              student_id,
+              repeat_type,
+              single_date,
+              weekly_day,
+              monthly_day,
+              custom_dates,
+              start_date,
+              end_date,
+              is_archived,
+              created_by
+            )
+            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+          `,
+          [
+            makeId('task'),
+            title,
+            description,
+            categoryId,
+            req.currentUser.id,
+            day,
+            req.currentUser.id
+          ]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
 
-    return studentRedirect(req, res, { message: 'Gunluk gorev eklendi.' });
+    const skippedCount = dayList.length - daysToInsert.length;
+    const infoText = skippedCount > 0
+      ? `${daysToInsert.length} adet gorev eklendi, ${skippedCount} adet mevcut oldugu icin atlandi.`
+      : `${daysToInsert.length} adet gorev eklendi.`;
+    return studentRedirect(req, res, { message: infoText });
   })
 );
 
