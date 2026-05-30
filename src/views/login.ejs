@@ -7,27 +7,42 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="container narrow">
-      <section class="login-hero">
+    <main class="login-shell">
+      <section class="login-brand-panel">
         <span class="hero-tag">Gorev ve Performans Takibi</span>
         <h1 class="brand-title">Ogrenci Takip Sistemi</h1>
-        <p class="muted brand-subtitle">Admin ve ogrenci paneli ile gunluk gorev, puan ve soru takibini tek noktadan yonetin.</p>
+        <p class="muted brand-subtitle">
+          Ogrencilerin gunluk gorev, soru, sure ve puan takibini tek bir panelde
+          yonetin.
+        </p>
+        <ul class="login-feature-list">
+          <li>Haftalik takvim ve gorev ilerleme gorunumu</li>
+          <li>Odul-ceza puanlama ve raporlama akisi</li>
+          <li>Mobil uyumlu, hizli gorev giris deneyimi</li>
+        </ul>
       </section>
 
-      <% if (error) { %>
-      <div class="alert error"><%= error %></div>
-      <% } %>
+      <section class="login-auth-panel">
+        <h2>Hesabina Giris Yap</h2>
+        <p class="muted">Rolune gore paneline guvenli sekilde yonlendirilirsin.</p>
 
-      <form method="post" action="/login" class="card stack login-form">
-        <label>Kullanici Adi</label>
-        <input type="text" name="username" required />
+        <% if (error) { %>
+        <div class="alert error"><%= error %></div>
+        <% } %>
 
-        <label>Sifre</label>
-        <input type="password" name="password" required />
+        <form method="post" action="/login" class="stack login-form">
+          <label>Kullanici Adi</label>
+          <input type="text" name="username" autocomplete="username" required />
 
-        <button type="submit">Giris Yap</button>
-        <p class="muted login-footnote">Giris sonrasinda rolunuze gore panelinize yonlendirilirsiniz.</p>
-      </form>
+          <label>Sifre</label>
+          <input type="password" name="password" autocomplete="current-password" required />
+
+          <button type="submit">Giris Yap</button>
+          <p class="muted login-footnote">
+            Guvenli oturum acilir. Cikis yaptiginda oturum sonlandirilir.
+          </p>
+        </form>
+      </section>
     </main>
   </body>
 </html>

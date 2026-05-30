@@ -137,6 +137,90 @@ p {
   margin-bottom: 14px;
 }
 
+.login-shell {
+  min-height: 100vh;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 44px 16px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.login-brand-panel {
+  background: linear-gradient(165deg, #17365f 0%, #234f8f 100%);
+  color: #eaf1fb;
+  border-radius: 18px;
+  padding: 28px;
+  border: 1px solid #315f9c;
+  box-shadow: 0 16px 34px rgba(16, 44, 84, 0.24);
+}
+
+.login-brand-panel .hero-tag {
+  color: #d5e4fb;
+  border-color: rgba(213, 228, 251, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.login-brand-panel .brand-title {
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.login-brand-panel .brand-subtitle {
+  color: #cfdef3;
+}
+
+.login-feature-list {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.login-feature-list li {
+  position: relative;
+  padding-left: 18px;
+  line-height: 1.4;
+}
+
+.login-feature-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8fc0ff;
+}
+
+.login-auth-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.login-auth-panel h2 {
+  margin-bottom: 6px;
+}
+
+.login-auth-panel .login-form {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.login-auth-panel .login-form:hover {
+  box-shadow: none;
+  transform: none;
+}
+
 .brand-title {
   font-size: clamp(1.7rem, 3vw, 2.2rem);
   margin-bottom: 8px;
@@ -863,6 +947,10 @@ tr.day-bad {
 }
 
 @media (max-width: 1080px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+  }
+
   .shell {
     grid-template-columns: 1fr;
   }
@@ -903,6 +991,17 @@ tr.day-bad {
 }
 
 @media (max-width: 640px) {
+  .login-shell {
+    padding: 16px 12px 24px;
+    gap: 12px;
+  }
+
+  .login-brand-panel,
+  .login-auth-panel {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
   .content {
     padding: 14px;
   }
