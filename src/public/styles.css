@@ -1321,3 +1321,126 @@ tbody tr:hover {
     border-bottom: 1px solid #5465d3;
   }
 }
+
+/* Responsive Hardening */
+@media (max-width: 900px) {
+  .content {
+    padding: 18px;
+  }
+
+  .content-header .row {
+    gap: 8px;
+  }
+
+  .content-header .row .button-link {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .datatable-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .datatable-search {
+    min-width: 0;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table {
+    min-width: 620px;
+  }
+
+  .task-table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+
+  .sidebar-title {
+    font-size: 1.08rem;
+  }
+
+  .menu {
+    gap: 6px;
+  }
+
+  .menu-link {
+    padding: 9px 10px;
+    font-size: 0.9rem;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel,
+  .card,
+  .login-form,
+  .login-auth-panel,
+  .login-brand-panel {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .row.center {
+    align-items: stretch;
+  }
+
+  .row.center > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .task-table-actions {
+    width: 100%;
+  }
+
+  .task-table-actions form {
+    flex: 1 1 auto;
+  }
+
+  .task-table-actions button:not(.icon-btn) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 12px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .brand-title {
+    font-size: 1.45rem;
+  }
+
+  .content-header h2 {
+    font-size: 1.22rem;
+  }
+
+  .content-header .row .button-link {
+    width: 100%;
+  }
+
+  .table-wrap table {
+    min-width: 520px;
+  }
+
+  .datatable-filter-row {
+    gap: 8px;
+  }
+}
