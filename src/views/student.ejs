@@ -82,6 +82,10 @@
               <input id="studentTaskRangeDayCountInput" type="number" name="rangeDayCount" min="1" max="180" value="30" />
             </div>
             <div class="stack">
+              <label>Tahmini Saat</label>
+              <input type="time" name="estimatedTime" />
+            </div>
+            <div class="stack">
               <label>Aciklama</label>
               <input type="text" name="description" maxlength="300" placeholder="Yaptiklarini kisaca yazabilirsin" />
             </div>
@@ -219,6 +223,7 @@
                   <th>Baslik</th>
                   <th>Kategori</th>
                   <th>Tarih</th>
+                  <th>Saat</th>
                   <th>Aciklama</th>
                   <th>Islem</th>
                 </tr>
@@ -243,6 +248,7 @@
                   <td data-label="Baslik" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
                   <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
+                  <td data-label="Saat" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
                   <td data-label="Aciklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td data-label="Islem">
                     <div class="task-table-actions">
@@ -419,11 +425,11 @@
                   const input = document.createElement('input');
                   input.className = 'cell-editor';
                   input.value = currentValue;
-                  input.type = field === 'singleDate' ? 'date' : 'text';
+                  input.type = field === 'singleDate' ? 'date' : field === 'estimatedTime' ? 'time' : 'text';
                   cell.innerHTML = '';
                   cell.appendChild(input);
                   input.focus();
-                  if (field !== 'singleDate') input.select();
+                  if (field !== 'singleDate' && field !== 'estimatedTime') input.select();
 
                   const commit = () => saveCell(cell, input.value, originalMarkup);
                   input.addEventListener('keydown', (event) => {

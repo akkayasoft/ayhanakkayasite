@@ -65,11 +65,13 @@ async function initDb() {
       custom_dates TEXT[] NOT NULL DEFAULT '{}',
       start_date DATE NULL,
       end_date DATE NULL,
+      estimated_time TIME NULL,
       is_archived BOOLEAN NOT NULL DEFAULT FALSE,
       created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_time TIME`);
   await query(`ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_repeat_type_check`);
   await query(`
     ALTER TABLE tasks

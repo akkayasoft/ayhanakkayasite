@@ -291,6 +291,9 @@
               <label>Tek Seferlik Tarih</label>
               <input type="date" name="singleDate" />
 
+              <label>Tahmini Saat</label>
+              <input type="time" name="estimatedTime" />
+
               <label>Haftalik Gun (0-6)</label>
               <input type="number" min="0" max="6" name="weeklyDay" />
 
@@ -459,6 +462,7 @@
                   <th>Konu</th>
                   <th>Ogrenci</th>
                   <th>Kategori</th>
+                  <th>Saat</th>
                   <th>Tarih</th>
                   <th>Islem</th>
                 </tr>
@@ -474,6 +478,7 @@
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= t.estimatedTime || '' %>"><%= t.estimatedTime || '-' %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
@@ -569,7 +574,7 @@
                 const desc = row.querySelector('[data-field="description"]')?.textContent || '';
                 const student = row.querySelector('[data-field="studentId"]')?.textContent || '';
                 const category = row.querySelector('[data-field="categoryId"]')?.textContent || '';
-                const date = row.querySelector('td:nth-child(<%= isUpdatePage ? 6 : 5 %>)')?.textContent || '';
+                const date = row.querySelector('td:nth-child(<%= isUpdatePage ? 7 : 6 %>)')?.textContent || '';
                 row.setAttribute('data-search', `${title} ${desc} ${student} ${category}`.toLowerCase());
                 row.setAttribute('data-title', title.toLowerCase());
                 row.setAttribute('data-category', category.toLowerCase());
@@ -670,13 +675,13 @@
                   }
 
                   const input = document.createElement('input');
-                  input.type = 'text';
+                  input.type = field === 'estimatedTime' ? 'time' : 'text';
                   input.className = 'cell-editor';
                   input.value = currentValue;
                   cell.innerHTML = '';
                   cell.appendChild(input);
                   input.focus();
-                  input.select();
+                  if (field !== 'estimatedTime') input.select();
 
                   const commit = () => saveCell(cell, input.value, currentDisplay, originalMarkup);
                   input.addEventListener('keydown', (event) => {

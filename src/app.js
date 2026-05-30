@@ -162,6 +162,23 @@ function isDateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function normalizeEstimatedTimeForStorage(value) {
+  const timeValue = normalizeText(value);
+  if (!timeValue) return { ok: true, value: null };
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) {
+    return { ok: false, error: 'Tahmini saat HH:MM formatinda olmali.' };
+  }
+  return { ok: true, value: timeValue };
+}
+
+function normalizeEstimatedTimeForDisplay(value) {
+  if (!value) return '';
+  const timeValue = normalizeText(value);
+  const match = timeValue.match(/^(\d{2}):(\d{2})/);
+  if (!match) return '';
+  return `${match[1]}:${match[2]}`;
+}
+
 function normalizeWeekStart(value, fallbackDate = null) {
   if (isDateOnly(value)) return startOfWeek(value);
   if (fallbackDate && isDateOnly(fallbackDate)) return startOfWeek(fallbackDate);
@@ -211,6 +228,7 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
               custom_dates AS "customDates",
               start_date AS "startDate",
               end_date AS "endDate",
+              estimated_time AS "estimatedTime",
               is_archived AS "isArchived",
               created_by AS "createdBy",
               created_at AS "createdAt"
@@ -315,6 +333,22 @@ function getTaskSortDate(task) {
   return '9999-12-31';
 }
 
+function getTaskSortTime(task) {
+  return normalizeEstimatedTimeForDisplay(task.estimatedTime) || '99:99';
+}
+
+function compareTasksBySchedule(a, b) {
+  const aDate = getTaskSortDate(a);
+  const bDate = getTaskSortDate(b);
+  if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+  const aTime = getTaskSortTime(a);
+  const bTime = getTaskSortTime(b);
+  if (aTime !== bTime) return aTime.localeCompare(bTime);
+
+  return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+}
+
 function isTaskDueOnDate(task, dateObj, dateStr) {
   if (task.isArchived) return false;
   if (task.startDate && dateStr < task.startDate) return false;
@@ -378,6 +412,7 @@ function mapTask(row) {
     customDates: row.customDates || [],
     startDate: toDateOnly(row.startDate) || null,
     endDate: toDateOnly(row.endDate) || null,
+    estimatedTime: normalizeEstimatedTimeForDisplay(row.estimatedTime),
     isArchived: row.isArchived,
     createdBy: row.createdBy,
     createdAt: row.createdAt
@@ -517,6 +552,7 @@ async function getAdminViewModel(req, currentPage) {
         custom_dates AS "customDates",
         start_date AS "startDate",
         end_date AS "endDate",
+        estimated_time AS "estimatedTime",
         is_archived AS "isArchived",
         created_by AS "createdBy",
         created_at AS "createdAt"
@@ -586,7 +622,8 @@ async function getAdminViewModel(req, currentPage) {
         monthlyDay: editingTask.monthlyDay ?? '',
         customDates: Array.isArray(editingTask.customDates) ? editingTask.customDates.join(',') : '',
         startDate: editingTask.startDate || '',
-        endDate: editingTask.endDate || ''
+        endDate: editingTask.endDate || '',
+        estimatedTime: editingTask.estimatedTime || ''
       }
     : {
         isEdit: false,
@@ -602,17 +639,13 @@ async function getAdminViewModel(req, currentPage) {
         monthlyDay: '',
         customDates: '',
         startDate: '',
-        endDate: ''
+        endDate: '',
+        estimatedTime: ''
       };
 
   const sortedActiveTasks = tasks
     .filter((t) => !t.isArchived)
-    .sort((a, b) => {
-      const aDate = getTaskSortDate(a);
-      const bDate = getTaskSortDate(b);
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
-    });
+    .sort(compareTasksBySchedule);
   const activeTasks = activeTaskStudentId
     ? sortedActiveTasks.filter((t) => t.studentId === activeTaskStudentId)
     : sortedActiveTasks;
@@ -910,6 +943,7 @@ app.get(
       { header: 'Konu', key: 'description', width: 42 },
       { header: 'Ogrenci', key: 'studentName', width: 24 },
       { header: 'Kategori', key: 'categoryName', width: 20 },
+      { header: 'Saat', key: 'estimatedTime', width: 10 },
       { header: 'Tarih', key: 'dateText', width: 26 },
       { header: 'Tekrar', key: 'repeatText', width: 24 },
       { header: 'Arsivde Mi', key: 'archivedText', width: 12 }
@@ -924,6 +958,7 @@ app.get(
         description: task.description || '',
         studentName: task.student ? task.student.name : 'Ogrenci yok',
         categoryName: task.category ? task.category.name : 'Kategori yok',
+        estimatedTime: task.estimatedTime || '-',
         dateText: task.dateText || '',
         repeatText: task.repeatText || '',
         archivedText: task.isArchived ? 'Evet' : 'Hayir'
@@ -1183,6 +1218,12 @@ app.post(
     const customDates = normalizeText(req.body.customDates);
     const startDate = normalizeText(req.body.startDate);
     const endDate = normalizeText(req.body.endDate);
+    const estimatedTimeInput = normalizeText(req.body.estimatedTime);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(estimatedTimeInput);
+    if (!estimatedTimeValidation.ok) {
+      return adminRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
 
     if (!title || !categoryId || !studentId || !repeatType) {
       return adminRedirect(req, res, { error: 'Gorev icin zorunlu alanlar eksik.' });
@@ -1265,12 +1306,13 @@ app.post(
                 custom_dates,
                 start_date,
                 end_date,
+                estimated_time,
                 is_archived,
                 created_by
               )
-              VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+              VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
             `,
-            [makeId('task'), title, description, categoryId, studentId, day, req.currentUser.id]
+            [makeId('task'), title, description, categoryId, studentId, day, estimatedTime, req.currentUser.id]
           );
         }
 
@@ -1300,10 +1342,11 @@ app.post(
           custom_dates,
           start_date,
           end_date,
+          estimated_time,
           is_archived,
           created_by
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,false,$14)
       `,
       [
         makeId('task'),
@@ -1318,6 +1361,7 @@ app.post(
         customDatesVal,
         startDate || null,
         endDate || null,
+        estimatedTime,
         req.currentUser.id
       ]
     );
@@ -1370,6 +1414,7 @@ app.post(
           custom_dates AS "customDates",
           start_date AS "startDate",
           end_date AS "endDate",
+          estimated_time AS "estimatedTime",
           is_archived AS "isArchived",
           created_by AS "createdBy",
           created_at AS "createdAt"
@@ -1420,6 +1465,7 @@ app.post(
           description: task.description || '',
           categoryId: task.categoryId,
           studentId: task.studentId,
+          estimatedTime: task.estimatedTime || null,
           targetDay
         });
       });
@@ -1456,10 +1502,11 @@ app.post(
               custom_dates,
               start_date,
               end_date,
+              estimated_time,
               is_archived,
               created_by
             )
-            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
           `,
           [
             makeId('task'),
@@ -1468,6 +1515,7 @@ app.post(
             item.categoryId,
             item.studentId,
             item.targetDay,
+            item.estimatedTime,
             req.currentUser.id
           ]
         );
@@ -1505,6 +1553,12 @@ app.post(
     const customDates = normalizeText(req.body.customDates);
     const startDate = normalizeText(req.body.startDate);
     const endDate = normalizeText(req.body.endDate);
+    const estimatedTimeInput = normalizeText(req.body.estimatedTime);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(estimatedTimeInput);
+    if (!estimatedTimeValidation.ok) {
+      return adminRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
 
     if (!title || !categoryId || !studentId || !repeatType) {
       return adminRedirect(req, res, { error: 'Gorev guncelleme alanlari eksik.' });
@@ -1577,8 +1631,9 @@ app.post(
           monthly_day = $8,
           custom_dates = $9,
           start_date = $10,
-          end_date = $11
-        WHERE id = $12
+          end_date = $11,
+          estimated_time = $12
+        WHERE id = $13
       `,
       [
         title,
@@ -1592,6 +1647,7 @@ app.post(
         customDatesVal,
         startDate || null,
         endDate || null,
+        estimatedTime,
         taskId
       ]
     );
@@ -1645,6 +1701,19 @@ app.post(
       }
       await query(`UPDATE tasks SET category_id = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: categoryRes.rows[0].name });
+    }
+
+    if (field === 'estimatedTime') {
+      const estimatedTimeValidation = normalizeEstimatedTimeForStorage(value);
+      if (!estimatedTimeValidation.ok) {
+        return res.status(400).json({ ok: false, error: estimatedTimeValidation.error });
+      }
+      await query(`UPDATE tasks SET estimated_time = $1 WHERE id = $2`, [estimatedTimeValidation.value, taskId]);
+      return res.json({
+        ok: true,
+        value: estimatedTimeValidation.value || '',
+        display: estimatedTimeValidation.value || '-'
+      });
     }
 
     return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
@@ -2194,6 +2263,7 @@ app.post(
             custom_dates AS "customDates",
             start_date AS "startDate",
             end_date AS "endDate",
+            estimated_time AS "estimatedTime",
             is_archived AS "isArchived",
             created_by AS "createdBy",
             created_at AS "createdAt"
@@ -2594,6 +2664,7 @@ async function getStudentViewModel(req, currentPage) {
           custom_dates AS "customDates",
           start_date AS "startDate",
           end_date AS "endDate",
+          estimated_time AS "estimatedTime",
           is_archived AS "isArchived",
           created_by AS "createdBy",
           created_at AS "createdAt"
@@ -2693,12 +2764,7 @@ async function getStudentViewModel(req, currentPage) {
 
   const activeTasks = allTasks
     .filter((task) => !task.isArchived && isTaskDueOnDate(task, todayDateObj, today))
-    .sort((a, b) => {
-      const aDate = getTaskSortDate(a);
-      const bDate = getTaskSortDate(b);
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
-    })
+    .sort(compareTasksBySchedule)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
       const todayStatus = statuses.find((s) => s.taskId === task.id) || null;
@@ -3008,6 +3074,12 @@ app.post(
     const singleDate = normalizeText(req.body.singleDate) || dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
     const rangeStartDate = normalizeText(req.body.rangeStartDate) || singleDate;
     const rangeDayCount = Number(req.body.rangeDayCount);
+    const estimatedTimeInput = normalizeText(req.body.estimatedTime);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(estimatedTimeInput);
+    if (!estimatedTimeValidation.ok) {
+      return studentRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
 
     if (!categoryId) {
       return studentRedirect(req, res, { error: 'Kategori zorunlu.' });
@@ -3069,10 +3141,11 @@ app.post(
             custom_dates,
             start_date,
             end_date,
+            estimated_time,
             is_archived,
             created_by
           )
-          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
         `,
         [
           makeId('task'),
@@ -3081,6 +3154,7 @@ app.post(
           categoryId,
           req.currentUser.id,
           singleDate,
+          estimatedTime,
           req.currentUser.id
         ]
       );
@@ -3133,10 +3207,11 @@ app.post(
               custom_dates,
               start_date,
               end_date,
+              estimated_time,
               is_archived,
               created_by
             )
-            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,false,$7)
+            VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
           `,
           [
             makeId('task'),
@@ -3145,6 +3220,7 @@ app.post(
             categoryId,
             req.currentUser.id,
             day,
+            estimatedTime,
             req.currentUser.id
           ]
         );
@@ -3226,6 +3302,19 @@ app.post(
       return res.json({ ok: true, value, display: value });
     }
 
+    if (field === 'estimatedTime') {
+      const estimatedTimeValidation = normalizeEstimatedTimeForStorage(value);
+      if (!estimatedTimeValidation.ok) {
+        return res.status(400).json({ ok: false, error: estimatedTimeValidation.error });
+      }
+      await query(`UPDATE tasks SET estimated_time = $1 WHERE id = $2`, [estimatedTimeValidation.value, taskId]);
+      return res.json({
+        ok: true,
+        value: estimatedTimeValidation.value || '',
+        display: estimatedTimeValidation.value || '-'
+      });
+    }
+
     return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
   })
 );
@@ -3247,6 +3336,12 @@ app.post(
     const description = descriptionValidation.value;
     const categoryId = normalizeText(req.body.categoryId);
     const singleDate = normalizeText(req.body.singleDate);
+    const estimatedTimeInput = normalizeText(req.body.estimatedTime);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(estimatedTimeInput);
+    if (!estimatedTimeValidation.ok) {
+      return studentRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
 
     if (!categoryId || !isDateOnly(singleDate)) {
       return studentRedirect(req, res, { error: 'Gorev guncelleme alanlari gecersiz.' });
@@ -3280,10 +3375,10 @@ app.post(
     await query(
       `
         UPDATE tasks
-        SET title = $1, description = $2, category_id = $3, single_date = $4
-        WHERE id = $5
+        SET title = $1, description = $2, category_id = $3, single_date = $4, estimated_time = $5
+        WHERE id = $6
       `,
-      [title, description, categoryId, singleDate, taskId]
+      [title, description, categoryId, singleDate, estimatedTime, taskId]
     );
 
     return studentRedirect(req, res, { message: 'Gorev guncellendi.' });
