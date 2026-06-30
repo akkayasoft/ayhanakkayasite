@@ -1362,6 +1362,25 @@ textarea:focus {
   box-shadow: var(--ring);
 }
 
+/* Stack all side-by-side grid sections into a single column */
+.grid.two,
+.grid.three {
+  grid-template-columns: 1fr;
+}
+
+/* Form layout — stack fields vertically instead of side by side */
+form.grid.two,
+form.grid.three {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  max-width: 640px;
+}
+
+form.grid.two .stack,
+form.grid.three .stack {
+  gap: 12px;
+}
+
 /* Tabs / pill links */
 .button-link {
   background: var(--surface);
