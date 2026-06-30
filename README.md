@@ -47,9 +47,10 @@ Uygulama acilisinda gerekli tablolari otomatik olusturur ve ilk admin kullanicis
 
 ## Canli Ortam ve Deploy
 - Canli URL: https://takip.obs.akkayasoft.com/
-- Sunucu: kendi VPS'i, nginx (Ubuntu) reverse proxy arkasinda
-- Deploy MANUEL yapilir (SSH + `git pull` + servis restart). Otomatik CI deploy yoktur.
-- Ayrintili adimlar ve production env degiskenleri: `DEPLOY.md`
+- Sunucu: VPS, nginx (Ubuntu) reverse proxy arkasinda; systemd servisi `ayhanakkaya-site.service`
+- Deploy OTOMATIK: `main`'e push et, sunucudaki systemd timer ~1 dakika icinde cekip
+  yeniden baslatir. GitHub Actions kullanilmaz.
+- Ayrintili akis, deploy script'i ve production env degiskenleri: `DEPLOY.md`
 - Proje geneli ve gercek durum ozeti: `CLAUDE.md`
 
 > Not: Repodaki eski `scripts/deploy-hostinger.sh`, `.env.deploy` ve

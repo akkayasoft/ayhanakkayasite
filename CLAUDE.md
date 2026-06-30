@@ -40,14 +40,15 @@ npm start                                 # http://localhost:3000
 
 ## Deploy (GERÇEK durum)
 
-> ⚠️ Repo içindeki eski "Hostinger" dokümanları (`scripts/deploy-hostinger.sh`, eski README/DEPLOY metinleri) gerçeği yansıtmaz.
+> ⚠️ Repo içindeki eski "Hostinger" dokümanları (`scripts/deploy-hostinger.sh`, `.env.deploy`, `.github/workflows/deploy-hostinger.yml`) gerçeği yansıtmaz; geçmişten kalmadır.
 
 - **Canlı URL:** https://takip.obs.akkayasoft.com/
-- **Ortam:** kendi VPS'i, **nginx/1.24 (Ubuntu)** reverse proxy arkasında.
-- **Deploy yöntemi:** manuel (SSH üzerinden; muhtemelen `git pull` + pm2/systemd restart). GitHub Actions ile otomatik deploy YOKTUR — `.github/workflows/deploy-hostinger.yml` no-op'tur.
-- **Repodaki değişiklikler**, biri sunucuda manuel deploy yapana kadar canlıya gitmez.
+- **Ortam:** VPS `obs-vps` (187.127.68.167), **nginx (Ubuntu)** reverse proxy arkasında.
+- **Uygulama:** systemd servisi `ayhanakkaya-site.service` (User=www-data, `node /var/www/ayhanakkayasite/src/app.js`, NODE_ENV=production, port 3000).
+- **Otomatik deploy:** `ayhanakkayasite-deploy.timer` her **1 dakikada** `/usr/local/bin/deploy-ayhanakkayasite.sh`'yi çalıştırır. Script `origin/main`'i kontrol eder; yeni commit varsa `git pull --ff-only` + `npm ci --omit=dev` + `chown www-data` + `systemctl restart ayhanakkaya-site.service` yapar.
+- **Sonuç:** `main`'e push etmek yeterli — değişiklik ~1 dakika içinde otomatik canlıya çıkar. GitHub Actions kullanılmaz.
 
-Canlı durumu doğrularken repoya değil, doğrudan URL'e istek at.
+Deploy log'u: `journalctl -t deploy-ayhanakkayasite` (sunucuda). Canlı durumu doğrularken repoya değil, doğrudan URL'e (`/healthz`) istek at.
 
 ## Çalışırken dikkat
 
