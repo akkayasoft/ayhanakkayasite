@@ -898,6 +898,72 @@ async function getAdminViewModel(req, currentPage) {
   };
 }
 
+// --- JSON API (React island'lari ve ileride mobil icin) ---
+async function getDailyBoardData() {
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const dateObj = new Date(`${today}T00:00:00`);
+
+  const [studentsRes, tasksRes, statusesRes, questionsRes] = await Promise.all([
+    query(`SELECT id, name, points FROM users WHERE role = 'student' ORDER BY name ASC`),
+    query(`
+      SELECT
+        id,
+        student_id AS "studentId",
+        repeat_type AS "repeatType",
+        single_date AS "singleDate",
+        weekly_day AS "weeklyDay",
+        monthly_day AS "monthlyDay",
+        custom_dates AS "customDates",
+        start_date AS "startDate",
+        end_date AS "endDate",
+        is_archived AS "isArchived"
+      FROM tasks
+    `),
+    query(
+      `SELECT task_id AS "taskId", student_id AS "studentId", status FROM task_statuses WHERE day = $1`,
+      [today]
+    ),
+    query(
+      `
+        SELECT student_id AS "studentId", COALESCE(SUM(correct_count + wrong_count), 0) AS "totalQuestions"
+        FROM daily_questions
+        WHERE day = $1
+        GROUP BY student_id
+      `,
+      [today]
+    )
+  ]);
+
+  const tasks = tasksRes.rows.map(mapTask);
+
+  const students = studentsRes.rows.map((student) => {
+    const dueTasks = tasks.filter((t) => t.studentId === student.id && isTaskDueOnDate(t, dateObj, today));
+    const doneCount = statusesRes.rows.filter(
+      (st) => st.studentId === student.id && st.status === 'done' && dueTasks.some((t) => t.id === st.taskId)
+    ).length;
+    const question = questionsRes.rows.find((q) => q.studentId === student.id);
+    return {
+      id: student.id,
+      name: student.name,
+      points: Number(student.points || 0),
+      dueCount: dueTasks.length,
+      doneCount,
+      questionCount: question ? Number(question.totalQuestions || 0) : 0
+    };
+  });
+
+  return { today, students };
+}
+
+app.get(
+  '/api/admin/daily-board',
+  requireRole('admin'),
+  asyncHandler(async (_req, res) => {
+    const data = await getDailyBoardData();
+    return res.json(data);
+  })
+);
+
 app.get('/admin', requireRole('admin'), (req, res) => res.redirect('/admin/dashboard'));
 
 app.get('/admin/tasks', requireRole('admin'), (req, res) => {

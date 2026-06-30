@@ -53,31 +53,12 @@
 
         <section class="panel">
           <h3>Bugunluk Ogrenci Durumu</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ogrenci</th>
-                  <th>Toplam Puan</th>
-                  <th>Bugun Gorev</th>
-                  <th>Tamamlanan</th>
-                  <th>Gunluk Soru</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% dailyBoard.forEach((row) => { %>
-                <tr>
-                  <td><%= row.name %></td>
-                  <td><%= row.points || 0 %></td>
-                  <td><%= row.dueCount %></td>
-                  <td><%= row.doneCount %></td>
-                  <td><%= row.questionCount %></td>
-                </tr>
-                <% }) %>
-              </tbody>
-            </table>
+          <!-- React island (kademeli gecis): /api/admin/daily-board verisinden beslenir -->
+          <div id="island-daily-board" data-endpoint="/api/admin/daily-board">
+            <p class="muted">Yukleniyor...</p>
           </div>
         </section>
+        <script type="module" src="/dist/daily-board.js"></script>
         <% } %>
 
         <% if (currentPage === 'students') { %>

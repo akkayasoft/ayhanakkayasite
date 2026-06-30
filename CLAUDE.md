@@ -50,6 +50,21 @@ npm start                                 # http://localhost:3000
 
 Deploy log'u: `journalctl -t deploy-ayhanakkayasite` (sunucuda). Canlı durumu doğrularken repoya değil, doğrudan URL'e (`/healthz`) istek at.
 
+## Frontend (kademeli React geçişi)
+
+Uygulama hâlâ EJS ile server-render edilir; etkileşimli parçalar adım adım
+**React "island"**larına taşınıyor. Her island gerçek bir `/api/...` JSON
+endpoint'inden beslenir (ileride mobil için de kullanılabilir).
+
+- React kaynak kodu: `frontend/` (Vite + React, ayrı `package.json`).
+- Island'lar `frontend/src/islands/*.jsx` → derlenince `src/public/dist/*.js` üretir.
+- EJS sayfası island'ı `<div id="island-...">` + `<script type="module" src="/dist/...js">` ile gömer.
+- **Derleme:** kökten `npm run build:frontend` (veya `cd frontend && npm run build`).
+- **Önemli:** derlenen `src/public/dist/*.js` dosyaları repoya **commit edilir**; çünkü
+  sunucudaki otomatik deploy yalnızca `npm ci --omit=dev` + restart yapar, build adımı yok.
+  Bir island'ı değiştirdiğinde tekrar build edip dist'i commit'le.
+- Mevcut island'lar: `daily-board` (admin panosu "Bugünlük Öğrenci Durumu", `/api/admin/daily-board`).
+
 ## Çalışırken dikkat
 
 - Canlı sistem; davranış değiştiren PR'larda önce lokalde doğrula.

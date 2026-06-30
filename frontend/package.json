@@ -1,0 +1,17 @@
+{
+  "name": "ogrenci-takip-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Kademeli React island'lari (EJS sayfalarina gomulur)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.11"
+  }
+}
