@@ -45,33 +45,15 @@ Uygulama acilisinda gerekli tablolari otomatik olusturur ve ilk admin kullanicis
 
 `.env` dosyasindan degistir.
 
-## Hostinger Node.js + PostgreSQL Deploy
-1. Projeyi GitHub'a push et.
-2. Hostinger panelinde Node.js app olustur.
-3. Start file: `src/app.js`
-4. Install command: `npm install`
-5. Start command: `npm start`
-6. PostgreSQL veritabani olustur (Hostinger Managed PostgreSQL veya harici).
-7. Environment Variables'a `DATABASE_URL` ve diger `.env` degerlerini gir.
-8. SSL zorunluysa:
-   - `DATABASE_SSL=true`
-   - Gecici olarak gerekiyorsa `DATABASE_SSL_REJECT_UNAUTHORIZED=false`
-9. Deploy ve restart et.
+## Canli Ortam ve Deploy
+- Canli URL: https://takip.obs.akkayasoft.com/
+- Sunucu: kendi VPS'i, nginx (Ubuntu) reverse proxy arkasinda
+- Deploy MANUEL yapilir (SSH + `git pull` + servis restart). Otomatik CI deploy yoktur.
+- Ayrintili adimlar ve production env degiskenleri: `DEPLOY.md`
+- Proje geneli ve gercek durum ozeti: `CLAUDE.md`
 
-### Tek Komut Deploy (Kalici Ayar)
-- Ayrintili dokuman: `DEPLOY.md`
-- Bir kere ayarla:
-  - `cp .env.production.example .env.deploy`
-  - `.env.deploy` icinde Hostinger SSH/deploy alanlarini doldur
-- Sonra deploy:
-  - `npm run deploy:prod`
-- Sadece kontrol:
-  - `npm run deploy:prod:dry`
-
-### Otomatik Deploy (main push)
-- Workflow: `.github/workflows/deploy-hostinger.yml`
-- `main` branch'ine her push sonrasi Hostinger deploy tetiklenir.
-- Gerekli GitHub secrets listesi `DEPLOY.md` icinde.
+> Not: Repodaki eski `scripts/deploy-hostinger.sh`, `.env.deploy` ve
+> `.github/workflows/deploy-hostinger.yml` kullanilmiyor; gecmisten kalmadir.
 
 ## GitHub Push
 ```bash

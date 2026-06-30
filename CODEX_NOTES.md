@@ -1,7 +1,9 @@
 # Codex Notes
 
-- Default production deploy target: `Hostinger`
-- Preferred deploy command: `npm run deploy:prod`
-- Deploy script: `scripts/deploy-hostinger.sh`
-- Deploy documentation: `DEPLOY.md`
-- CI auto-deploy: `.github/workflows/deploy-hostinger.yml` (`push` to `main`)
+- Canlı URL: https://takip.obs.akkayasoft.com/
+- Production ortamı: kendi VPS'i, nginx/1.24 (Ubuntu) reverse proxy arkasında
+- Deploy yöntemi: MANUEL (SSH üzerinden git pull + servis restart). Otomatik CI deploy yok.
+- Proje genel bakışı ve gerçek deploy durumu: `CLAUDE.md`
+
+> Not: `scripts/deploy-hostinger.sh`, `.env.deploy` ve eski "Hostinger" referansları
+> kullanılmıyor; geçmişten kalmadır. Gerçek durum için `CLAUDE.md`'ye bak.

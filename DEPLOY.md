@@ -1,50 +1,40 @@
-# Deploy Guide (Hostinger)
+# Deploy Guide
 
-Bu projede varsayilan production hedefi `Hostinger` olarak tanimlandi.
+> ⚠️ Bu projenin canlı deploy'u **manuel** yapılır. Eski "Hostinger otomatik deploy"
+> kurgusu (`scripts/deploy-hostinger.sh`, `.github/workflows/deploy-hostinger.yml`,
+> `.env.deploy`) **kullanılmıyor** ve geçmişten kalmadır.
 
-## Bir kere yap
+## Canlı ortam
 
-1. `cp .env.production.example .env.deploy`
-2. `.env.deploy` icine su alanlari doldur:
-   - `HOSTINGER_SSH_HOST`
-   - `HOSTINGER_SSH_USER`
-   - `HOSTINGER_APP_DIR`
-   - `HOSTINGER_BRANCH` (genelde `main`)
-   - `HOSTINGER_RESTART_COMMAND` (zorunlu, restart komutun)
-   - (opsiyonel) `HOSTINGER_PORT`
+- **URL:** https://takip.obs.akkayasoft.com/
+- **Sunucu:** kendi VPS'i, **nginx/1.24 (Ubuntu)** reverse proxy arkasında Node.js uygulaması
+- **Otomatik CI deploy:** yok (GitHub Actions workflow'u devre dışı / no-op)
 
-## Deploy komutlari
+## Manuel deploy adımları (sunucuda)
 
-- Gercek deploy:
-  - `npm run deploy:prod`
-- Kontrol (baglanmadan):
-  - `npm run deploy:prod:dry`
+Repodaki değişiklik, sunucuda aşağıdaki adımlar manuel çalıştırılana kadar canlıya gitmez:
 
-## Otomatik Deploy (onerilen)
+```bash
+ssh <kullanici>@<sunucu>
+cd <app-dizini>
+git pull --ff-only origin main
+npm ci --omit=dev          # bağımlılık değiştiyse
+# uygulamayı yeniden başlat (process manager'a göre):
+pm2 restart ogrenci-takip  # veya: sudo systemctl restart <servis-adi>
+```
 
-`main` branch'ine her push'ta otomatik deploy calisir:
+> Gerçek SSH kullanıcısı, sunucu adresi, app dizini ve restart komutu bu repoda
+> tutulmaz. Bunları doldurmak için sunucu erişim bilgilerine ihtiyaç vardır.
 
-- Workflow: `.github/workflows/deploy-hostinger.yml`
-- Gerekli GitHub Actions secrets:
-  - `HOSTINGER_SSH_HOST`
-  - `HOSTINGER_SSH_USER`
-  - `HOSTINGER_SSH_KEY`
-  - `HOSTINGER_APP_DIR`
-  - `HOSTINGER_RESTART_COMMAND`
-  - (opsiyonel) `HOSTINGER_PORT`
+## Production ortam değişkenleri
 
-## Script ne yapiyor?
+Sunucudaki `.env` (repoda yok) en az şunları içermeli:
 
-`scripts/deploy-hostinger.sh` su adimlari uzaktan calistirir:
+- `NODE_ENV=production`
+- `PORT` (nginx upstream ile uyumlu)
+- `DATABASE_URL` (PostgreSQL bağlantısı)
+- `SESSION_SECRET` (güçlü, rastgele — varsayılanı KULLANMA)
+- `DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD` (ilk seed sonrası değiştir)
+- `DATABASE_SSL` (gerekiyorsa `true`)
 
-1. App dizinine girer
-2. `git fetch --all --prune`
-3. `git checkout <branch>`
-4. `git pull --ff-only origin <branch>`
-5. `npm ci --omit=dev` (yoksa `npm install --omit=dev`)
-6. `HOSTINGER_RESTART_COMMAND` calistirir
-
-## Not
-
-- `HOSTINGER_RESTART_COMMAND` placeholder deger ile gelir; kendi restart komutunla degistir.
-- Shared hosting kullaniyorsan restart komutunu panelindeki yapiya gore ayarla.
+Uygulama açılışta tabloları otomatik kurar ve ilk admin'i seed eder.
