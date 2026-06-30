@@ -2643,7 +2643,6 @@ app.get(
 
 async function getStudentViewModel(req, currentPage) {
   const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
-  const todayDateObj = new Date(`${today}T00:00:00`);
   const weeklyPointWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const weeklyPointWeekEnd = shiftDate(weeklyPointWeekStart, 6);
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
@@ -2764,7 +2763,7 @@ async function getStudentViewModel(req, currentPage) {
   const allTasks = tasksRes.rows.map(mapTask);
 
   const activeTasks = allTasks
-    .filter((task) => !task.isArchived && isTaskDueOnDate(task, todayDateObj, today))
+    .filter((task) => !task.isArchived)
     .sort(compareTasksBySchedule)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
