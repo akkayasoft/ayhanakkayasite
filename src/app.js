@@ -265,6 +265,8 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
       tasks: dueTasks.map((task) => ({
         id: task.id,
         title: task.title,
+        categoryId: task.categoryId,
+        estimatedTime: task.estimatedTime || '',
         status: statusByTaskAndDay.get(`${task.id}:${day}`) || 'not_set'
       }))
     };
@@ -2947,51 +2949,53 @@ app.get(
     workbook.creator = 'Ogrenci Takip';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet('Haftalik Takvim');
+    const categoriesRes = await query(`SELECT id, name FROM categories`);
+    const categoryNameById = new Map(categoriesRes.rows.map((c) => [c.id, c.name]));
+    const statusLabel = (status) => {
+      if (status === 'done') return 'Yapildi';
+      if (status === 'not_done') return 'Yapilmadi';
+      return 'Isaretlenmedi';
+    };
+
+    const sheet = workbook.addWorksheet('Gorevler');
     sheet.columns = [
-      { header: 'Gun', key: 'dayName', width: 14 },
       { header: 'Tarih', key: 'date', width: 13 },
-      { header: 'Gorev', key: 'dueCount', width: 10 },
-      { header: 'Tamamlanan', key: 'doneCount', width: 12 },
-      { header: 'Tamamlanmayan', key: 'notDoneCount', width: 14 },
-      { header: 'Soru', key: 'questionTotal', width: 10 },
-      { header: 'Sure (dk)', key: 'durationMinutes', width: 11 },
-      { header: 'Gorev Basliklari', key: 'taskTitles', width: 54 }
+      { header: 'Gun', key: 'dayName', width: 14 },
+      { header: 'Gorev', key: 'title', width: 46 },
+      { header: 'Kategori', key: 'categoryName', width: 20 },
+      { header: 'Saat', key: 'estimatedTime', width: 10 },
+      { header: 'Durum', key: 'statusText', width: 16 }
     ];
 
     sheet.getRow(1).font = { bold: true };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
+    // Liste formati: her gorev icin ayri satir (tek hucreye toplama yok)
     calendar.days.forEach((day) => {
-      sheet.addRow({
-        dayName: day.dayName,
-        date: day.date,
-        dueCount: day.dueCount,
-        doneCount: day.doneCount,
-        notDoneCount: Math.max(day.dueCount - day.doneCount, 0),
-        questionTotal: day.questionTotal,
-        durationMinutes: day.durationMinutes,
-        taskTitles: day.tasks.length
-          ? day.tasks
-              .map((task) => {
-                if (task.status === 'done') return `${task.title} (Yapildi)`;
-                if (task.status === 'not_done') return `${task.title} (Yapilmadi)`;
-                return `${task.title} (Isaretlenmedi)`;
-              })
-              .join(', ')
-          : '-'
+      day.tasks.forEach((task) => {
+        sheet.addRow({
+          date: day.date,
+          dayName: day.dayName,
+          title: task.title || '',
+          categoryName: categoryNameById.get(task.categoryId) || 'Kategori yok',
+          estimatedTime: task.estimatedTime || '-',
+          statusText: statusLabel(task.status)
+        });
       });
     });
 
     sheet.addRow({});
+    const totalDue = calendar.days.reduce((sum, day) => sum + day.dueCount, 0);
+    const totalDone = calendar.days.reduce((sum, day) => sum + day.doneCount, 0);
+    const totalQuestions = calendar.days.reduce((sum, day) => sum + day.questionTotal, 0);
+    const totalDuration = calendar.days.reduce((sum, day) => sum + day.durationMinutes, 0);
     const summaryLabelRow = sheet.addRow({
+      date: `${calendar.weekStart} - ${calendar.weekEnd}`,
       dayName: 'Hafta Ozeti',
-      dueCount: calendar.days.reduce((sum, day) => sum + day.dueCount, 0),
-      doneCount: calendar.days.reduce((sum, day) => sum + day.doneCount, 0),
-      notDoneCount: calendar.days.reduce((sum, day) => sum + Math.max(day.dueCount - day.doneCount, 0), 0),
-      questionTotal: calendar.days.reduce((sum, day) => sum + day.questionTotal, 0),
-      durationMinutes: calendar.days.reduce((sum, day) => sum + day.durationMinutes, 0),
-      taskTitles: `${calendar.weekStart} - ${calendar.weekEnd}`
+      title: `Toplam Gorev: ${totalDue} | Tamamlanan: ${totalDone} | Tamamlanmayan: ${Math.max(totalDue - totalDone, 0)}`,
+      categoryName: '',
+      estimatedTime: '',
+      statusText: `Soru: ${totalQuestions} | Sure: ${totalDuration} dk`
     });
     summaryLabelRow.font = { bold: true };
 
