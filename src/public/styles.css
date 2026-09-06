@@ -1174,6 +1174,140 @@ tr.day-off td {
   color: var(--success);
 }
 
+.day-badge.late {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+.day-badge.miss {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------------------
+   Uyanma rutini
+
+   Sabah ilk isin tek dokunusla isaretlemek oldugu icin buton her iki yerde de
+   (pano seridi ve kendi sayfasi) dokunma hedefi olarak buyuk tutuldu.
+   -------------------------------------------------------------------------- */
+.wake-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  background: var(--surface);
+  border: 1px solid var(--primary-border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-lg);
+}
+
+.wake-strip.done {
+  border-color: var(--success-border);
+  border-left-color: var(--success);
+}
+
+.wake-strip-info {
+  min-width: 0;
+}
+
+.wake-strip-label {
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.wake-strip-value {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wake-button {
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wake-button.large {
+  padding: 18px 56px;
+  font-size: 1.125rem;
+}
+
+.wake-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 20px;
+  margin: 0 auto 18px;
+  max-width: 560px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-top: 4px solid var(--primary);
+  border-radius: var(--radius-lg);
+}
+
+.wake-hero.on_time { border-top-color: var(--success); }
+.wake-hero.late { border-top-color: var(--warning); }
+.wake-hero.missed { border-top-color: var(--danger); }
+
+.wake-hero-target {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.wake-hero-value {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.wake-hero-status {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wake-hero.on_time .wake-hero-status { color: var(--success); }
+.wake-hero.late .wake-hero-status { color: var(--warning); }
+
+@media (max-width: 560px) {
+  .wake-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wake-strip form,
+  .wake-button {
+    width: 100%;
+  }
+
+  .wake-hero-value {
+    font-size: 2.5rem;
+  }
+
+  .wake-button.large {
+    width: 100%;
+    padding: 18px 20px;
+  }
+}
+
 /* --------------------------------------------------------------------------
    Giris sayfasi
 

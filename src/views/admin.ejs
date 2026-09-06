@@ -23,6 +23,7 @@
           <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
           <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
+          <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
@@ -1017,6 +1018,164 @@
           </div>
           <% } %>
         </section>
+        <% } %>
+
+        <% if (currentPage === 'wake' && wakeAdmin) { %>
+        <header class="content-header">
+          <h2>Uyanma Rutini</h2>
+          <p class="muted">
+            Öğrenci her sabah tek dokunuşla işaretler; basılan saat kaydedilir.
+            Hedef + tolerans içindeyse <strong>zamanında</strong>, sonrasıysa
+            <strong>geç</strong> (saatiyle birlikte) yazılır. Hiç basılmayan gün
+            ertesi gün otomatik <strong>kaçırıldı</strong> mühürlenir.
+          </p>
+        </header>
+
+        <section class="panel narrow">
+          <h3>Rutin Ayarla</h3>
+          <% if (!students.length) { %>
+          <p class="muted">Önce bir öğrenci ekleyin.</p>
+          <% } else { %>
+          <form method="post" action="/admin/wake" class="stack">
+            <input type="hidden" name="next" value="/admin/wake" />
+            <label>Öğrenci</label>
+            <select name="studentId" required>
+              <% students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= wakeAdmin.selected && wakeAdmin.selected.id === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Hedef Uyanma Saati</label>
+            <input type="time" name="targetTime" required
+                   value="<%= wakeAdmin.detail && wakeAdmin.detail.routine ? wakeAdmin.detail.routine.targetTime : '06:00' %>" />
+
+            <label>Tolerans (dakika)</label>
+            <input type="number" name="toleranceMinutes" min="0" max="240" step="1"
+                   value="<%= wakeAdmin.detail && wakeAdmin.detail.routine ? wakeAdmin.detail.routine.toleranceMinutes : 10 %>" />
+            <p class="muted">0 girilirse hedef saatten sonrası doğrudan "geç" sayılır.</p>
+
+            <label class="row center">
+              <input type="checkbox" name="isActive" value="on"
+                     <%= !wakeAdmin.detail || !wakeAdmin.detail.routine || wakeAdmin.detail.routine.isActive ? 'checked' : '' %> />
+              <span>Rutin aktif</span>
+            </label>
+
+            <button type="submit">Kaydet</button>
+          </form>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Öğrenci Rutinleri</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Öğrenci</th>
+                  <th>Hedef</th>
+                  <th>Tolerans</th>
+                  <th>Durum</th>
+                  <th>İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% wakeAdmin.rows.forEach((r) => { %>
+                <tr>
+                  <td><a href="/admin/wake?wakeStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
+                  <td><%= r.routine ? r.routine.targetTime : '-' %></td>
+                  <td><%= r.routine ? '+' + r.routine.toleranceMinutes + ' dk' : '-' %></td>
+                  <td>
+                    <% if (!r.routine) { %>
+                    <span class="day-badge off">Tanımsız</span>
+                    <% } else if (r.routine.isActive) { %>
+                    <span class="day-badge ok">Aktif</span>
+                    <% } else { %>
+                    <span class="day-badge off">Pasif</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (r.routine) { %>
+                    <form method="post" action="/admin/wake/delete" onsubmit="return confirm('<%= r.student.name %> için rutin kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
+                      <input type="hidden" name="next" value="/admin/wake" />
+                      <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                      <button type="submit" class="danger">Kaldır</button>
+                    </form>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <% if (wakeAdmin.detail && wakeAdmin.detail.routine) { %>
+        <header class="content-header">
+          <h3><%= wakeAdmin.selected.name %> · Son <%= wakeAdmin.detail.summary.gunSayisi %> Gün</h3>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi <%= wakeAdmin.detail.streak > 0 ? 'ok' : '' %>">
+            <p class="kpi-label">Zamanında Serisi</p>
+            <p class="kpi-value"><%= wakeAdmin.detail.streak %> gün</p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Zamanında Oranı</p>
+            <p class="kpi-value"><%= wakeAdmin.detail.summary.onTimeRate === null ? '-' : wakeAdmin.detail.summary.onTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Uyanma</p>
+            <p class="kpi-value"><%= wakeAdmin.detail.summary.averageWake || '-' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Gecikme</p>
+            <p class="kpi-value"><%= wakeAdmin.detail.summary.averageDelay === null ? '-' : wakeAdmin.detail.summary.averageDelay + ' dk' %></p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Hedef</th>
+                  <th>Kalkış</th>
+                  <th>Gecikme</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% wakeAdmin.detail.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.day %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.targetTime %></td>
+                  <td><%= r.wokeAt || '-' %></td>
+                  <td><%= r.delayMinutes ? r.delayMinutes + ' dk' : '-' %></td>
+                  <td>
+                    <% if (r.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (r.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else if (r.status === 'missed') { %>
+                    <span class="day-badge miss">Kaçırıldı</span>
+                    <% } else if (r.status === 'pending') { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'reports') { %>

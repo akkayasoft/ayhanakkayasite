@@ -32,7 +32,7 @@ scripts/      deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
 
 Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle —
-form), `calendar`, `questions`. Görev ekleme formu ile aktif görev listesi
+form), `calendar`, `questions`, `wake` (Uyanma Rutini). Görev ekleme formu ile aktif görev listesi
 **ayrı sayfalardadır**; form gönderimi `next=/student/dashboard` ile listeye
 döner. Yeni bir öğrenci sayfası eklerken `/student/:page` içindeki
 `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi birlikte
@@ -141,6 +141,33 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
    hizalanır — ama yalnızca **işaretlenmemiş ve günü gelmemiş** görevler
    taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
    sabit kaldığı mesajda bildirilir.
+
+## Uyanma rutini
+
+Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.
+
+- `wake_routines` (öğrenci başına tek satır): `target_time`, `tolerance_minutes`
+  (0-240), `is_active`. Admin `/admin/wake` sayfasından ayarlar.
+- `wake_logs` (gün başına tek satır, `UNIQUE (student_id, day)`): hedef saat ve
+  tolerans **kaydın içine kopyalanır**, böylece rutin sonradan değişirse geçmiş
+  değerlendirmeler bozulmaz.
+- Durum: `on_time` (hedef + tolerans içinde), `late`, `missed`.
+- **Gecikme toleransa göre değil hedefe göre ölçülür.** Tolerans "affedilen"
+  süredir; 06:08'de kalkmak `on_time` sayılır ama `delay_minutes = 8` yazılır —
+  ortalama uyanma saati bu veriden hesaplandığı için gizlenmemeli.
+- **Geç basma da kaydedilir** (saatiyle). Uyanma denetiminde 06:01 ile 10:00
+  arasındaki fark asıl veridir; ikisini de "yapılmadı" saymak bunu yok eder.
+- Günde tek kayıt, **ilk basış geçerli** (`ON CONFLICT DO NOTHING`). İkinci basış
+  reddedilir; aksi halde geç basıp erken basmış gibi görünmek mümkün olurdu.
+- Hiç basılmayan günler `sealMissedWakeLogs` ile `missed` mühürlenir
+  (`runSealSafely` içinde, açılışta + 5 dakikada bir, idempotent). Yalnızca
+  **geçmiş** günlere dokunur — bugün hâlâ geç de olsa basılabilir. Rutin
+  kurulmadan önceki günler geriye dönük mühürlenmez.
+- Seri (`streak`): bugünden (bugün henüz `on_time` değilse dünden) geriye
+  kesintisiz `on_time` gün sayısı.
+- Rutin kaldırılınca `wake_logs` **silinmez** — geçmiş denetim verisi durur.
+- Kart hem `/student/wake` sayfasında hem panonun tepesinde (`.wake-strip`)
+  görünür: sabah uygulamayı açınca ilk iş ona basmak olmalı.
 
 ## Haftalık analiz
 
