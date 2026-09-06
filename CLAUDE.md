@@ -31,6 +31,13 @@ scripts/      deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
 
+Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle —
+form), `calendar`, `questions`. Görev ekleme formu ile aktif görev listesi
+**ayrı sayfalardadır**; form gönderimi `next=/student/dashboard` ile listeye
+döner. Yeni bir öğrenci sayfası eklerken `/student/:page` içindeki
+`allowedPages` ve `studentRedirect`'teki `next` beyaz listesi birlikte
+güncellenmelidir.
+
 ## Lokal Çalıştırma
 
 ```bash

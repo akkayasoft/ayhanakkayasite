@@ -16,7 +16,8 @@
         </div>
 
         <nav class="menu">
-          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevler</a>
+          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevlerim</a>
+          <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
         </nav>
@@ -34,9 +35,9 @@
         <div class="alert error"><%= error %></div>
         <% } %>
 
-        <% if (currentPage === 'dashboard') { %>
+        <% if (currentPage === 'new-task') { %>
         <header class="content-header">
-          <h2>Aktif Görevlerim</h2>
+          <h2>Görev Ekle</h2>
           <p class="muted"><%= today %></p>
         </header>
 
@@ -169,6 +170,16 @@
             });
           })();
         </script>
+        <% } %>
+
+        <% if (currentPage === 'dashboard') { %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Görevlerim</h2>
+            <p class="muted"><%= today %></p>
+          </div>
+          <a class="button-link active" href="/student/new-task">Görev Ekle</a>
+        </header>
 
         <section class="kpi-grid">
           <article class="kpi"><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
@@ -208,7 +219,7 @@
           <% } %>
 
           <% if (!activeTasks.length) { %>
-          <p class="muted">Aktif görev yok.</p>
+          <p class="muted">Aktif görev yok. <a href="/student/new-task">Yeni görev ekle</a></p>
           <% } %>
 
           <% if (activeTasks.length) { %>
