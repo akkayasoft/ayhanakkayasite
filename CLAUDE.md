@@ -65,6 +65,24 @@ endpoint'inden beslenir (ileride mobil için de kullanılabilir).
   Bir island'ı değiştirdiğinde tekrar build edip dist'i commit'le.
 - Mevcut island'lar: `daily-board` (admin panosu "Bugünlük Öğrenci Durumu", `/api/admin/daily-board`).
 
+## Görev süresi ve otomatik kilit
+
+Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir**:
+
+- Son saat = görevin `estimated_time`'ı; girilmemişse **gün sonu (23:59)**.
+- Süre dolduğunda hâlâ işaretlenmemişse otomatik **`not_done`** yazılır
+  (`sealOverdueTaskStatuses`, açılışta + 5 dakikada bir çalışır, idempotent).
+- Kilitlendikten sonra öğrenci o görevin **durumunu değiştiremez, görevi
+  güncelleyemez ve silemez** (`status`, `update`, `cell-update`, `delete`
+  rotalarında `findStudentTaskIfEditable` ile engellenir). Admin'in durum
+  değiştirme rotası zaten yok — yani kilit kalıcıdır.
+- `AUTO_LOCK_START_DATE` (ortam değişkeni, varsayılan `2026-09-06`) bu
+  tarihten **önceki** günlere hiç dokunulmamasını sağlar; özellik devreye
+  girmeden önceki geçmiş geriye dönük mühürlenmez.
+- Otomatik yazılan `not_done` kayıtları haftalık puanlama oranını
+  **değiştirmez**: değerlendirme zaten yalnızca `done` kayıtlarını sayıyordu,
+  işaretlenmemiş görev de "yapılmadı" gibi hesaplanıyordu.
+
 ## Çalışırken dikkat
 
 - Canlı sistem; davranış değiştiren PR'larda önce lokalde doğrula.
