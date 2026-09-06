@@ -1,0 +1,2662 @@
+{
+ "surum": "2026-2027.1",
+ "kaynak": "akkayasoft/yds-yokdil-app",
+ "baslangic": "2026-09-14",
+ "bitis": "2027-06-25",
+ "gunlukDakika": 60,
+ "toplamParca": 56,
+ "dersGunu": 179,
+ "doluGun": 52,
+ "bekleyenGun": 127,
+ "gunler": [
+  {
+   "tarih": "2026-09-14",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 1/5",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-1:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 1 (6 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 2 (6 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-15",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 2/5",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-1:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 3 (6 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 4 (6 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-16",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 3/5",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-1:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 5 (6 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:vocab-verbs-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 6 (2 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-17",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 1/5",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-2:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 1 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 2 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-18",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:if-clauses:4",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 4/5",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 3 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 4 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-21",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 1 (6 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:if-clauses:5",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 5/5",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-2:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 5 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-22",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 2 (6 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:conjunctions:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 1/3",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-2:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 6 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-23",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 2/5",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-3:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-7",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 7 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-8",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 8 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-24",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:conjunctions:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 2/3",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-9",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 9 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-10",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 10 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-25",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 3 (6 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:conjunctions:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 3/3",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "okuma:reading-3:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-11",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 11 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-28",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 4 (6 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-3:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "test:prep-test-1",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 1 (25 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-29",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 3/5",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-4:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-12",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 12 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-13",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 13 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-30",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-14",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 14 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "test:prep-test-2",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 2 (23 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-01",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 5 (6 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-4:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "test:grammar-test-5",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 5 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-02",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 6 (2 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-4:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "test:grammar-test-6",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 6 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-05",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "okuma:reading-2:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-15",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 15 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "test:grammar-test-7",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 7 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-06",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 1 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-8",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 8 (24 soru)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-16",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 16 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-07",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 2 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-9",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 9 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-17",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 17 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-08",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 52,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:4",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 4/5",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-18",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 18 (8 kart)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "test:grammar-test-10",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 10 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-09",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 3 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-11",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 11 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "kelime:phrasal-19",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 19 (7 kart)",
+     "sure": 12,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-12",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 37,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 4 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-12",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 12 (25 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-13",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 40,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:5",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 5/5",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-13",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 13 (24 soru)",
+     "sure": 25,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-14",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "okuma:reading-2:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 5 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:conjunctions:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 1/3",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 6 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-15",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 52,
+   "parcalar": [
+    {
+     "id": "okuma:reading-2:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-3:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-7",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 7 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-16",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 51,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-8",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 8 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "konu:conjunctions:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 2/3",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-9",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 9 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-10",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 10 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-19",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:conjunctions:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 3/3",
+     "sure": 15,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-3:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-11",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 11 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-12",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 12 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-20",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 60,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 1/5",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-3:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "test:prep-test-1",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 1 (25 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-21",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 52,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-4:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-13",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 13 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-22",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 1 (6 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-14",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 14 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:prep-test-2",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 2 (23 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-23",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 2 (6 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-4:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-5",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 5 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-26",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 60,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 2/5",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-4:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-6",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 6 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-27",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-15",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 15 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-7",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 7 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-28",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 3 (6 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-8",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 8 (24 soru)",
+     "sure": 25,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-16",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 16 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-10-30",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 4 (6 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-9",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 9 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-17",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 17 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-02",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 52,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 3/5",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-18",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 18 (8 kart)",
+     "sure": 12,
+     "tekrar": 1
+    },
+    {
+     "id": "test:grammar-test-10",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 10 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-03",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "okuma:reading-1:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-11",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 11 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:phrasal-19",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 19 (7 kart)",
+     "sure": 12,
+     "tekrar": 1
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-04",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:vocab-verbs-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 5 (6 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-12",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 12 (25 soru)",
+     "sure": 25,
+     "tekrar": 1
+    },
+    {
+     "id": "kelime:vocab-verbs-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 6 (2 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-05",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-13",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 13 (24 soru)",
+     "sure": 25,
+     "tekrar": 1
+    },
+    {
+     "id": "okuma:reading-2:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-1",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 1 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-06",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 51,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-2",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 2 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "konu:if-clauses:4",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 4/5",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-3",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 3 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-4",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 4 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-09",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "konu:if-clauses:5",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 5/5",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-2:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-5",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 5 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-6",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 6 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-10",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 55,
+   "parcalar": [
+    {
+     "id": "konu:conjunctions:1",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 1/3",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-2:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-3:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-11",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 51,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-7",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 7 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-8",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 8 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "konu:conjunctions:2",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 2/3",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-9",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 9 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-12",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 59,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-10",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 10 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "konu:conjunctions:3",
+     "tur": "konu",
+     "turAdi": "Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 3/3",
+     "sure": 15,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-3:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-11",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 11 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-13",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-12",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 12 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-3:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "test:prep-test-1",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 1 (25 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-23",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 56,
+   "parcalar": [
+    {
+     "id": "okuma:reading-4:1",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Metin ve sözlük",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-13",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 13 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-14",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 14 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-15",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 15 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-24",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "test:prep-test-2",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Preposition Testi 2 (23 soru, puanlı)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-4:2",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 1",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-16",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 16 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-25",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 57,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-5",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 5 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "okuma:reading-4:3",
+     "tur": "okuma",
+     "turAdi": "Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 2",
+     "sure": 20,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-17",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 17 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-26",
+   "gunAdi": "Perşembe",
+   "durum": "dolu",
+   "toplamSure": 50,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-6",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 6 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-7",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 7 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-27",
+   "gunAdi": "Cuma",
+   "durum": "dolu",
+   "toplamSure": 50,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-8",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 8 (24 soru)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-9",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 9 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-30",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 49,
+   "parcalar": [
+    {
+     "id": "kelime:phrasal-18",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 18 (8 kart)",
+     "sure": 12,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-10",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 10 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "kelime:phrasal-19",
+     "tur": "kelime",
+     "turAdi": "Kelime",
+     "baslik": "Phrasal Verbs — Grup 19 (7 kart)",
+     "sure": 12,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-12-01",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 50,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-11",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 11 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    },
+    {
+     "id": "test:grammar-test-12",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 12 (25 soru)",
+     "sure": 25,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-12-02",
+   "gunAdi": "Çarşamba",
+   "durum": "dolu",
+   "toplamSure": 25,
+   "parcalar": [
+    {
+     "id": "test:grammar-test-13",
+     "tur": "test",
+     "turAdi": "Test",
+     "baslik": "Dilbilgisi Testi 13 (24 soru)",
+     "sure": 25,
+     "tekrar": 2
+    }
+   ]
+  },
+  {
+   "tarih": "2026-12-03",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-04",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-07",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-08",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-09",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-10",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-11",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-14",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-15",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-16",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-17",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-18",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-21",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-22",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-23",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-24",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-25",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-28",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-29",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-30",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2026-12-31",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-04",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-05",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-06",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-07",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-08",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-11",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-12",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-13",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-14",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-15",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-18",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-19",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-20",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-21",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-01-22",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-08",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-09",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-10",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-11",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-12",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-15",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-16",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-17",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-18",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-19",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-22",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-23",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-24",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-25",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-02-26",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-01",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-02",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-03",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-04",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-05",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-15",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-16",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-17",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-18",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-19",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-22",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-23",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-24",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-25",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-26",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-29",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-30",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-03-31",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-01",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-02",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-05",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-06",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-07",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-08",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-09",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-12",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-13",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-14",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-15",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-16",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-19",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-20",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-21",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-22",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-26",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-27",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-28",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-29",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-04-30",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-03",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-04",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-05",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-06",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-07",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-10",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-11",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-12",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-13",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-14",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-20",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-21",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-24",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-25",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-26",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-27",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-28",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-05-31",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-01",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-02",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-03",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-04",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-07",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-08",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-09",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-10",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-11",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-14",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-15",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-16",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-17",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-18",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-21",
+   "gunAdi": "Pazartesi",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-22",
+   "gunAdi": "Salı",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-23",
+   "gunAdi": "Çarşamba",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-24",
+   "gunAdi": "Perşembe",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  },
+  {
+   "tarih": "2027-06-25",
+   "gunAdi": "Cuma",
+   "durum": "bekliyor",
+   "toplamSure": 0,
+   "parcalar": []
+  }
+ ]
+}

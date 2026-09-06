@@ -14,6 +14,7 @@ const { pool, query, initDb, seedAdmin } = require('./db');
 const academicCalendar = require('./academicCalendar');
 const yzProgram = require('./yzProgram');
 const ydsSync = require('./ydsSync');
+const ydsProgram = require('./ydsProgram');
 
 const app = express();
 
@@ -1480,6 +1481,170 @@ async function syncYdsProgress() {
   }
 }
 
+/**
+ * YDS programini gorev olarak yazar (YZ aktarimiyla ayni desen).
+ *
+ * Ek olarak BAYAT GOREV TEMIZLIGI yapar: icerik buyuyup program yeniden
+ * uretildiginde bir gunun paketi degisebilir. O gune ait artik programda
+ * olmayan gorevler silinir — ama yalnizca ISARETLENMEMIS ve GUNU GELMEMIS
+ * olanlar. Gecmis ya da isaretli gorev asla silinmez/oynatilmaz.
+ */
+async function importYdsProgram(studentId, createdBy) {
+  const program = ydsProgram.loadYdsProgram();
+  if (!program.gorevler.length) {
+    return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0 };
+  }
+
+  const today = todayDateString();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Kategoriler (tur basina bir tane).
+    const kategoriIdByAd = new Map();
+    let createdCategories = 0;
+    for (const ad of [...new Set(program.gorevler.map((g) => g.kategoriAd))]) {
+      const mevcut = await client.query(`SELECT id FROM categories WHERE name = $1`, [ad]);
+      if (mevcut.rowCount > 0) {
+        kategoriIdByAd.set(ad, mevcut.rows[0].id);
+        continue;
+      }
+      const id = makeId('cat');
+      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [id, ad]);
+      kategoriIdByAd.set(ad, id);
+      createdCategories += 1;
+    }
+
+    let inserted = 0;
+    let updated = 0;
+    for (const gorev of program.gorevler) {
+      const aciklama = ydsProgram.describeItem(gorev);
+      const kategoriId = kategoriIdByAd.get(gorev.kategoriAd);
+
+      const ekleme = await client.query(
+        `
+          INSERT INTO tasks (
+            id, title, description, category_id, student_id, repeat_type,
+            single_date, weekly_day, monthly_day, custom_dates,
+            start_date, end_date, estimated_time, is_archived, created_by, source_key
+          )
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
+          ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
+        `,
+        [
+          makeId('task'),
+          gorev.baslik,
+          aciklama,
+          kategoriId,
+          studentId,
+          gorev.tarih,
+          createdBy,
+          gorev.sourceKey
+        ]
+      );
+
+      if (ekleme.rowCount > 0) {
+        inserted += 1;
+        continue;
+      }
+
+      // Zaten var: basligi/aciklamasi degistiyse yalnizca dokunulmamis ve
+      // gunu gelmemis gorevi tazele.
+      const guncelleme = await client.query(
+        `
+          UPDATE tasks t
+          SET title = $1, description = $2, category_id = $3
+          WHERE t.student_id = $4
+            AND t.source_key = $5
+            AND t.single_date >= $6::date
+            AND (t.title IS DISTINCT FROM $1 OR t.description IS DISTINCT FROM $2
+                 OR t.category_id IS DISTINCT FROM $3)
+            AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+        `,
+        [gorev.baslik, aciklama, kategoriId, studentId, gorev.sourceKey, today]
+      );
+      updated += guncelleme.rowCount || 0;
+    }
+
+    // Bayat gorevler: programda olmayan, gunu gelmemis, isaretlenmemis olanlar.
+    const gecerliAnahtarlar = program.gorevler.map((g) => g.sourceKey);
+    const silme = await client.query(
+      `
+        DELETE FROM tasks t
+        WHERE t.student_id = $1
+          AND t.source_key LIKE $2
+          AND NOT (t.source_key = ANY($3::text[]))
+          AND t.single_date >= $4::date
+          AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+      `,
+      [studentId, `${ydsProgram.SOURCE_PREFIX}:%`, gecerliAnahtarlar, today]
+    );
+
+    await client.query('COMMIT');
+    return {
+      inserted,
+      updated,
+      removed: silme.rowCount || 0,
+      skipped: program.gorevler.length - inserted,
+      categories: createdCategories
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** /admin/yds sayfasindaki program paneli icin ozet. */
+async function buildYdsProgramSummary(studentId) {
+  const program = ydsProgram.loadYdsProgram();
+  if (!program.gorevler.length) return null;
+
+  let importedKeys = new Set();
+  if (studentId) {
+    const res = await query(
+      `SELECT source_key AS "sourceKey" FROM tasks WHERE student_id = $1 AND source_key LIKE $2`,
+      [studentId, `${ydsProgram.SOURCE_PREFIX}:%`]
+    );
+    importedKeys = new Set(res.rows.map((r) => r.sourceKey));
+  }
+
+  const imported = program.gorevler.filter((g) => importedKeys.has(g.sourceKey)).length;
+  const turler = [];
+  for (const gorev of program.gorevler) {
+    let tur = turler.find((t) => t.ad === gorev.kategoriAd);
+    if (!tur) {
+      tur = { ad: gorev.kategoriAd, total: 0, imported: 0, sure: 0 };
+      turler.push(tur);
+    }
+    tur.total += 1;
+    tur.sure += gorev.sure;
+    if (importedKeys.has(gorev.sourceKey)) tur.imported += 1;
+  }
+
+  const today = todayDateString();
+  return {
+    surum: program.surum,
+    kaynak: program.kaynak,
+    baslangic: program.baslangic,
+    bitis: program.bitis,
+    gunlukDakika: program.gunlukDakika,
+    toplamParca: program.toplamParca,
+    dersGunu: program.dersGunu,
+    doluGun: program.doluGun,
+    bekleyenGun: program.bekleyenGun,
+    total: program.gorevler.length,
+    imported,
+    pending: program.gorevler.length - imported,
+    turler,
+    upcoming: program.gorevler
+      .filter((g) => g.tarih >= today)
+      .slice(0, 20)
+      .map((g) => ({ ...g, imported: importedKeys.has(g.sourceKey), gunAdi: getDayName(g.tarih) }))
+  };
+}
+
 /** Admin "YDS Takibi" sayfasinin goruntusu. */
 async function buildYdsView(gunSayisi = 30) {
   const student = await findYdsStudent();
@@ -1823,6 +1988,8 @@ async function getAdminViewModel(req, currentPage) {
   const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
 
   const ydsView = currentPage === 'yds' ? await buildYdsView(30) : null;
+  const ydsProgramView =
+    currentPage === 'yds' ? await buildYdsProgramSummary(ydsView && ydsView.student ? ydsView.student.id : null) : null;
 
   let wakeAdmin = null;
   if (currentPage === 'wake') {
@@ -2031,6 +2198,7 @@ async function getAdminViewModel(req, currentPage) {
     weeklyAnalysis,
     yzProgramView,
     ydsView,
+    ydsProgramView,
     wakeAdmin,
     dailyBoard,
     report,
@@ -2581,6 +2749,40 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Görev oluşturuldu.' });
+  })
+);
+
+app.post(
+  '/admin/yds/program-import',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const student = await findYdsStudent();
+    if (!student) {
+      return adminRedirect(req, res, {
+        error: `'${YDS_STUDENT_USERNAME}' kullanıcı adlı öğrenci bulunamadı.`
+      });
+    }
+
+    const program = ydsProgram.loadYdsProgram();
+    if (!program.gorevler.length) {
+      return adminRedirect(req, res, { error: 'Aktarılacak YDS programı bulunamadı.' });
+    }
+
+    const sonuc = await importYdsProgram(student.id, req.currentUser.id);
+    const notlar = [];
+    if (sonuc.categories) notlar.push(`${sonuc.categories} kategori oluşturuldu.`);
+    if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
+    if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
+
+    if (sonuc.inserted === 0 && !notlar.length) {
+      return adminRedirect(req, res, {
+        message: `${student.name} için yeni görev yok; ${sonuc.skipped} görev zaten aktarılmış.`
+      });
+    }
+
+    return adminRedirect(req, res, {
+      message: `${sonuc.inserted} görev eklendi (${sonuc.skipped} görev zaten vardı).${notlar.length ? ' ' + notlar.join(' ') : ''}`
+    });
   })
 );
 

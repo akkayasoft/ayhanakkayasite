@@ -1297,6 +1297,118 @@
           </form>
         </section>
 
+        <% if (ydsProgramView) { %>
+        <section class="panel">
+          <h3>Çalışma Programı</h3>
+          <p class="muted">
+            Kaynak: <%= ydsProgramView.kaynak %> · Sürüm <%= ydsProgramView.surum %> ·
+            <%= ydsProgramView.baslangic %> - <%= ydsProgramView.bitis %> ·
+            günde ~<%= ydsProgramView.gunlukDakika %> dk
+          </p>
+          <p class="muted">
+            <%= ydsProgramView.toplamParca %> içerik parçası
+            <%= ydsProgramView.dersGunu %> ders gününe yayıldı:
+            <strong><%= ydsProgramView.doluGun %> gün</strong> içerikli,
+            <strong><%= ydsProgramView.bekleyenGun %> gün</strong> içerik bekliyor.
+            Bekleyen günlere konu uydurulmaz; yalnızca günlük çalışma görevi açılır.
+            İçerik büyüyünce programı yeniden üretip aynı düğmeye bas — yeni içerik
+            boş günlere yerleşir, geçmiş günler oynamaz.
+          </p>
+
+          <section class="kpi-grid">
+            <article class="kpi">
+              <p class="kpi-label">Programdaki Görev</p>
+              <p class="kpi-value"><%= ydsProgramView.total %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Aktarılan</p>
+              <p class="kpi-value"><%= ydsProgramView.imported %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Bekleyen</p>
+              <p class="kpi-value"><%= ydsProgramView.pending %></p>
+            </article>
+          </section>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th>Görev</th>
+                  <th>Aktarılan</th>
+                  <th>Toplam Süre</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ydsProgramView.turler.forEach((t) => { %>
+                <tr>
+                  <td><%= t.ad %></td>
+                  <td><%= t.total %></td>
+                  <td><%= t.imported %> / <%= t.total %></td>
+                  <td><%= Math.round(t.sure / 60) %> saat</td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+
+          <% if (ydsView.student) { %>
+          <form
+            method="post"
+            action="/admin/yds/program-import"
+            class="stack"
+            onsubmit="return confirm('<%= ydsProgramView.pending %> görev <%= ydsView.student.name %> adlı öğrencinin görevlerine eklensin mi?')"
+          >
+            <input type="hidden" name="next" value="/admin/yds" />
+            <button type="submit" <%= ydsProgramView.pending === 0 ? 'disabled' : '' %>>
+              <%= ydsProgramView.pending === 0 ? 'Aktarılacak yeni görev yok' : 'Görevlere Aktar' %>
+            </button>
+          </form>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Yaklaşan Görevler</h3>
+          <% if (!ydsProgramView.upcoming.length) { %>
+          <p class="muted">Bugünden sonraya planlanmış görev kalmadı.</p>
+          <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Tür</th>
+                  <th>Başlık</th>
+                  <th>Süre</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ydsProgramView.upcoming.forEach((g) => { %>
+                <tr>
+                  <td><%= g.tarih %></td>
+                  <td><%= g.gunAdi %></td>
+                  <td><%= g.turAdi %></td>
+                  <td><%= g.baslik %><% if (g.tekrar) { %> <span class="muted">(<%= g.tekrar %>. tekrar)</span><% } %></td>
+                  <td><%= g.sure %> dk</td>
+                  <td>
+                    <% if (g.imported) { %>
+                    <span class="day-badge ok">Aktarıldı</span>
+                    <% } else { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+        <% } %>
+
         <section class="panel">
           <h3>Son <%= ydsView.gunSayisi %> Gün</h3>
           <p class="muted">
