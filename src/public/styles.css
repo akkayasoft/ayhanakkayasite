@@ -1168,6 +1168,12 @@ tr.day-off td {
   color: var(--muted);
 }
 
+.day-badge.ok {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
 /* --------------------------------------------------------------------------
    Giris sayfasi
 

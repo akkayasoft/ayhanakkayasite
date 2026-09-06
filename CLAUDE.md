@@ -110,6 +110,30 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 - Otomatik yazılan `not_done` kayıtları raporlarda durumu
   `İşaretlenmedi` yerine `Yapılmadı` olarak netleştirir.
 
+## Yapay zekâ programı (yapayzeka.obs → takip.obs)
+
+`akkayasoft/uretken-yz-platform` müfredatı (117 ders) 2026-2027 takvimine
+yayılıp görev olarak aktarılır.
+
+- **Program dosyası:** `src/data/yzProgram.json` — commit edilir.
+- **Üretim:** `node scripts/yz-program-uret.js --platform /yol/uretken-yz-platform`
+  Platform deposundaki `dersler.py`'yi okur, `academicCalendar`'dan ders
+  günlerini alır, haftada 4 ders (Pzt-Per) yerleştirir; tatil/bayram günü
+  atlanır.
+- **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
+  Kurs adları kategori olarak otomatik açılır; her ders `tasks.source_key`
+  (`yz:<dersId>`) ile işaretlenir.
+- **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
+  Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
+  bas — yalnızca yeni dersler eklenir.
+- Görevler `estimated_time` olmadan yazılır; otomatik kilit son saati gün sonu
+  (23:59) kabul eder.
+
+> Kurs adları platformdan aynen gelir. Platformdaki "Veri Gorsellestirme",
+> "Makine Ogrenmesi Temelleri", "Derin Ogrenme Egitimi" başlıklarında Türkçe
+> karakter eksik; orada düzeltilirse burada **yeni kategori** oluşur, eski
+> kategorinin adını da elle güncellemek gerekir.
+
 ## Haftalık analiz
 
 `/admin/analysis` — "Haftalık Analiz" sayfası. `buildWeeklyAnalysis(weekStart,
