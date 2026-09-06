@@ -10,23 +10,23 @@
     <main class="shell">
       <aside class="sidebar">
         <div>
-          <p class="sidebar-kicker">Yonetim</p>
-          <h1 class="sidebar-title">Ogrenci Takip</h1>
+          <p class="sidebar-kicker">Yönetim</p>
+          <h1 class="sidebar-title">Öğrenci Takip</h1>
           <p class="sidebar-user"><strong><%= user.name %></strong></p>
         </div>
 
         <nav class="menu">
           <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Genel Durum</a>
-          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Ogrenciler</a>
-          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanici Yonetimi</a>
+          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Öğrenciler</a>
+          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanıcı Yönetimi</a>
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
-          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Gorevler</a>
-          <a href="/admin/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Islemleri</a>
+          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
+          <a href="/admin/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan İşlemleri</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
         <form method="post" action="/logout" class="sidebar-logout">
-          <button type="submit" class="ghost">Cikis</button>
+          <button type="submit" class="ghost">Çıkış</button>
         </form>
       </aside>
 
@@ -41,21 +41,21 @@
         <% if (currentPage === 'dashboard') { %>
         <header class="content-header">
           <h2>Genel Durum</h2>
-          <p class="muted">Gunluk performans ozeti - <strong><%= today %></strong></p>
+          <p class="muted">Günlük performans özeti - <strong><%= today %></strong></p>
         </header>
 
         <section class="kpi-grid">
-          <article class="kpi"><p class="kpi-label">Ogrenci</p><p class="kpi-value"><%= students.length %></p></article>
-          <article class="kpi"><p class="kpi-label">Aktif Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
-          <article class="kpi"><p class="kpi-label">Arsiv Gorev</p><p class="kpi-value"><%= archivedTasks.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Öğrenci</p><p class="kpi-value"><%= students.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Aktif Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Arşiv Görev</p><p class="kpi-value"><%= archivedTasks.length %></p></article>
           <article class="kpi"><p class="kpi-label">Kategori</p><p class="kpi-value"><%= categories.length %></p></article>
         </section>
 
         <section class="panel">
-          <h3>Bugunluk Ogrenci Durumu</h3>
-          <!-- React island (kademeli gecis): /api/admin/daily-board verisinden beslenir -->
+          <h3>Bugünlük Öğrenci Durumu</h3>
+          <!-- React island (kademeli geçiş): /api/admin/daily-board verisinden beslenir -->
           <div id="island-daily-board" data-endpoint="/api/admin/daily-board">
-            <p class="muted">Yukleniyor...</p>
+            <p class="muted">Yükleniyor...</p>
           </div>
         </section>
         <script type="module" src="/dist/daily-board.js"></script>
@@ -63,25 +63,25 @@
 
         <% if (currentPage === 'students') { %>
         <header class="content-header">
-          <h2>Ogrenci Yonetimi</h2>
+          <h2>Öğrenci Yönetimi</h2>
         </header>
         <section class="grid two">
           <article class="panel">
-            <h3>Yeni Ogrenci</h3>
+            <h3>Yeni Öğrenci</h3>
             <form method="post" action="/admin/students" class="stack">
               <input type="hidden" name="next" value="/admin/students" />
               <label>Ad Soyad</label>
               <input type="text" name="name" required />
-              <label>Kullanici Adi</label>
+              <label>Kullanıcı Adı</label>
               <input type="text" name="username" required />
-              <label>Sifre</label>
+              <label>Şifre</label>
               <input type="text" name="password" minlength="6" required />
               <button type="submit">Kaydet</button>
             </form>
           </article>
 
           <article class="panel">
-            <h3>Mevcut Ogrenciler</h3>
+            <h3>Mevcut Öğrenciler</h3>
             <ul class="clean-list">
               <% students.forEach((s) => { %>
               <li><strong><%= s.name %></strong> (@<%= s.username %>) - Puan: <%= s.points || 0 %></li>
@@ -93,51 +93,51 @@
 
         <% if (currentPage === 'users') { %>
         <header class="content-header">
-          <h2>Kullanici Yonetimi</h2>
-          <p class="muted">Toplam kullanici: <strong><%= users.length %></strong> | Admin: <strong><%= adminCount %></strong></p>
+          <h2>Kullanıcı Yönetimi</h2>
+          <p class="muted">Toplam kullanıcı: <strong><%= users.length %></strong> | Admin: <strong><%= adminCount %></strong></p>
         </header>
 
         <section class="grid two">
           <article class="panel">
-            <h3>Yeni Kullanici</h3>
+            <h3>Yeni Kullanıcı</h3>
             <form method="post" action="/admin/users" class="stack">
               <input type="hidden" name="next" value="/admin/users" />
               <label>Ad Soyad</label>
               <input type="text" name="name" required />
-              <label>Kullanici Adi</label>
+              <label>Kullanıcı Adı</label>
               <input type="text" name="username" required />
-              <label>Sifre</label>
+              <label>Şifre</label>
               <input type="text" name="password" minlength="6" required />
               <label>Rol</label>
               <select name="role" required>
-                <option value="student">Ogrenci</option>
+                <option value="student">Öğrenci</option>
                 <option value="admin">Admin</option>
               </select>
-              <button type="submit">Kullanici Ekle</button>
+              <button type="submit">Kullanıcı Ekle</button>
             </form>
           </article>
 
           <article class="panel">
-            <h3>Kullanim Notlari</h3>
+            <h3>Kullanım Notları</h3>
             <ul class="clean-list">
-              <li>Son admin hesabi silinemez veya ogrenciye dusurulemez.</li>
-              <li>Kendi hesabinizin rolunu veya silme islemini bu ekrandan yapamazsiniz.</li>
-              <li>Sifre guncellemede minimum 6 karakter zorunludur.</li>
+              <li>Son admin hesabı silinemez veya öğrenciye düşürülemez.</li>
+              <li>Kendi hesabınızın rolünü veya silme işlemini bu ekrandan yapamazsınız.</li>
+              <li>Şifre güncellemede minimum 6 karakter zorunludur.</li>
             </ul>
           </article>
         </section>
 
         <section class="panel">
-          <h3>Mevcut Kullanicilar</h3>
+          <h3>Mevcut Kullanıcılar</h3>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Ad Soyad</th>
-                  <th>Kullanici Adi</th>
+                  <th>Kullanıcı Adı</th>
                   <th>Rol</th>
                   <th>Puan</th>
-                  <th>Sifre</th>
+                  <th>Şifre</th>
                   <th>Sil</th>
                 </tr>
               </thead>
@@ -150,11 +150,11 @@
                     <form method="post" action="/admin/users/<%= u.id %>/role" class="row center">
                       <input type="hidden" name="next" value="/admin/users" />
                       <select name="role" <%= u.id === user.id ? 'disabled' : '' %>>
-                        <option value="student" <%= u.role === 'student' ? 'selected' : '' %>>Ogrenci</option>
+                        <option value="student" <%= u.role === 'student' ? 'selected' : '' %>>Öğrenci</option>
                         <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
                       </select>
                       <% if (u.id !== user.id) { %>
-                      <button type="submit">Guncelle</button>
+                      <button type="submit">Güncelle</button>
                       <% } %>
                     </form>
                   </td>
@@ -162,13 +162,13 @@
                   <td>
                     <form method="post" action="/admin/users/<%= u.id %>/password" class="row center">
                       <input type="hidden" name="next" value="/admin/users" />
-                      <input type="text" name="password" minlength="6" placeholder="Yeni sifre" required />
-                      <button type="submit">Sifre Degistir</button>
+                      <input type="text" name="password" minlength="6" placeholder="Yeni şifre" required />
+                      <button type="submit">Şifre Değiştir</button>
                     </form>
                   </td>
                   <td>
                     <% if (u.id !== user.id) { %>
-                    <form method="post" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Bu kullanici silinsin mi?')">
+                    <form method="post" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Bu kullanıcı silinsin mi?')">
                       <input type="hidden" name="next" value="/admin/users" />
                       <button type="submit" class="danger">Sil</button>
                     </form>
@@ -184,14 +184,14 @@
 
         <% if (currentPage === 'categories') { %>
         <header class="content-header">
-          <h2>Kategori Yonetimi</h2>
+          <h2>Kategori Yönetimi</h2>
         </header>
         <section class="grid two">
           <article class="panel">
             <h3>Yeni Kategori</h3>
             <form method="post" action="/admin/categories" class="stack">
               <input type="hidden" name="next" value="/admin/categories" />
-              <label>Kategori Adi</label>
+              <label>Kategori Adı</label>
               <input type="text" name="name" required />
               <button type="submit">Ekle</button>
             </form>
@@ -222,37 +222,37 @@
         <% const isInlineEditPage = isUpdatePage || isActivePage; %>
         <% const allTaskExportPath = activeTaskFilters.studentId ? `/admin/tasks/export-active?activeTaskStudentId=${activeTaskFilters.studentId}` : '/admin/tasks/export-active'; %>
         <header class="content-header">
-          <h2>Gorev Yonetimi</h2>
+          <h2>Görev Yönetimi</h2>
           <div class="row">
-            <a href="/admin/tasks/create" class="button-link <%= taskSection === 'create' ? 'active' : '' %>">Gorev Olustur</a>
-            <a href="/admin/tasks/update" class="button-link <%= taskSection === 'update' ? 'active' : '' %>">Gorev Guncelle</a>
-            <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Tum Gorevler</a>
+            <a href="/admin/tasks/create" class="button-link <%= taskSection === 'create' ? 'active' : '' %>">Görev Oluştur</a>
+            <a href="/admin/tasks/update" class="button-link <%= taskSection === 'update' ? 'active' : '' %>">Görev Güncelle</a>
+            <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Tüm Görevler</a>
           </div>
         </header>
 
         <% if (taskSection === 'create') { %>
         <section class="panel">
-          <h3>Yeni Gorev Olustur</h3>
+          <h3>Yeni Görev Oluştur</h3>
           <form method="post" action="/admin/tasks" class="grid two">
             <input type="hidden" name="next" value="<%= tasksPagePath %>" />
             <div class="stack">
-              <label>Gorev Basligi</label>
+              <label>Görev Başlığı</label>
               <input type="text" name="title" required />
 
-              <label>Aciklama</label>
+              <label>Açıklama</label>
               <textarea name="description"></textarea>
 
               <label>Kategori</label>
               <select name="categoryId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>"><%= c.name %></option>
                 <% }) %>
               </select>
 
-              <label>Ogrenci</label>
+              <label>Öğrenci</label>
               <select name="studentId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>"><%= s.name %></option>
                 <% }) %>
@@ -263,10 +263,10 @@
               <label>Tekrar Tipi</label>
               <select name="repeatType" required>
                 <option value="once">Tek Seferlik</option>
-                <option value="daily">Her Gun</option>
-                <option value="weekly">Haftalik</option>
-                <option value="monthly">Aylik</option>
-                <option value="custom">Ozel Tarihler</option>
+                <option value="daily">Her Gün</option>
+                <option value="weekly">Haftalık</option>
+                <option value="monthly">Aylık</option>
+                <option value="custom">Özel Tarihler</option>
               </select>
 
               <label>Tek Seferlik Tarih</label>
@@ -275,28 +275,28 @@
               <label>Tahmini Saat</label>
               <input type="time" name="estimatedTime" />
 
-              <label>Haftalik Gun (0-6)</label>
+              <label>Haftalık Gün (0-6)</label>
               <input type="number" min="0" max="6" name="weeklyDay" />
 
-              <label>Aylik Gun (1-31)</label>
+              <label>Aylık Gün (1-31)</label>
               <input type="number" min="1" max="31" name="monthlyDay" />
 
-              <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+              <label>Özel Tarihler (YYYY-MM-DD, virgülle)</label>
               <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
 
-              <label>Baslangic Tarihi</label>
+              <label>Başlangıç Tarihi</label>
               <input type="date" name="startDate" />
 
-              <label>Bitis Tarihi</label>
+              <label>Bitiş Tarihi</label>
               <input type="date" name="endDate" />
 
-              <button type="submit">Gorevi Kaydet</button>
+              <button type="submit">Görevi Kaydet</button>
             </div>
           </form>
         </section>
 
         <section class="panel">
-          <h3>Herhangi Bir Haftayi Kopyala</h3>
+          <h3>Herhangi Bir Haftayı Kopyala</h3>
           <form method="post" action="/admin/tasks/copy-week" class="grid two">
             <input type="hidden" name="next" value="<%= tasksPagePath %>" />
             <div class="stack">
@@ -307,15 +307,15 @@
               <input type="date" name="targetWeekStart" value="<%= weeklyRuleNextWeekStart %>" required />
             </div>
             <div class="stack">
-              <label>Ogrenci (opsiyonel)</label>
+              <label>Öğrenci (opsiyonel)</label>
               <select name="studentId">
-                <option value="">Tum Ogrenciler</option>
+                <option value="">Tüm Öğrenciler</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>"><%= s.name %></option>
                 <% }) %>
               </select>
-              <p class="muted">Kaynak haftadaki gorev plani, gun offset'i korunarak hedef haftaya tek seferlik gorevler olarak kopyalanir.</p>
-              <button type="submit">Haftayi Kopyala</button>
+              <p class="muted">Kaynak haftadaki görev planı, gün offset'i korunarak hedef haftaya tek seferlik görevler olarak kopyalanır.</p>
+              <button type="submit">Haftayı Kopyala</button>
             </div>
           </form>
         </section>
@@ -325,9 +325,9 @@
         <section class="panel">
           <div class="datatable-toolbar">
             <form method="get" action="/admin/tasks/<%= taskSection %>" class="row center">
-              <label for="activeTaskStudentId">Ogrenci</label>
+              <label for="activeTaskStudentId">Öğrenci</label>
               <select id="activeTaskStudentId" name="activeTaskStudentId">
-                <option value="">Tum Ogrenciler</option>
+                <option value="">Tüm Öğrenciler</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>" <%= activeTaskFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
                 <% }) %>
@@ -337,22 +337,22 @@
               <a class="button-link" href="/admin/tasks/<%= taskSection %>">Temizle</a>
               <% } %>
               <% if (isActivePage) { %>
-              <a class="button-link" href="<%= allTaskExportPath %>">Excel Indir</a>
+              <a class="button-link" href="<%= allTaskExportPath %>">Excel İndir</a>
               <% } %>
             </form>
             <div class="datatable-filter-row">
               <div class="datatable-search">
                 <label for="taskSearchInput">Genel Ara</label>
-                <input id="taskSearchInput" type="text" placeholder="Baslik, konu, ogrenci, kategori..." />
+                <input id="taskSearchInput" type="text" placeholder="Başlık, konu, öğrenci, kategori..." />
               </div>
               <div class="datatable-search">
-                <label for="taskTitleFilter">Baslik</label>
-                <input id="taskTitleFilter" type="text" placeholder="Basliga gore filtrele" />
+                <label for="taskTitleFilter">Başlık</label>
+                <input id="taskTitleFilter" type="text" placeholder="Başlığa göre filtrele" />
               </div>
               <div class="datatable-search">
                 <label for="taskCategoryFilter">Kategori</label>
                 <select id="taskCategoryFilter">
-                  <option value="">Tum Kategoriler</option>
+                  <option value="">Tüm Kategoriler</option>
                   <% categories.forEach((c) => { %>
                   <option value="<%= c.name %>"><%= c.name %></option>
                   <% }) %>
@@ -366,68 +366,68 @@
           </div>
 
           <% if (!taskTableTasks.length) { %>
-          <p class="muted">Gorev yok.</p>
+          <p class="muted">Görev yok.</p>
           <% } %>
           <% if (taskTableTasks.length) { %>
           <% if (isUpdatePage) { %>
           <form id="bulkTaskForm" method="post" action="/admin/tasks/bulk-update" class="grid two">
             <input type="hidden" name="next" value="<%= tasksPagePath %>" />
             <div class="stack">
-              <h4>Toplu Guncelle</h4>
+              <h4>Toplu Güncelle</h4>
               <label>Yeni Kategori (opsiyonel)</label>
               <select name="categoryId">
-                <option value="">Degistirme</option>
+                <option value="">Değiştirme</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>"><%= c.name %></option>
                 <% }) %>
               </select>
 
-              <label>Yeni Ogrenci (opsiyonel)</label>
+              <label>Yeni Öğrenci (opsiyonel)</label>
               <select name="studentId">
-                <option value="">Degistirme</option>
+                <option value="">Değiştirme</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>"><%= s.name %></option>
                 <% }) %>
               </select>
 
-              <label>Arsiv Islemi</label>
+              <label>Arşiv İşlemi</label>
               <select name="archiveAction">
-                <option value="keep">Degistirme</option>
-                <option value="archive">Arsive Al</option>
-                <option value="unarchive">Arsivden Cikar</option>
+                <option value="keep">Değiştirme</option>
+                <option value="archive">Arşive Al</option>
+                <option value="unarchive">Arşivden Çıkar</option>
               </select>
             </div>
 
             <div class="stack">
               <label>Yeni Tekrar Tipi (opsiyonel)</label>
               <select name="repeatType">
-                <option value="">Degistirme</option>
+                <option value="">Değiştirme</option>
                 <option value="once">Tek Seferlik</option>
-                <option value="weekly">Haftalik</option>
-                <option value="monthly">Aylik</option>
-                <option value="custom">Ozel Tarihler</option>
+                <option value="weekly">Haftalık</option>
+                <option value="monthly">Aylık</option>
+                <option value="custom">Özel Tarihler</option>
               </select>
 
               <label>Tek Seferlik Tarih</label>
               <input type="date" name="singleDate" />
 
-              <label>Haftalik Gun (0-6)</label>
+              <label>Haftalık Gün (0-6)</label>
               <input type="number" min="0" max="6" name="weeklyDay" />
 
-              <label>Aylik Gun (1-31)</label>
+              <label>Aylık Gün (1-31)</label>
               <input type="number" min="1" max="31" name="monthlyDay" />
 
-              <label>Ozel Tarihler (YYYY-MM-DD, virgulle)</label>
+              <label>Özel Tarihler (YYYY-MM-DD, virgülle)</label>
               <input type="text" name="customDates" placeholder="2026-05-10,2026-05-20" />
 
-              <label>Baslangic Tarihi (opsiyonel)</label>
+              <label>Başlangıç Tarihi (opsiyonel)</label>
               <input type="date" name="startDate" />
 
-              <label>Bitis Tarihi (opsiyonel)</label>
+              <label>Bitiş Tarihi (opsiyonel)</label>
               <input type="date" name="endDate" />
 
-              <button type="submit">Secili Gorevleri Guncelle</button>
-              <p class="muted">Toplu guncelleme sadece secili gorevlere uygulanir.</p>
+              <button type="submit">Seçili Görevleri Güncelle</button>
+              <p class="muted">Toplu güncelleme sadece seçili görevlere uygulanır.</p>
             </div>
           </form>
           <% } %>
@@ -439,13 +439,13 @@
                   <% if (isUpdatePage) { %>
                   <th><input id="bulkSelectAll" type="checkbox" /></th>
                   <% } %>
-                  <th>Baslik</th>
+                  <th>Başlık</th>
                   <th>Konu</th>
-                  <th>Ogrenci</th>
+                  <th>Öğrenci</th>
                   <th>Kategori</th>
                   <th>Saat</th>
                   <th>Tarih</th>
-                  <th>Islem</th>
+                  <th>İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -457,13 +457,13 @@
                   <% } %>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Ogrenci yok' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Öğrenci yok' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= t.estimatedTime || '' %>"><%= t.estimatedTime || '-' %></td>
                   <td><%= t.dateText %></td>
                   <td>
                     <div class="task-table-actions">
-                      <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Gorev kalici olarak silinsin mi?')">
+                      <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Görev kalıcı olarak silinsin mi?')">
                         <input type="hidden" name="next" value="<%= tasksPagePath %>" />
                         <button type="submit" class="danger">Sil</button>
                       </form>
@@ -593,7 +593,7 @@
                   });
                   const data = await response.json();
                   if (!response.ok || !data.ok) {
-                    throw new Error(data.error || 'Kayit basarisiz.');
+                    throw new Error(data.error || 'Kayıt başarısız.');
                   }
 
                   cell.setAttribute('data-value', data.value || '');
@@ -604,7 +604,7 @@
                   }
                   refreshRowSearch(row);
                 } catch (err) {
-                  alert(err.message || 'Kayit basarisiz.');
+                  alert(err.message || 'Kayıt başarısız.');
                   if (field === 'title') {
                     cell.innerHTML = `<strong>${escapeHtml(oldValue)}</strong>`;
                   } else if (field === 'description') {
@@ -686,38 +686,38 @@
 
         <% if (currentPage === 'points') { %>
         <header class="content-header">
-          <h2>Puan Islemleri</h2>
+          <h2>Puan İşlemleri</h2>
           <p class="muted">Hafta: <strong><%= weeklyRuleWeekStart %> - <%= weeklyRuleWeekEnd %></strong></p>
           <div class="row">
-            <a class="button-link" href="/admin/points?weekStart=<%= weeklyRulePrevWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Onceki Hafta</a>
+            <a class="button-link" href="/admin/points?weekStart=<%= weeklyRulePrevWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Önceki Hafta</a>
             <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleNextWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Sonraki Hafta</a>
-            <a class="button-link" href="/admin/points/export-weekly?weekStart=<%= weeklyRuleWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Excel Indir</a>
+            <a class="button-link" href="/admin/points/export-weekly?weekStart=<%= weeklyRuleWeekStart %><%= weeklyEvalFilters.studentId ? `&weeklyEvalStudentId=${weeklyEvalFilters.studentId}` : '' %>">Excel İndir</a>
           </div>
         </header>
         <section class="grid two">
           <article class="panel">
-            <h3>Odul / Ceza Uygula</h3>
+            <h3>Ödül / Ceza Uygula</h3>
             <form method="post" action="/admin/points" class="stack">
               <input type="hidden" name="next" value="/admin/points" />
               <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
-              <label>Ogrenci</label>
+              <label>Öğrenci</label>
               <select name="studentId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>"><%= s.name %></option>
                 <% }) %>
               </select>
 
-              <label>Islem Tipi</label>
+              <label>İşlem Tipi</label>
               <select name="type" required>
-                <option value="reward">Odul</option>
+                <option value="reward">Ödül</option>
                 <option value="penalty">Ceza</option>
               </select>
 
               <label>Puan</label>
               <input type="number" name="points" min="1" required />
 
-              <label>Gerekce</label>
+              <label>Gerekçe</label>
               <input type="text" name="reason" required />
 
               <button type="submit">Uygula</button>
@@ -725,15 +725,15 @@
           </article>
 
           <article class="panel">
-            <h3>Haftalik Kategori Odul/Ceza Tanimla</h3>
+            <h3>Haftalık Kategori Ödül/Ceza Tanımla</h3>
             <form method="post" action="<%= weeklyRuleForm.action %>" class="stack">
               <input type="hidden" name="next" value="/admin/points" />
-              <label>Hafta Baslangici</label>
+              <label>Hafta Başlangıcı</label>
               <input type="date" name="weekStart" value="<%= weeklyRuleForm.weekStart %>" required />
 
-              <label>Ogrenci</label>
+              <label>Öğrenci</label>
               <select name="studentId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>" <%= weeklyRuleForm.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
                 <% }) %>
@@ -741,55 +741,55 @@
 
               <label>Kategori</label>
               <select name="categoryId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>" <%= weeklyRuleForm.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
                 <% }) %>
               </select>
 
-              <label>Odul Puani (>%80)</label>
+              <label>Ödül Puanı (>%80)</label>
               <input type="number" name="rewardPoints" min="0" value="<%= weeklyRuleForm.rewardPoints %>" required />
 
-              <label>Odul Aciklamasi</label>
-              <input type="text" name="rewardLabel" value="<%= weeklyRuleForm.rewardLabel %>" placeholder="Orn: Haftalik Matematik Odulu" />
+              <label>Ödül Açıklaması</label>
+              <input type="text" name="rewardLabel" value="<%= weeklyRuleForm.rewardLabel %>" placeholder="Örn: Haftalık Matematik Ödülü" />
 
-              <label>Ceza Puani (%80 alti)</label>
+              <label>Ceza Puanı (%80 altı)</label>
               <input type="number" name="penaltyPoints" min="0" value="<%= weeklyRuleForm.penaltyPoints %>" required />
 
-              <label>Ceza Aciklamasi</label>
-              <input type="text" name="penaltyLabel" value="<%= weeklyRuleForm.penaltyLabel %>" placeholder="Orn: Haftalik Matematik Cezasi" />
+              <label>Ceza Açıklaması</label>
+              <input type="text" name="penaltyLabel" value="<%= weeklyRuleForm.penaltyLabel %>" placeholder="Örn: Haftalık Matematik Cezası" />
 
               <button type="submit"><%= weeklyRuleForm.submitText %></button>
               <% if (weeklyRuleForm.isEdit) { %>
-              <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>">Vazgec</a>
+              <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>">Vazgeç</a>
               <% } %>
             </form>
           </article>
         </section>
 
         <section class="panel">
-          <h3>Haftalik Kurallar</h3>
+          <h3>Haftalık Kurallar</h3>
           <% if (!weeklyRules.length) { %>
-          <p class="muted">Bu hafta icin kategori kurali tanimlanmamis.</p>
+          <p class="muted">Bu hafta için kategori kuralı tanımlanmamış.</p>
           <% } %>
           <% if (weeklyRules.length) { %>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Ogrenci</th>
+                  <th>Öğrenci</th>
                   <th>Kategori</th>
-                  <th>Odul Puani</th>
-                  <th>Odul Aciklamasi</th>
-                  <th>Ceza Puani</th>
-                  <th>Ceza Aciklamasi</th>
-                  <th>Islem</th>
+                  <th>Ödül Puanı</th>
+                  <th>Ödül Açıklaması</th>
+                  <th>Ceza Puanı</th>
+                  <th>Ceza Açıklaması</th>
+                  <th>İşlem</th>
                 </tr>
               </thead>
               <tbody>
                 <% weeklyRules.forEach((r) => { %>
                 <tr>
-                  <td><%= r.studentName || 'Tum Ogrenciler' %></td>
+                  <td><%= r.studentName || 'Tüm Öğrenciler' %></td>
                   <td><%= r.categoryName %></td>
                   <td><%= r.rewardPoints %></td>
                   <td><%= r.rewardLabel || '-' %></td>
@@ -797,8 +797,8 @@
                   <td><%= r.penaltyLabel || '-' %></td>
                   <td>
                     <div class="task-table-actions">
-                      <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>&weeklyRuleEditId=<%= r.id %>">Guncelle</a>
-                      <form method="post" action="/admin/weekly-rules/<%= r.id %>/delete" onsubmit="return confirm('Bu haftalik kural silinsin mi?')">
+                      <a class="button-link" href="/admin/points?weekStart=<%= weeklyRuleWeekStart %>&weeklyRuleEditId=<%= r.id %>">Güncelle</a>
+                      <form method="post" action="/admin/weekly-rules/<%= r.id %>/delete" onsubmit="return confirm('Bu haftalık kural silinsin mi?')">
                         <input type="hidden" name="next" value="/admin/points" />
                         <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
                         <button type="submit" class="danger">Sil</button>
@@ -814,30 +814,30 @@
         </section>
 
         <section class="panel">
-          <h3>Haftalik Degerlendirme</h3>
+          <h3>Haftalık Değerlendirme</h3>
           <form method="post" action="/admin/weekly-evaluations/run" class="row center">
             <input type="hidden" name="next" value="/admin/points" />
-            <label>Hafta Baslangici</label>
+            <label>Hafta Başlangıcı</label>
             <input type="date" name="weekStart" value="<%= weeklyRuleWeekStart %>" required />
-            <label>Ogrenci</label>
+            <label>Öğrenci</label>
             <select name="studentId">
-              <option value="">Tum Ogrenciler</option>
+              <option value="">Tüm Öğrenciler</option>
               <% students.forEach((s) => { %>
               <option value="<%= s.id %>" <%= weeklyEvalFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
               <% }) %>
             </select>
-            <button type="submit">Haftalik Orana Gore Puanla</button>
+            <button type="submit">Haftalık Orana Göre Puanla</button>
           </form>
-          <p class="muted">Kural: %80 ustu odul, %80 alti ceza, %80 esiginde puan uygulanmaz.</p>
+          <p class="muted">Kural: %80 üstü ödül, %80 altı ceza, %80 eşiğinde puan uygulanmaz.</p>
         </section>
 
         <section class="panel">
-          <h3>Haftalik Degerlendirme Sonuclari</h3>
+          <h3>Haftalık Değerlendirme Sonuçları</h3>
           <form method="get" action="/admin/points" class="row center">
             <input type="hidden" name="weekStart" value="<%= weeklyRuleWeekStart %>" />
-            <label>Ogrenci</label>
+            <label>Öğrenci</label>
             <select name="weeklyEvalStudentId">
-              <option value="">Tum Ogrenciler</option>
+              <option value="">Tüm Öğrenciler</option>
               <% students.forEach((s) => { %>
               <option value="<%= s.id %>" <%= weeklyEvalFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
               <% }) %>
@@ -845,21 +845,21 @@
             <button type="submit">Filtrele</button>
           </form>
           <% if (!weeklyEvaluations.length) { %>
-          <p class="muted">Secili hafta ve filtre icin degerlendirme kaydi yok.</p>
+          <p class="muted">Seçili hafta ve filtre için değerlendirme kaydı yok.</p>
           <% } %>
           <% if (weeklyEvaluations.length) { %>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Ogrenci</th>
+                  <th>Öğrenci</th>
                   <th>Kategori</th>
-                  <th>Toplam Gorev</th>
-                  <th>Yapilan</th>
+                  <th>Toplam Görev</th>
+                  <th>Yapılan</th>
                   <th>Oran</th>
-                  <th>Sonuc</th>
+                  <th>Sonuç</th>
                   <th>Puan</th>
-                  <th>Aciklama</th>
+                  <th>Açıklama</th>
                 </tr>
               </thead>
               <tbody>
@@ -871,7 +871,7 @@
                   <td><%= e.doneCount %></td>
                   <td>%<%= e.completionRate.toFixed(1) %></td>
                   <td>
-                    <%= e.resultType === 'reward' ? 'Odul' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %>
+                    <%= e.resultType === 'reward' ? 'Ödül' : e.resultType === 'penalty' ? 'Ceza' : 'Eşik' %>
                   </td>
                   <td><%= e.pointsApplied %></td>
                   <td><%= e.reasonText || '-' %></td>
@@ -884,11 +884,11 @@
         </section>
 
         <section class="panel">
-          <h3>Son Puan Kayitlari</h3>
+          <h3>Son Puan Kayıtları</h3>
           <ul class="clean-list">
             <% pointLogs.forEach((p) => { %>
             <li>
-              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Ödül' : 'Ceza' %></strong>
               - <%= p.points %> puan - <%= p.reason %>
             </li>
             <% }) %>
@@ -898,25 +898,25 @@
 
         <% if (currentPage === 'reports') { %>
         <header class="content-header">
-          <h2>Performans Raporlari</h2>
+          <h2>Performans Raporları</h2>
         </header>
         <section class="panel">
           <form method="get" action="/admin/reports" class="grid three">
             <div class="stack">
-              <label>Ogrenci</label>
+              <label>Öğrenci</label>
               <select name="reportStudentId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% students.forEach((s) => { %>
                 <option value="<%= s.id %>" <%= reportFilters.studentId === s.id ? 'selected' : '' %>><%= s.name %></option>
                 <% }) %>
               </select>
             </div>
             <div class="stack">
-              <label>Baslangic</label>
+              <label>Başlangıç</label>
               <input type="date" name="reportFrom" value="<%= reportFilters.fromDate %>" required />
             </div>
             <div class="stack">
-              <label>Bitis</label>
+              <label>Bitiş</label>
               <input type="date" name="reportTo" value="<%= reportFilters.toDate %>" required />
             </div>
             <div class="stack"><button type="submit">Rapor Getir</button></div>
@@ -928,12 +928,12 @@
 
           <% if (report) { %>
           <p>
-            <strong><%= report.student.name %></strong> icin <%= report.fromDate %> - <%= report.toDate %>
-            donemi tamamlanma orani: <strong>%<%= report.completionRate %></strong>
+            <strong><%= report.student.name %></strong> için <%= report.fromDate %> - <%= report.toDate %>
+            dönemi tamamlanma oranı: <strong>%<%= report.completionRate %></strong>
           </p>
           <p class="muted">
-            Toplam Gorev: <%= report.totals.due %> | Tamamlanan: <%= report.totals.done %> |
-            Soru: <%= report.totals.questions %> | Puan Degisimi: <%= report.totals.pointDelta %>
+            Toplam Görev: <%= report.totals.due %> | Tamamlanan: <%= report.totals.done %> |
+            Soru: <%= report.totals.questions %> | Puan Değişimi: <%= report.totals.pointDelta %>
           </p>
 
           <div class="table-wrap">
@@ -941,9 +941,9 @@
               <thead>
                 <tr>
                   <th>Tarih</th>
-                  <th>Gorev</th>
-                  <th>Yapildi</th>
-                  <th>Yapilmadi</th>
+                  <th>Görev</th>
+                  <th>Yapıldı</th>
+                  <th>Yapılmadı</th>
                   <th>Soru</th>
                   <th>Puan Delta</th>
                 </tr>
