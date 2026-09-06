@@ -1116,6 +1116,35 @@ tr.day-ok td { background: var(--success-soft); }
 tr.day-partial td { background: var(--warning-soft); }
 tr.day-bad td { background: var(--danger-soft); }
 
+/* Ders olmayan gun (hafta sonu, ara tatil, bayram): notr, uyari degil */
+tr.day-off td {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+/* Ogretim yili gun etiketi */
+.day-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.day-badge.school {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.day-badge.off {
+  background: var(--surface-sunken);
+  color: var(--muted);
+}
+
 /* --------------------------------------------------------------------------
    Giris sayfasi
 

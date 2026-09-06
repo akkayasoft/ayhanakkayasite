@@ -11,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { pool, query, initDb, seedAdmin } = require('./db');
+const academicCalendar = require('./academicCalendar');
 
 const app = express();
 
@@ -301,9 +302,14 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
     ).length;
     const dayQuestion = questionByDay.get(day);
 
+    const dayInfo = academicCalendar.getDayInfo(day);
+
     return {
       date: day,
       dayName: getDayName(day),
+      dayType: dayInfo.type,
+      dayLabel: dayInfo.label,
+      isSchoolDay: dayInfo.isSchoolDay,
       dueCount: dueTasks.length,
       doneCount,
       questionTotal: dayQuestion ? Number(dayQuestion.totalQuestions || 0) : 0,
@@ -323,6 +329,7 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
     weekEnd,
     prevWeekStart: shiftDate(weekStart, -7),
     nextWeekStart: shiftDate(weekStart, 7),
+    academic: academicCalendar.describeWeek(weekStart, weekEnd),
     days
   };
 }
@@ -3142,6 +3149,7 @@ app.get(
     sheet.columns = [
       { header: 'Tarih', key: 'date', width: 13 },
       { header: 'Gün', key: 'dayName', width: 14 },
+      { header: 'Takvim', key: 'dayTypeText', width: 20 },
       { header: 'Görev', key: 'title', width: 46 },
       { header: 'Kategori', key: 'categoryName', width: 20 },
       { header: 'Saat', key: 'estimatedTime', width: 10 },
@@ -3153,10 +3161,27 @@ app.get(
 
     // Liste formatı: her görev için ayrı satır (tek hücreye toplama yok)
     calendar.days.forEach((day) => {
+      const dayTypeText = day.isSchoolDay ? 'Ders günü' : day.dayLabel;
+
+      // Gorevsiz gun de satir alir: tatil gunleri raporda gorunur olsun.
+      if (!day.tasks.length) {
+        sheet.addRow({
+          date: day.date,
+          dayName: day.dayName,
+          dayTypeText,
+          title: '-',
+          categoryName: '',
+          estimatedTime: '',
+          statusText: ''
+        });
+        return;
+      }
+
       day.tasks.forEach((task) => {
         sheet.addRow({
           date: day.date,
           dayName: day.dayName,
+          dayTypeText,
           title: task.title || '',
           categoryName: categoryNameById.get(task.categoryId) || 'Kategori yok',
           estimatedTime: task.estimatedTime || '-',
@@ -3173,6 +3198,13 @@ app.get(
     const summaryLabelRow = sheet.addRow({
       date: `${calendar.weekStart} - ${calendar.weekEnd}`,
       dayName: 'Hafta Özeti',
+      dayTypeText: [
+        `${calendar.academic.yearLabel}`,
+        calendar.academic.termLabel,
+        calendar.academic.weekNo ? `${calendar.academic.weekNo}. Hafta` : ''
+      ]
+        .filter(Boolean)
+        .join(' · '),
       title: `Toplam Görev: ${totalDue} | Tamamlanan: ${totalDone} | Tamamlanmayan: ${Math.max(totalDue - totalDone, 0)}`,
       categoryName: '',
       estimatedTime: '',

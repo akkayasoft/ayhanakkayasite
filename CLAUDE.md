@@ -65,6 +65,23 @@ endpoint'inden beslenir (ileride mobil için de kullanılabilir).
   Bir island'ı değiştirdiğinde tekrar build edip dist'i commit'le.
 - Mevcut island'lar: `daily-board` (admin panosu "Bugünlük Öğrenci Durumu", `/api/admin/daily-board`).
 
+## Eğitim öğretim yılı takvimi
+
+`src/academicCalendar.js` — **2026-2027 MEB çalışma takvimi** tek bir
+`ACADEMIC_YEAR` nesnesinde tutulur; dönemler, ara tatiller, yarıyıl tatili ve
+öğretim yılına düşen resmî/dinî bayramlar. Yeni öğretim yılında **yalnızca bu
+nesneyi güncellemek** yeterlidir, gerisi tarihlerden türetilir.
+
+- `getDayInfo(date)` → `{ type, label, isSchoolDay, term }`;
+  type: `school` | `weekend` | `holiday` | `break` | `outside`
+- `describeWeek(weekStart, weekEnd)` → başlık için `{ yearLabel, termLabel,
+  weekNo, schoolDays, note }` (hafta numarası **dönem içi**)
+- Haftalık takvim sayfası ve Excel export'u bu bilgiyi gösterir; ders olmayan
+  günler kırmızı "eksik" yerine nötr işaretlenir.
+
+> Not: Otomatik kilit (aşağıda) şu an **tatil günlerini ayırt etmez** — tatile
+> denk gelen bir görev de süresi dolunca "yapılmadı" işaretlenir.
+
 ## Görev süresi ve otomatik kilit
 
 Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir**:
