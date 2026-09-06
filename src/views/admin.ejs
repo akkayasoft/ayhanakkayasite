@@ -730,6 +730,14 @@
             <p class="kpi-label">Çalışma Süresi</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.duration %> dk</p>
           </article>
+          <article class="kpi">
+            <p class="kpi-label">Uyanma (zamanında)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.wakeOnTimeRate === null ? '-' : weeklyAnalysis.totals.wakeOnTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Kalkış</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.averageWake || '-' %></p>
+          </article>
         </section>
 
         <section class="panel">
@@ -749,6 +757,8 @@
                   <th>Soru</th>
                   <th>Doğruluk</th>
                   <th>Süre (dk)</th>
+                  <th>Uyanma</th>
+                  <th>Ort. Kalkış</th>
                   <th>Detay</th>
                 </tr>
               </thead>
@@ -776,6 +786,24 @@
                   <td><%= r.current.questionTotal %></td>
                   <td><%= r.current.accuracy === null ? '-' : r.current.accuracy + '%' %></td>
                   <td><%= r.current.duration %></td>
+                  <td>
+                    <% if (r.current.wakeTracked === 0) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="status-pill <%= r.current.wakeOnTimeRate >= 80 ? 'ok' : r.current.wakeOnTimeRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= r.current.wakeOnTime %>/<%= r.current.wakeTracked %> · <%= r.current.wakeOnTimeRate %>%
+                    </span>
+                    <% if (r.delta.wakeOnTimeRate !== null && r.delta.wakeOnTimeRate !== 0) { %>
+                    <span class="trend <%= r.delta.wakeOnTimeRate > 0 ? 'up' : 'down' %>">
+                      <%= r.delta.wakeOnTimeRate > 0 ? '▲' : '▼' %> <%= Math.abs(r.delta.wakeOnTimeRate) %>
+                    </span>
+                    <% } %>
+                    <% } %>
+                  </td>
+                  <td>
+                    <%= r.current.averageWake || '-' %><% if (r.current.averageDelay) { %>
+                    <span class="muted">(+<%= r.current.averageDelay %> dk)</span><% } %>
+                  </td>
                   <td>
                     <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
                        href="/admin/analysis?weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
@@ -848,6 +876,8 @@
                   <th>Soru</th>
                   <th>Doğruluk</th>
                   <th>Süre (dk)</th>
+                  <th>Kalkış</th>
+                  <th>Uyanma</th>
                 </tr>
               </thead>
               <tbody>
@@ -868,6 +898,21 @@
                   <td><%= d.questionTotal %></td>
                   <td><%= d.accuracy === null ? '-' : d.accuracy + '%' %></td>
                   <td><%= d.duration %></td>
+                  <td>
+                    <%= d.wake && d.wake.wokeAt ? d.wake.wokeAt : '-' %><% if (d.wake && d.wake.delayMinutes) { %>
+                    <span class="muted">(+<%= d.wake.delayMinutes %> dk)</span><% } %>
+                  </td>
+                  <td>
+                    <% if (!d.wake) { %>
+                    <span class="muted">-</span>
+                    <% } else if (d.wake.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (d.wake.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else { %>
+                    <span class="day-badge miss">Kaçırıldı</span>
+                    <% } %>
+                  </td>
                 </tr>
                 <% }) %>
               </tbody>

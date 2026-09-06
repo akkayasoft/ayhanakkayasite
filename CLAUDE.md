@@ -175,14 +175,22 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
 studentId)` bir haftanın metriklerini üretir:
 
 - **Öğrenci karşılaştırması**: kişi başına görev tamamlama oranı, çözülen
-  soru, doğruluk (%), çalışma süresi ve **önceki haftaya göre puan farkı**.
+  soru, doğruluk (%), çalışma süresi, **uyanma** (zamanında/toplam + oran) ve
+  ortalama kalkış saati; tamamlama ve uyanma oranında **önceki haftaya göre
+  puan farkı**.
 - **Seçili öğrenci için kırılım**: kategori bazında ve gün bazında aynı
-  metrikler. Gün satırları `academicCalendar` etiketini taşır.
+  metrikler. Gün satırları `academicCalendar` etiketini, ayrıca o günün
+  kalkış saatini ve uyanma durumunu taşır. Uyanma kategoriye bağlı olmadığı
+  için kategori tablosunda yer almaz.
+- Uyanma ortalamaları yalnızca **basılan** günlerden hesaplanır (`missed`
+  günler paydaya girmez); zamanında oranının paydası ise kayıt girilmiş tüm
+  günlerdir.
 - Veri olmayan yerde oran `null` döner ve arayüzde `-` gösterilir — `%0` ile
   karıştırılmamalı (veri yok ≠ başarısız).
 
 Sorgular tek turda hem içinde bulunulan hem önceki haftayı çeker
-(`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok.
+(`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok —
+`wake_logs` de aynı desenle aynı turda çekilir.
 
 ## Çalışırken dikkat
 
