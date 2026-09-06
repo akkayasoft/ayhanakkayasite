@@ -12,6 +12,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { pool, query, initDb, seedAdmin } = require('./db');
 const academicCalendar = require('./academicCalendar');
+const yzProgram = require('./yzProgram');
 
 const app = express();
 
@@ -779,10 +780,154 @@ async function sealOverdueTaskStatuses() {
   return { inserted };
 }
 
+// --- yapayzeka.obs mufredati -> gorev aktarimi -----------------------------
+//
+// Program src/data/yzProgram.json'dan okunur (scripts/yz-program-uret.js ile
+// platform deposundan uretilir). Aktarim idempotenttir: her ders satiri
+// tasks.source_key ile isaretlenir, ikinci kez calistirildiginda yalnizca
+// programa yeni eklenen dersler gorev olarak yazilir.
+
+/** Programin hedefi olan ogrenciyi secer; varsayilan "ayhan". */
+function pickYzStudent(students, requestedId) {
+  const requested = students.find((s) => s.id === requestedId);
+  if (requested) return requested;
+
+  const varsayilan = students.find(
+    (s) =>
+      normalizeText(s.username).toLocaleLowerCase('tr') === 'ayhan' ||
+      normalizeText(s.name).toLocaleLowerCase('tr').startsWith('ayhan')
+  );
+  return varsayilan || students[0] || null;
+}
+
+async function buildYzProgramView(req, students) {
+  const program = yzProgram.loadYzProgram();
+  const student = pickYzStudent(students, normalizeText(req.query.yzStudentId));
+
+  let importedKeys = new Set();
+  if (student) {
+    const res = await query(
+      `SELECT source_key AS "sourceKey" FROM tasks WHERE student_id = $1 AND source_key LIKE $2`,
+      [student.id, `${yzProgram.SOURCE_PREFIX}:%`]
+    );
+    importedKeys = new Set(res.rows.map((r) => r.sourceKey));
+  }
+
+  const today = todayDateString();
+  const rows = program.gorevler.map((lesson) => ({
+    ...lesson,
+    imported: importedKeys.has(lesson.sourceKey),
+    gunAdi: getDayName(lesson.tarih),
+    academic: academicCalendar.getDayInfo(lesson.tarih)
+  }));
+
+  const importedCount = rows.filter((r) => r.imported).length;
+  const kurslar = [];
+  for (const row of rows) {
+    let kurs = kurslar.find((k) => k.kurs === row.kurs);
+    if (!kurs) {
+      kurs = { kurs: row.kurs, kursAd: row.kursAd, total: 0, imported: 0, ilk: row.tarih, son: row.tarih };
+      kurslar.push(kurs);
+    }
+    kurs.total += 1;
+    if (row.imported) kurs.imported += 1;
+    if (row.tarih < kurs.ilk) kurs.ilk = row.tarih;
+    if (row.tarih > kurs.son) kurs.son = row.tarih;
+  }
+
+  return {
+    surum: program.surum,
+    kaynak: program.kaynak,
+    baslangic: program.baslangic,
+    bitis: program.bitis,
+    student,
+    students,
+    total: rows.length,
+    imported: importedCount,
+    pending: rows.length - importedCount,
+    kurslar,
+    // Tam liste cok uzun; yaklasan ve son eklenmeyen dersleri goster.
+    upcoming: rows.filter((r) => r.tarih >= today).slice(0, 20),
+    pendingRows: rows.filter((r) => !r.imported).slice(0, 20),
+    rows
+  };
+}
+
+/**
+ * Programdaki dersleri gorev olarak yazar. Kategori (kurs adi) yoksa olusturur.
+ * estimated_time bilerek bos birakilir: otomatik kilit boylece gun sonunu
+ * (23:59) son saat kabul eder, dersin sure bilgisi aciklamaya yazilir.
+ */
+async function importYzProgram(studentId, createdBy) {
+  const program = yzProgram.loadYzProgram();
+  if (!program.gorevler.length) {
+    return { inserted: 0, skipped: 0, categories: 0 };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const kursAdlari = [...new Set(program.gorevler.map((g) => g.kursAd))];
+    const categoryIdByName = new Map();
+    let createdCategories = 0;
+
+    for (const ad of kursAdlari) {
+      const existing = await client.query(`SELECT id FROM categories WHERE name = $1`, [ad]);
+      if (existing.rowCount > 0) {
+        categoryIdByName.set(ad, existing.rows[0].id);
+        continue;
+      }
+      const id = makeId('cat');
+      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [id, ad]);
+      categoryIdByName.set(ad, id);
+      createdCategories += 1;
+    }
+
+    let inserted = 0;
+    for (const lesson of program.gorevler) {
+      const result = await client.query(
+        `
+          INSERT INTO tasks (
+            id, title, description, category_id, student_id, repeat_type,
+            single_date, weekly_day, monthly_day, custom_dates,
+            start_date, end_date, estimated_time, is_archived, created_by, source_key
+          )
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
+          ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
+        `,
+        [
+          makeId('task'),
+          lesson.baslik,
+          yzProgram.describeLesson(lesson),
+          categoryIdByName.get(lesson.kursAd),
+          studentId,
+          lesson.tarih,
+          createdBy,
+          lesson.sourceKey
+        ]
+      );
+      inserted += result.rowCount || 0;
+    }
+
+    await client.query('COMMIT');
+    return {
+      inserted,
+      skipped: program.gorevler.length - inserted,
+      categories: createdCategories
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -997,6 +1142,8 @@ async function getAdminViewModel(req, currentPage) {
     weeklyAnalysis = await buildWeeklyAnalysis(analysisWeekStart, analysisStudentIdRaw);
   }
 
+  const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
+
   // Gorev "haftayi kopyala" formunun varsayilan degerleri
   const copyWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const copyWeekNextStart = shiftDate(copyWeekStart, 7);
@@ -1170,6 +1317,7 @@ async function getAdminViewModel(req, currentPage) {
     copyWeekStart,
     copyWeekNextStart,
     weeklyAnalysis,
+    yzProgramView,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -1337,7 +1485,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -1719,6 +1867,41 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Görev oluşturuldu.' });
+  })
+);
+
+app.post(
+  '/admin/yz-program/import',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    if (!studentId) {
+      return adminRedirect(req, res, { error: 'Program aktarılacak öğrenciyi seçin.' });
+    }
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const program = yzProgram.loadYzProgram();
+    if (!program.gorevler.length) {
+      return adminRedirect(req, res, { error: 'Aktarılacak program bulunamadı.' });
+    }
+
+    const sonuc = await importYzProgram(studentId, req.currentUser.id);
+    if (sonuc.inserted === 0) {
+      return adminRedirect(req, res, {
+        message: `${studentRes.rows[0].name} için yeni ders yok; ${sonuc.skipped} ders zaten aktarılmış.`
+      });
+    }
+
+    const kategoriNotu = sonuc.categories ? ` ${sonuc.categories} kategori oluşturuldu.` : '';
+    return adminRedirect(req, res, {
+      message: `${sonuc.inserted} ders görev olarak eklendi (${sonuc.skipped} ders zaten vardı).${kategoriNotu}`
+    });
   })
 );
 

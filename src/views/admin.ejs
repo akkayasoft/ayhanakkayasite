@@ -22,6 +22,7 @@
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
           <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
           <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
+          <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
@@ -877,6 +878,145 @@
           <p class="muted">Kategori ve gün kırılımını görmek için yukarıdaki tablodan bir öğrenci seçin.</p>
         </section>
         <% } %>
+        <% } %>
+
+        <% if (currentPage === 'yz-program' && yzProgramView) { %>
+        <header class="content-header">
+          <h2>Yapay Zekâ Programı</h2>
+          <p class="muted">
+            Kaynak: <%= yzProgramView.kaynak %> · Sürüm <%= yzProgramView.surum %>
+            <% if (yzProgramView.baslangic) { %>
+            &nbsp;·&nbsp; <%= yzProgramView.baslangic %> - <%= yzProgramView.bitis %>
+            <% } %>
+          </p>
+          <p class="muted">
+            Platform müfredatı ders ders görevlere aktarılır. Aktarım tekrarlanabilir:
+            platforma yeni ders eklenip program yeniden üretilince, aynı düğme yalnızca
+            yeni dersleri ekler.
+          </p>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi">
+            <p class="kpi-label">Programdaki Ders</p>
+            <p class="kpi-value"><%= yzProgramView.total %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Aktarılan</p>
+            <p class="kpi-value"><%= yzProgramView.imported %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Bekleyen</p>
+            <p class="kpi-value"><%= yzProgramView.pending %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Kategori</p>
+            <p class="kpi-value"><%= yzProgramView.kurslar.length %></p>
+          </article>
+        </section>
+
+        <section class="panel narrow">
+          <h3>Görevlere Aktar</h3>
+          <form method="get" action="/admin/yz-program" class="stack">
+            <label>Öğrenci</label>
+            <select name="yzStudentId" onchange="this.form.submit()">
+              <% yzProgramView.students.forEach((s) => { %>
+              <option value="<%= s.id %>" <%= yzProgramView.student && yzProgramView.student.id === s.id ? 'selected' : '' %>><%= s.name %></option>
+              <% }) %>
+            </select>
+          </form>
+
+          <% if (!yzProgramView.student) { %>
+          <p class="muted">Önce bir öğrenci ekleyin.</p>
+          <% } else { %>
+          <form
+            method="post"
+            action="/admin/yz-program/import"
+            class="stack"
+            onsubmit="return confirm('<%= yzProgramView.pending %> ders <%= yzProgramView.student.name %> adlı öğrencinin görevlerine eklensin mi?')"
+          >
+            <input type="hidden" name="next" value="/admin/yz-program?yzStudentId=<%= yzProgramView.student.id %>" />
+            <input type="hidden" name="studentId" value="<%= yzProgramView.student.id %>" />
+            <p class="muted">
+              <strong><%= yzProgramView.student.name %></strong> için
+              <strong><%= yzProgramView.pending %></strong> ders aktarılacak.
+              Görevler tek seferlik olarak ilgili güne yazılır; saat girilmediği için
+              son teslim gün sonudur (23:59) ve o saatten sonra otomatik kilitlenir.
+            </p>
+            <button type="submit" <%= yzProgramView.pending === 0 ? 'disabled' : '' %>>
+              <%= yzProgramView.pending === 0 ? 'Aktarılacak yeni ders yok' : 'Görevlere Aktar' %>
+            </button>
+          </form>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Kurs Bazında Dağılım</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kurs</th>
+                  <th>Ders</th>
+                  <th>Aktarılan</th>
+                  <th>Başlangıç</th>
+                  <th>Bitiş</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% yzProgramView.kurslar.forEach((k) => { %>
+                <tr>
+                  <td><%= k.kursAd %></td>
+                  <td><%= k.total %></td>
+                  <td><%= k.imported %> / <%= k.total %></td>
+                  <td><%= k.ilk %></td>
+                  <td><%= k.son %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Yaklaşan Dersler</h3>
+          <% if (!yzProgramView.upcoming.length) { %>
+          <p class="muted">Bugünden sonraya planlanmış ders kalmadı.</p>
+          <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Ders</th>
+                  <th>Kurs</th>
+                  <th>Süre</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% yzProgramView.upcoming.forEach((r) => { %>
+                <tr>
+                  <td><%= r.tarih %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.baslik %></td>
+                  <td><%= r.kursAd %></td>
+                  <td><%= r.sure %> dk</td>
+                  <td>
+                    <% if (r.imported) { %>
+                    <span class="day-badge ok">Aktarıldı</span>
+                    <% } else { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
         <% } %>
 
         <% if (currentPage === 'reports') { %>

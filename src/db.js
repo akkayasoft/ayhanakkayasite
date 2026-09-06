@@ -71,6 +71,15 @@ async function initDb() {
     )
   `);
   await query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_time TIME`);
+  // Dis kaynakli (ornegin yapayzeka platformu mufredati) gorevleri tekrar
+  // tekrar eklemeden tanimak icin kaynak anahtari. Ayni ogrenciye ayni
+  // source_key ikinci kez yazilamaz; boylece iceri aktarma idempotent olur.
+  await query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_key TEXT`);
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS tasks_student_source_key_idx
+    ON tasks (student_id, source_key)
+    WHERE source_key IS NOT NULL
+  `);
   await query(`ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_repeat_type_check`);
   await query(`
     ALTER TABLE tasks
