@@ -4,7 +4,11 @@ Bu dosya, bu depoda çalışan Claude Code (ve geliştiriciler) için projenin g
 
 ## Proje
 
-**Öğrenci Takip Sistemi** — admin (öğretmen/veli) öğrencilere görev atar, öğrenci tamamladığını işaretler; günlük soru çözüm/süre takibi, ödül/ceza puanı ve haftalık performans raporu vardır.
+**Öğrenci Takip Sistemi** — admin (öğretmen/veli) öğrencilere görev atar, öğrenci tamamladığını işaretler; günlük soru çözüm/süre takibi ve tarih aralıklı performans raporu vardır.
+
+> Ödül/ceza puan sistemi kaldırıldı: ilgili sayfalar, rotalar, `point_logs` /
+> `weekly_category_rules` / `weekly_category_evaluations` tabloları ve
+> `users.points` sütunu tamamen silindi.
 
 ## Teknoloji
 
@@ -96,9 +100,8 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 - `AUTO_LOCK_START_DATE` (ortam değişkeni, varsayılan `2026-09-06`) bu
   tarihten **önceki** günlere hiç dokunulmamasını sağlar; özellik devreye
   girmeden önceki geçmiş geriye dönük mühürlenmez.
-- Otomatik yazılan `not_done` kayıtları haftalık puanlama oranını
-  **değiştirmez**: değerlendirme zaten yalnızca `done` kayıtlarını sayıyordu,
-  işaretlenmemiş görev de "yapılmadı" gibi hesaplanıyordu.
+- Otomatik yazılan `not_done` kayıtları raporlarda durumu
+  `İşaretlenmedi` yerine `Yapılmadı` olarak netleştirir.
 
 ## Çalışırken dikkat
 

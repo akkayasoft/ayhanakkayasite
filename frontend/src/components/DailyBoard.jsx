@@ -93,7 +93,6 @@ export function DailyBoard({ endpoint }) {
             <thead>
               <tr>
                 <th>Öğrenci</th>
-                <th>Toplam Puan</th>
                 <th>Bugün Görev</th>
                 <th>Tamamlanan</th>
                 <th>Günlük Soru</th>
@@ -105,7 +104,6 @@ export function DailyBoard({ endpoint }) {
                 return (
                   <tr key={row.id}>
                     <td>{row.name}</td>
-                    <td>{row.points || 0}</td>
                     <td>{row.dueCount}</td>
                     <td>
                       <span className={`status-pill ${complete ? 'ok' : row.doneCount > 0 ? 'idle' : 'bad'}`}>
@@ -120,7 +118,6 @@ export function DailyBoard({ endpoint }) {
             <tfoot>
               <tr>
                 <td style={{ fontWeight: 700 }}>Toplam</td>
-                <td />
                 <td style={{ fontWeight: 700 }}>{totals.due}</td>
                 <td style={{ fontWeight: 700 }}>{totals.done}</td>
                 <td style={{ fontWeight: 700 }}>{totals.questions}</td>

@@ -551,7 +551,7 @@ async function sealOverdueTaskStatuses() {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|points|reports|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -563,7 +563,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|questions|points|calendar)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|questions|calendar)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -578,7 +578,6 @@ function mapUser(row) {
     name: row.name,
     username: row.username,
     role: row.role,
-    points: Number(row.points || 0),
     createdAt: row.createdAt
   };
 }
@@ -607,12 +606,12 @@ function mapTask(row) {
 async function getCurrentUserById(userId, withPassword = false) {
   const sql = withPassword
     ? `
-      SELECT id, name, username, role, points, created_at AS "createdAt", password_hash AS "passwordHash"
+      SELECT id, name, username, role, created_at AS "createdAt", password_hash AS "passwordHash"
       FROM users
       WHERE id = $1
     `
     : `
-      SELECT id, name, username, role, points, created_at AS "createdAt"
+      SELECT id, name, username, role, created_at AS "createdAt"
       FROM users
       WHERE id = $1
     `;
@@ -686,7 +685,7 @@ app.post(
 
     const result = await query(
       `
-        SELECT id, name, username, role, points, password_hash AS "passwordHash"
+        SELECT id, name, username, role, password_hash AS "passwordHash"
         FROM users
         WHERE username = $1
         LIMIT 1
@@ -715,12 +714,12 @@ app.post('/logout', (req, res) => {
 });
 
 async function getAdminViewModel(req, currentPage) {
-  const [usersRes, studentsRes, categoriesRes, tasksRes, pointLogsRes] = await Promise.all([
+  const [usersRes, studentsRes, categoriesRes, tasksRes] = await Promise.all([
     query(
-      `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users ORDER BY role DESC, name ASC`
+      `SELECT id, name, username, role, created_at AS "createdAt" FROM users ORDER BY role DESC, name ASC`
     ),
     query(
-      `SELECT id, name, username, role, points, created_at AS "createdAt" FROM users WHERE role = 'student' ORDER BY name ASC`
+      `SELECT id, name, username, role, created_at AS "createdAt" FROM users WHERE role = 'student' ORDER BY name ASC`
     ),
     query(`SELECT id, name, created_at AS "createdAt" FROM categories ORDER BY name ASC`),
     query(`
@@ -743,20 +742,6 @@ async function getAdminViewModel(req, currentPage) {
         created_at AS "createdAt"
       FROM tasks
       ORDER BY created_at DESC
-    `),
-    query(`
-      SELECT
-        id,
-        student_id AS "studentId",
-        type,
-        points,
-        reason,
-        delta,
-        created_by AS "createdBy",
-        created_at AS "createdAt"
-      FROM point_logs
-      ORDER BY created_at DESC
-      LIMIT 20
     `)
   ]);
 
@@ -771,23 +756,11 @@ async function getAdminViewModel(req, currentPage) {
     dateText: formatTaskSchedule(task)
   }));
 
-  const pointLogs = pointLogsRes.rows.map((row) => ({
-    ...row,
-    createdAt: row.createdAt,
-    createdDate: toDateOnly(row.createdAt)
-  }));
-
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
-  const weeklyRuleWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
-  const weeklyRuleWeekEnd = shiftDate(weeklyRuleWeekStart, 6);
-  const weeklyRulePrevWeekStart = shiftDate(weeklyRuleWeekStart, -7);
-  const weeklyRuleNextWeekStart = shiftDate(weeklyRuleWeekStart, 7);
-  const weeklyRuleEditId = normalizeText(req.query.weeklyRuleEditId);
-  const weeklyEvalStudentIdRaw = normalizeText(req.query.weeklyEvalStudentId);
-  const weeklyEvalStudentId = students.some((s) => s.id === weeklyEvalStudentIdRaw)
-    ? weeklyEvalStudentIdRaw
-    : '';
+  // Gorev "haftayi kopyala" formunun varsayilan degerleri
+  const copyWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
+  const copyWeekNextStart = shiftDate(copyWeekStart, 7);
   const editTaskId = normalizeText(req.query.editTaskId);
   const activeTaskStudentIdRaw = normalizeText(req.query.activeTaskStudentId);
   const activeTaskStudentId = students.some((s) => s.id === activeTaskStudentIdRaw) ? activeTaskStudentIdRaw : '';
@@ -877,7 +850,7 @@ async function getAdminViewModel(req, currentPage) {
   let report = null;
 
   if (currentPage === 'reports' && selectedStudent && !reportRange.error) {
-    const [rangeStatusesRes, rangeQuestionsRes, rangePointsRes] = await Promise.all([
+    const [rangeStatusesRes, rangeQuestionsRes] = await Promise.all([
       query(
         `
           SELECT task_id AS "taskId", student_id AS "studentId", day, status
@@ -897,14 +870,6 @@ async function getAdminViewModel(req, currentPage) {
           GROUP BY student_id, day
         `,
         [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
-      ),
-      query(
-        `
-          SELECT student_id AS "studentId", created_at AS "createdAt", delta
-          FROM point_logs
-          WHERE student_id = $1 AND created_at::date BETWEEN $2 AND $3
-        `,
-        [selectedStudent.id, reportRange.fromDate, reportRange.toDate]
       )
     ]);
 
@@ -919,17 +884,12 @@ async function getAdminViewModel(req, currentPage) {
           dueTasks.some((task) => task.id === st.taskId)
       ).length;
       const question = rangeQuestionsRes.rows.find((q) => toDateOnly(q.day) === dateStr);
-      const dayPointDelta = rangePointsRes.rows
-        .filter((p) => toDateOnly(p.createdAt) === dateStr)
-        .reduce((sum, p) => sum + Number(p.delta || 0), 0);
-
       return {
         date: dateStr,
         dueCount: dueTasks.length,
         doneCount,
         notDoneCount: Math.max(dueTasks.length - doneCount, 0),
-        questionCount: question ? Number(question.totalQuestions || 0) : 0,
-        pointDelta: dayPointDelta
+        questionCount: question ? Number(question.totalQuestions || 0) : 0
       };
     });
 
@@ -938,10 +898,9 @@ async function getAdminViewModel(req, currentPage) {
         acc.due += row.dueCount;
         acc.done += row.doneCount;
         acc.questions += row.questionCount;
-        acc.pointDelta += row.pointDelta;
         return acc;
       },
-      { due: 0, done: 0, questions: 0, pointDelta: 0 }
+      { due: 0, done: 0, questions: 0 }
     );
 
     report = {
@@ -952,95 +911,6 @@ async function getAdminViewModel(req, currentPage) {
       totals,
       completionRate: totals.due ? Math.round((totals.done / totals.due) * 100) : 0
     };
-  }
-
-  let weeklyRules = [];
-  let weeklyEvaluations = [];
-  let weeklyRuleForm = {
-    isEdit: false,
-    action: '/admin/weekly-rules',
-    submitText: 'Haftalık Kuralı Kaydet',
-    weekStart: weeklyRuleWeekStart,
-    studentId: '',
-    categoryId: '',
-    rewardPoints: 0,
-    penaltyPoints: 0,
-    rewardLabel: '',
-    penaltyLabel: ''
-  };
-  if (currentPage === 'points') {
-    const [weeklyRulesRes, weeklyEvaluationsRes] = await Promise.all([
-      query(
-        `
-          SELECT
-            r.id,
-            r.week_start AS "weekStart",
-            r.category_id AS "categoryId",
-            r.student_id AS "studentId",
-            r.reward_points AS "rewardPoints",
-            r.penalty_points AS "penaltyPoints",
-            r.reward_label AS "rewardLabel",
-            r.penalty_label AS "penaltyLabel",
-            r.created_at AS "createdAt",
-            r.updated_at AS "updatedAt",
-            u.name AS "studentName",
-            c.name AS "categoryName"
-          FROM weekly_category_rules r
-          LEFT JOIN users u ON u.id = r.student_id
-          JOIN categories c ON c.id = r.category_id
-          WHERE r.week_start = $1
-          ORDER BY u.name ASC NULLS FIRST, c.name ASC
-        `,
-        [weeklyRuleWeekStart]
-      ),
-      query(
-        `
-          SELECT
-            e.id,
-            e.week_start AS "weekStart",
-            e.student_id AS "studentId",
-            e.category_id AS "categoryId",
-            e.due_count AS "dueCount",
-            e.done_count AS "doneCount",
-            e.completion_rate AS "completionRate",
-            e.result_type AS "resultType",
-            e.points_applied AS "pointsApplied",
-            e.reason_text AS "reasonText",
-            e.calculated_at AS "calculatedAt",
-            u.name AS "studentName",
-            c.name AS "categoryName"
-          FROM weekly_category_evaluations e
-          JOIN users u ON u.id = e.student_id
-          JOIN categories c ON c.id = e.category_id
-          WHERE e.week_start = $1
-            AND ($2::text = '' OR e.student_id = $2)
-          ORDER BY u.name ASC, c.name ASC
-        `,
-        [weeklyRuleWeekStart, weeklyEvalStudentId]
-      )
-    ]);
-
-    weeklyRules = weeklyRulesRes.rows;
-    const editingRule = weeklyRules.find((rule) => rule.id === weeklyRuleEditId) || null;
-    if (editingRule) {
-      weeklyRuleForm = {
-        isEdit: true,
-        action: `/admin/weekly-rules/${editingRule.id}/update`,
-        submitText: 'Haftalık Kuralı Güncelle',
-        weekStart: toDateOnly(editingRule.weekStart) || weeklyRuleWeekStart,
-        studentId: editingRule.studentId || '',
-        categoryId: editingRule.categoryId,
-        rewardPoints: Number(editingRule.rewardPoints || 0),
-        penaltyPoints: Number(editingRule.penaltyPoints || 0),
-        rewardLabel: editingRule.rewardLabel || '',
-        penaltyLabel: editingRule.penaltyLabel || ''
-      };
-    }
-    weeklyEvaluations = weeklyEvaluationsRes.rows.map((row) => ({
-      ...row,
-      completionRate: Number(row.completionRate || 0),
-      createdDate: toDateOnly(row.calculatedAt)
-    }));
   }
 
   return {
@@ -1058,17 +928,8 @@ async function getAdminViewModel(req, currentPage) {
     activeTaskFilters: {
       studentId: activeTaskStudentId
     },
-    weeklyRuleWeekStart,
-    weeklyRuleWeekEnd,
-    weeklyRulePrevWeekStart,
-    weeklyRuleNextWeekStart,
-    weeklyRules,
-    weeklyRuleForm,
-    weeklyEvaluations,
-    weeklyEvalFilters: {
-      studentId: weeklyEvalStudentId
-    },
-    pointLogs,
+    copyWeekStart,
+    copyWeekNextStart,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -1089,7 +950,7 @@ async function getDailyBoardData() {
   const dateObj = new Date(`${today}T00:00:00`);
 
   const [studentsRes, tasksRes, statusesRes, questionsRes] = await Promise.all([
-    query(`SELECT id, name, points FROM users WHERE role = 'student' ORDER BY name ASC`),
+    query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
     query(`
       SELECT
         id,
@@ -1130,7 +991,6 @@ async function getDailyBoardData() {
     return {
       id: student.id,
       name: student.name,
-      points: Number(student.points || 0),
       dueCount: dueTasks.length,
       doneCount,
       questionCount: question ? Number(question.totalQuestions || 0) : 0
@@ -1237,7 +1097,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'points', 'reports']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -1267,8 +1127,8 @@ app.post(
 
     await query(
       `
-        INSERT INTO users (id, name, username, password_hash, role, points)
-        VALUES ($1, $2, $3, $4, 'student', 0)
+        INSERT INTO users (id, name, username, password_hash, role)
+        VALUES ($1, $2, $3, $4, 'student')
       `,
       [makeId('user'), name, username, bcrypt.hashSync(password, 10)]
     );
@@ -1305,8 +1165,8 @@ app.post(
 
     await query(
       `
-        INSERT INTO users (id, name, username, password_hash, role, points)
-        VALUES ($1, $2, $3, $4, $5, 0)
+        INSERT INTO users (id, name, username, password_hash, role)
+        VALUES ($1, $2, $3, $4, $5)
       `,
       [makeId('user'), name, username, bcrypt.hashSync(password, 10), role]
     );
@@ -2163,744 +2023,11 @@ app.post(
   })
 );
 
-app.post(
-  '/admin/weekly-rules',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-    const studentId = normalizeText(req.body.studentId);
-    const categoryId = normalizeText(req.body.categoryId);
-    const rewardPoints = Number.parseInt(req.body.rewardPoints, 10);
-    const penaltyPoints = Number.parseInt(req.body.penaltyPoints, 10);
-    const rewardLabel = normalizeText(req.body.rewardLabel);
-    const penaltyLabel = normalizeText(req.body.penaltyLabel);
-
-    if (!weekStart || !studentId || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta, öğrenci ve kategori zorunlu.', weekStart: weekStart || '' });
-    }
-
-    if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
-      return adminRedirect(req, res, { error: 'Ödül/ceza puanı 0 veya daha büyük bir tam sayı olmalı.', weekStart });
-    }
-
-    const [studentRes, categoryRes] = await Promise.all([
-      query(`SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`, [studentId]),
-      query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
-    ]);
-    if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Öğrenci veya kategori bulunamadı.', weekStart });
-    }
-
-    const existingRes = await query(
-      `
-        SELECT id
-        FROM weekly_category_rules
-        WHERE week_start = $1
-          AND student_id = $2
-          AND category_id = $3
-        LIMIT 1
-      `,
-      [weekStart, studentId, categoryId]
-    );
-
-    if (existingRes.rowCount > 0) {
-      await query(
-        `
-          UPDATE weekly_category_rules
-          SET
-            reward_points = $1,
-            penalty_points = $2,
-            reward_label = $3,
-            penalty_label = $4,
-            created_by = $5,
-            updated_at = NOW()
-          WHERE id = $6
-        `,
-        [rewardPoints, penaltyPoints, rewardLabel, penaltyLabel, req.currentUser.id, existingRes.rows[0].id]
-      );
-    } else {
-      await query(
-        `
-          INSERT INTO weekly_category_rules (
-            id,
-            week_start,
-            category_id,
-            student_id,
-            reward_points,
-            penalty_points,
-            reward_label,
-            penalty_label,
-            created_by
-          )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-        `,
-        [
-          makeId('wcr'),
-          weekStart,
-          categoryId,
-          studentId,
-          rewardPoints,
-          penaltyPoints,
-          rewardLabel,
-          penaltyLabel,
-          req.currentUser.id
-        ]
-      );
-    }
-
-    return adminRedirect(req, res, { message: 'Öğrenciye özel haftalık kategori kuralı kaydedildi.', weekStart });
-  })
-);
-
-app.post(
-  '/admin/weekly-rules/:ruleId/update',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const { ruleId } = req.params;
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-    const studentId = normalizeText(req.body.studentId);
-    const categoryId = normalizeText(req.body.categoryId);
-    const rewardPoints = Number.parseInt(req.body.rewardPoints, 10);
-    const penaltyPoints = Number.parseInt(req.body.penaltyPoints, 10);
-    const rewardLabel = normalizeText(req.body.rewardLabel);
-    const penaltyLabel = normalizeText(req.body.penaltyLabel);
-
-    if (!weekStart || !studentId || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta, öğrenci ve kategori zorunlu.', weekStart: weekStart || '' });
-    }
-
-    if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
-      return adminRedirect(req, res, { error: 'Ödül/ceza puanı 0 veya daha büyük bir tam sayı olmalı.', weekStart });
-    }
-
-    const [ruleRes, studentRes, categoryRes] = await Promise.all([
-      query(`SELECT id FROM weekly_category_rules WHERE id = $1 LIMIT 1`, [ruleId]),
-      query(`SELECT id FROM users WHERE id = $1 AND role = 'student' LIMIT 1`, [studentId]),
-      query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
-    ]);
-
-    if (ruleRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Güncellenecek haftalık kural bulunamadı.', weekStart });
-    }
-    if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Öğrenci veya kategori bulunamadı.', weekStart });
-    }
-
-    const duplicateRes = await query(
-      `
-        SELECT id
-        FROM weekly_category_rules
-        WHERE week_start = $1
-          AND student_id = $2
-          AND category_id = $3
-          AND id <> $4
-        LIMIT 1
-      `,
-      [weekStart, studentId, categoryId, ruleId]
-    );
-    if (duplicateRes.rowCount > 0) {
-      return adminRedirect(req, res, {
-        error: 'Bu hafta, öğrenci ve kategori için zaten bir kural var.',
-        weekStart
-      });
-    }
-
-    try {
-      await query(
-        `
-          UPDATE weekly_category_rules
-          SET
-            week_start = $1,
-            category_id = $2,
-            student_id = $3,
-            reward_points = $4,
-            penalty_points = $5,
-            reward_label = $6,
-            penalty_label = $7,
-            created_by = $8,
-            updated_at = NOW()
-          WHERE id = $9
-        `,
-        [
-          weekStart,
-          categoryId,
-          studentId,
-          rewardPoints,
-          penaltyPoints,
-          rewardLabel,
-          penaltyLabel,
-          req.currentUser.id,
-          ruleId
-        ]
-      );
-    } catch (err) {
-      if (err.code === '23505') {
-        return adminRedirect(req, res, {
-          error: 'Bu hafta, öğrenci ve kategori için zaten bir kural var.',
-          weekStart
-        });
-      }
-      throw err;
-    }
-
-    return adminRedirect(req, res, { message: 'Öğrenciye özel haftalık kategori kuralı güncellendi.', weekStart });
-  })
-);
-
-app.post(
-  '/admin/weekly-rules/:ruleId/delete',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const { ruleId } = req.params;
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-
-    const deleted = await query(`DELETE FROM weekly_category_rules WHERE id = $1`, [ruleId]);
-    if (deleted.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Silinecek haftalık kural bulunamadı.', weekStart: weekStart || '' });
-    }
-
-    return adminRedirect(req, res, { message: 'Haftalık kategori kuralı silindi.', weekStart: weekStart || '' });
-  })
-);
-
-app.post(
-  '/admin/points/cleanup-before',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const cutoffDate = normalizeText(req.body.cutoffDate) || '2026-05-11';
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-
-    if (!isDateOnly(cutoffDate)) {
-      return adminRedirect(req, res, { error: 'Kesim tarihi formatı geçersiz.', weekStart: weekStart || '' });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      await client.query(
-        `
-          UPDATE users u
-          SET points = u.points - t.total_delta
-          FROM (
-            SELECT student_id, COALESCE(SUM(delta), 0) AS total_delta
-            FROM point_logs
-            WHERE created_at::date < $1
-            GROUP BY student_id
-          ) t
-          WHERE u.id = t.student_id
-        `,
-        [cutoffDate]
-      );
-
-      const deletedEvaluations = await client.query(
-        `DELETE FROM weekly_category_evaluations WHERE week_start < $1`,
-        [cutoffDate]
-      );
-      const deletedLogs = await client.query(
-        `DELETE FROM point_logs WHERE created_at::date < $1`,
-        [cutoffDate]
-      );
-      const deletedRules = await client.query(
-        `DELETE FROM weekly_category_rules WHERE week_start < $1`,
-        [cutoffDate]
-      );
-
-      await client.query('COMMIT');
-
-      return adminRedirect(req, res, {
-        message: `${cutoffDate} öncesi puanlama verileri silindi. Log: ${deletedLogs.rowCount}, Değerlendirme: ${deletedEvaluations.rowCount}, Kural: ${deletedRules.rowCount}.`,
-        weekStart: weekStart || ''
-      });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-  })
-);
-
-app.post(
-  '/admin/weekly-evaluations/run',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-    const weekEnd = weekStart ? shiftDate(weekStart, 6) : '';
-    const studentId = normalizeText(req.body.studentId);
-
-    if (!weekStart) {
-      return adminRedirect(req, res, { error: 'Hafta bilgisi geçersiz.' });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const studentsRes = await client.query(
-        `
-          SELECT id, name
-          FROM users
-          WHERE role = 'student'
-            AND ($1::text = '' OR id = $1)
-          ORDER BY name ASC
-        `,
-        [studentId]
-      );
-
-      if (!studentsRes.rowCount) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Değerlendirilecek öğrenci bulunamadı.', weekStart });
-      }
-
-      const studentIds = studentsRes.rows.map((row) => row.id);
-      const rulesRes = await client.query(
-        `
-          SELECT
-            r.week_start AS "weekStart",
-            r.category_id AS "categoryId",
-            r.student_id AS "studentId",
-            r.reward_points AS "rewardPoints",
-            r.penalty_points AS "penaltyPoints",
-            r.reward_label AS "rewardLabel",
-            r.penalty_label AS "penaltyLabel",
-            c.name AS "categoryName"
-          FROM weekly_category_rules r
-          JOIN categories c ON c.id = r.category_id
-          WHERE r.week_start = $1
-            AND (r.student_id IS NULL OR r.student_id = ANY($2))
-          ORDER BY c.name ASC
-        `,
-        [weekStart, studentIds]
-      );
-
-      if (!rulesRes.rowCount) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Bu hafta için kategori ödül/ceza tanımı yok.', weekStart });
-      }
-
-      const genericRuleByCategory = new Map();
-      const specificRuleByStudentCategory = new Map();
-      for (const rule of rulesRes.rows) {
-        if (rule.studentId) {
-          specificRuleByStudentCategory.set(`${rule.studentId}:${rule.categoryId}`, rule);
-        } else if (!genericRuleByCategory.has(rule.categoryId)) {
-          genericRuleByCategory.set(rule.categoryId, rule);
-        }
-      }
-      const categoryIds = Array.from(
-        new Set([
-          ...Array.from(genericRuleByCategory.keys()),
-          ...Array.from(specificRuleByStudentCategory.values()).map((rule) => rule.categoryId)
-        ])
-      );
-      if (!categoryIds.length) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Seçili öğrenciler için uygulanabilir kural bulunamadı.', weekStart });
-      }
-      const weekDates = getWeekDates(weekStart);
-
-      const tasksRes = await client.query(
-        `
-          SELECT
-            id,
-            title,
-            description,
-            category_id AS "categoryId",
-            student_id AS "studentId",
-            repeat_type AS "repeatType",
-            single_date AS "singleDate",
-            weekly_day AS "weeklyDay",
-            monthly_day AS "monthlyDay",
-            custom_dates AS "customDates",
-            start_date AS "startDate",
-            end_date AS "endDate",
-            estimated_time AS "estimatedTime",
-            is_archived AS "isArchived",
-            created_by AS "createdBy",
-            created_at AS "createdAt"
-          FROM tasks
-          WHERE student_id = ANY($1)
-            AND category_id = ANY($2)
-            AND is_archived = false
-        `,
-        [studentIds, categoryIds]
-      );
-      const statusesRes = await client.query(
-        `
-          SELECT task_id AS "taskId", student_id AS "studentId", day, status
-          FROM task_statuses
-          WHERE student_id = ANY($1)
-            AND day BETWEEN $2 AND $3
-        `,
-        [studentIds, weekStart, weekEnd]
-      );
-      const existingRes = await client.query(
-        `
-          SELECT student_id AS "studentId", category_id AS "categoryId"
-          FROM weekly_category_evaluations
-          WHERE week_start = $1
-            AND student_id = ANY($2)
-        `,
-        [weekStart, studentIds]
-      );
-
-      const tasksByStudent = new Map();
-      tasksRes.rows.map(mapTask).forEach((task) => {
-        const current = tasksByStudent.get(task.studentId) || [];
-        current.push(task);
-        tasksByStudent.set(task.studentId, current);
-      });
-
-      const doneStatusSet = new Set(
-        statusesRes.rows
-          .filter((row) => row.status === 'done')
-          .map((row) => `${row.studentId}:${row.taskId}:${toDateOnly(row.day)}`)
-      );
-      const existingSet = new Set(
-        existingRes.rows.map((row) => `${row.studentId}:${row.categoryId}`)
-      );
-
-      let createdCount = 0;
-      let rewardCount = 0;
-      let penaltyCount = 0;
-      let skippedCount = 0;
-
-      for (const student of studentsRes.rows) {
-        const studentTasks = tasksByStudent.get(student.id) || [];
-        const studentRuleCategoryIds = categoryIds.filter(
-          (categoryId) =>
-            specificRuleByStudentCategory.has(`${student.id}:${categoryId}`) ||
-            genericRuleByCategory.has(categoryId)
-        );
-        const studentRuleCategorySet = new Set(studentRuleCategoryIds);
-        const metricsByCategory = new Map(
-          studentRuleCategoryIds.map((categoryId) => [categoryId, { due: 0, done: 0 }])
-        );
-
-        for (const day of weekDates) {
-          const dayObj = new Date(`${day}T00:00:00`);
-          const dueTasks = studentTasks.filter(
-            (task) => studentRuleCategorySet.has(task.categoryId) && isTaskDueOnDate(task, dayObj, day)
-          );
-
-          for (const dueTask of dueTasks) {
-            const metric = metricsByCategory.get(dueTask.categoryId);
-            if (!metric) continue;
-
-            metric.due += 1;
-            if (doneStatusSet.has(`${student.id}:${dueTask.id}:${day}`)) {
-              metric.done += 1;
-            }
-          }
-        }
-
-        for (const categoryId of studentRuleCategoryIds) {
-          const rule =
-            specificRuleByStudentCategory.get(`${student.id}:${categoryId}`) ||
-            genericRuleByCategory.get(categoryId);
-          if (!rule) continue;
-
-          const alreadyCalculated = existingSet.has(`${student.id}:${categoryId}`);
-          if (alreadyCalculated) {
-            skippedCount += 1;
-            continue;
-          }
-
-          const metric = metricsByCategory.get(categoryId) || { due: 0, done: 0 };
-          const completionRate = metric.due > 0 ? (metric.done / metric.due) * 100 : 0;
-          let resultType = 'none';
-          let pointsApplied = 0;
-          let reasonText = '';
-          let pointLogId = null;
-
-          if (metric.due > 0 && completionRate > 80 && Number(rule.rewardPoints) > 0) {
-            resultType = 'reward';
-            pointsApplied = Number(rule.rewardPoints);
-            reasonText = normalizeText(rule.rewardLabel) || `${rule.categoryName} haftalık ödül`;
-          } else if (metric.due > 0 && completionRate < 80 && Number(rule.penaltyPoints) > 0) {
-            resultType = 'penalty';
-            pointsApplied = -Number(rule.penaltyPoints);
-            reasonText = normalizeText(rule.penaltyLabel) || `${rule.categoryName} haftalık ceza`;
-          }
-
-          if (pointsApplied !== 0) {
-            await client.query(
-              `UPDATE users SET points = points + $1 WHERE id = $2`,
-              [pointsApplied, student.id]
-            );
-
-            const pointType = pointsApplied > 0 ? 'reward' : 'penalty';
-            const pointReason = `${reasonText} (${rule.categoryName}, ${weekStart} - ${weekEnd}, oran %${completionRate.toFixed(1)})`;
-            const pointInsertRes = await client.query(
-              `
-                INSERT INTO point_logs (id, student_id, type, points, reason, delta, created_by)
-                VALUES ($1,$2,$3,$4,$5,$6,$7)
-                RETURNING id
-              `,
-              [
-                makeId('plog'),
-                student.id,
-                pointType,
-                Math.abs(pointsApplied),
-                pointReason,
-                pointsApplied,
-                req.currentUser.id
-              ]
-            );
-            pointLogId = pointInsertRes.rows[0].id;
-
-            if (pointsApplied > 0) rewardCount += 1;
-            if (pointsApplied < 0) penaltyCount += 1;
-          }
-
-          await client.query(
-            `
-              INSERT INTO weekly_category_evaluations (
-                id,
-                week_start,
-                student_id,
-                category_id,
-                due_count,
-                done_count,
-                completion_rate,
-                result_type,
-                points_applied,
-                reason_text,
-                point_log_id,
-                calculated_by
-              )
-              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-            `,
-            [
-              makeId('weval'),
-              weekStart,
-              student.id,
-              categoryId,
-              metric.due,
-              metric.done,
-              completionRate.toFixed(2),
-              resultType,
-              pointsApplied,
-              reasonText,
-              pointLogId,
-              req.currentUser.id
-            ]
-          );
-
-          createdCount += 1;
-        }
-      }
-
-      await client.query('COMMIT');
-
-      return adminRedirect(req, res, {
-        message: `Haftalık değerlendirme tamamlandı. Kayıt: ${createdCount}, Ödül: ${rewardCount}, Ceza: ${penaltyCount}, Atlanan: ${skippedCount}.`,
-        weekStart,
-        weeklyEvalStudentId: studentId
-      });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-  })
-);
-
-app.post(
-  '/admin/points',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
-    const studentId = normalizeText(req.body.studentId);
-    const type = normalizeText(req.body.type);
-    const reason = normalizeText(req.body.reason);
-    const parsedPoints = Number(req.body.points);
-
-    if (!studentId || !type || !parsedPoints || !reason) {
-      return adminRedirect(req, res, { error: 'Ödül/ceza alanları eksik.', weekStart: weekStart || '' });
-    }
-
-    if (!['reward', 'penalty'].includes(type)) {
-      return adminRedirect(req, res, { error: 'Geçersiz puan tipi.', weekStart: weekStart || '' });
-    }
-
-    const delta = type === 'reward' ? Math.abs(parsedPoints) : -Math.abs(parsedPoints);
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const studentRes = await client.query(
-        `SELECT id FROM users WHERE id = $1 AND role = 'student' FOR UPDATE`,
-        [studentId]
-      );
-
-      if (studentRes.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.', weekStart: weekStart || '' });
-      }
-
-      await client.query(
-        `UPDATE users SET points = points + $1 WHERE id = $2`,
-        [delta, studentId]
-      );
-
-      await client.query(
-        `
-          INSERT INTO point_logs (id, student_id, type, points, reason, delta, created_by)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `,
-        [makeId('plog'), studentId, type, Math.abs(parsedPoints), reason, delta, req.currentUser.id]
-      );
-
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-
-    return adminRedirect(req, res, { message: 'Puan işlemi kaydedildi.', weekStart: weekStart || '' });
-  })
-);
-
-app.get(
-  '/admin/points/export-weekly',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const today = todayDateString();
-    const weekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
-    const weekEnd = shiftDate(weekStart, 6);
-    const weeklyEvalStudentIdRaw = normalizeText(req.query.weeklyEvalStudentId);
-
-    const studentRes = await query(
-      `SELECT id, name FROM users WHERE role = 'student' AND ($1::text = '' OR id = $1) LIMIT 1`,
-      [weeklyEvalStudentIdRaw]
-    );
-    const weeklyEvalStudentId = studentRes.rowCount ? weeklyEvalStudentIdRaw : '';
-
-    const [evaluationsRes, logsRes] = await Promise.all([
-      query(
-        `
-          SELECT
-            e.week_start AS "weekStart",
-            u.name AS "studentName",
-            c.name AS "categoryName",
-            e.due_count AS "dueCount",
-            e.done_count AS "doneCount",
-            e.completion_rate AS "completionRate",
-            e.result_type AS "resultType",
-            e.points_applied AS "pointsApplied",
-            e.reason_text AS "reasonText",
-            e.calculated_at AS "calculatedAt"
-          FROM weekly_category_evaluations e
-          JOIN users u ON u.id = e.student_id
-          JOIN categories c ON c.id = e.category_id
-          WHERE e.week_start = $1
-            AND ($2::text = '' OR e.student_id = $2)
-          ORDER BY u.name ASC, c.name ASC
-        `,
-        [weekStart, weeklyEvalStudentId]
-      ),
-      query(
-        `
-          SELECT
-            pl.created_at AS "createdAt",
-            s.name AS "studentName",
-            pl.type,
-            pl.points,
-            pl.delta,
-            pl.reason
-          FROM point_logs pl
-          JOIN users s ON s.id = pl.student_id
-          WHERE pl.created_at::date BETWEEN $1 AND $2
-            AND ($3::text = '' OR pl.student_id = $3)
-          ORDER BY pl.created_at DESC
-        `,
-        [weekStart, weekEnd, weeklyEvalStudentId]
-      )
-    ]);
-
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Öğrenci Takip';
-    workbook.created = new Date();
-
-    const evalSheet = workbook.addWorksheet('Haftalık Değerlendirme');
-    evalSheet.columns = [
-      { header: 'Öğrenci', key: 'studentName', width: 24 },
-      { header: 'Kategori', key: 'categoryName', width: 20 },
-      { header: 'Toplam Görev', key: 'dueCount', width: 14 },
-      { header: 'Yapılan', key: 'doneCount', width: 11 },
-      { header: 'Oran', key: 'completionRate', width: 10 },
-      { header: 'Sonuç', key: 'resultText', width: 12 },
-      { header: 'Puan', key: 'pointsApplied', width: 10 },
-      { header: 'Açıklama', key: 'reasonText', width: 42 },
-      { header: 'Hesaplama Tarihi', key: 'createdDate', width: 14 }
-    ];
-    evalSheet.getRow(1).font = { bold: true };
-    evalSheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    evaluationsRes.rows.forEach((row) => {
-      evalSheet.addRow({
-        studentName: row.studentName,
-        categoryName: row.categoryName,
-        dueCount: Number(row.dueCount || 0),
-        doneCount: Number(row.doneCount || 0),
-        completionRate: `%${Number(row.completionRate || 0).toFixed(1)}`,
-        resultText: row.resultType === 'reward' ? 'Ödül' : row.resultType === 'penalty' ? 'Ceza' : 'Eşik',
-        pointsApplied: Number(row.pointsApplied || 0),
-        reasonText: row.reasonText || '-',
-        createdDate: toDateOnly(row.calculatedAt)
-      });
-    });
-
-    const logSheet = workbook.addWorksheet('Haftalık Puan Logları');
-    logSheet.columns = [
-      { header: 'Tarih', key: 'createdDate', width: 13 },
-      { header: 'Öğrenci', key: 'studentName', width: 24 },
-      { header: 'Tip', key: 'typeText', width: 10 },
-      { header: 'Puan', key: 'points', width: 8 },
-      { header: 'Delta', key: 'delta', width: 8 },
-      { header: 'Gerekçe', key: 'reason', width: 56 }
-    ];
-    logSheet.getRow(1).font = { bold: true };
-    logSheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    logsRes.rows.forEach((row) => {
-      logSheet.addRow({
-        createdDate: toDateOnly(row.createdAt),
-        studentName: row.studentName,
-        typeText: row.type === 'reward' ? 'Ödül' : 'Ceza',
-        points: Number(row.points || 0),
-        delta: Number(row.delta || 0),
-        reason: row.reason
-      });
-    });
-
-    const fileName = `admin-haftalik-puanlama-${weekStart}.xlsx`;
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    await workbook.xlsx.write(res);
-    return res.end();
-  })
-);
-
 async function getStudentViewModel(req, currentPage) {
   const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
   const nowHm = timeStringInTimeZone();
-  const weeklyPointWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
-  const weeklyPointWeekEnd = shiftDate(weeklyPointWeekStart, 6);
-  const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
-  const weeklyPointNextWeekStart = shiftDate(weeklyPointWeekStart, 7);
 
-  const [tasksRes, statusesRes, latestStatusesRes, questionHistoryRes, pointLogsRes, categoriesRes] = await Promise.all([
+  const [tasksRes, statusesRes, latestStatusesRes, questionHistoryRes, categoriesRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2988,24 +2115,6 @@ async function getStudentViewModel(req, currentPage) {
       `,
       [req.currentUser.id]
     ),
-    query(
-      `
-        SELECT
-          id,
-          student_id AS "studentId",
-          type,
-          points,
-          reason,
-          delta,
-          created_by AS "createdBy",
-          created_at AS "createdAt"
-        FROM point_logs
-        WHERE student_id = $1
-        ORDER BY created_at DESC
-        LIMIT 20
-      `,
-      [req.currentUser.id]
-    ),
     query(`SELECT id, name FROM categories`)
   ]);
 
@@ -3039,44 +2148,11 @@ async function getStudentViewModel(req, currentPage) {
     });
 
   const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
-  const pointLogs = pointLogsRes.rows.map((row) => ({ ...row, createdDate: toDateOnly(row.createdAt) }));
   const questionHistory = questionHistoryRes.rows.map((row) => ({
     ...row,
     date: toDateOnly(row.day),
     totalCount: Number(row.correctCount || 0) + Number(row.wrongCount || 0)
   }));
-
-  let weeklyPointEvaluations = [];
-  if (currentPage === 'points') {
-    const weeklyPointEvaluationsRes = await query(
-      `
-        SELECT
-          e.id,
-          e.week_start AS "weekStart",
-          e.category_id AS "categoryId",
-          e.due_count AS "dueCount",
-          e.done_count AS "doneCount",
-          e.completion_rate AS "completionRate",
-          e.result_type AS "resultType",
-          e.points_applied AS "pointsApplied",
-          e.reason_text AS "reasonText",
-          e.calculated_at AS "calculatedAt",
-          c.name AS "categoryName"
-        FROM weekly_category_evaluations e
-        JOIN categories c ON c.id = e.category_id
-        WHERE e.student_id = $1
-          AND e.week_start = $2
-        ORDER BY c.name ASC
-      `,
-      [req.currentUser.id, weeklyPointWeekStart]
-    );
-
-    weeklyPointEvaluations = weeklyPointEvaluationsRes.rows.map((row) => ({
-      ...row,
-      completionRate: Number(row.completionRate || 0),
-      createdDate: toDateOnly(row.calculatedAt)
-    }));
-  }
 
   let calendar = null;
   if (currentPage === 'calendar') {
@@ -3098,12 +2174,6 @@ async function getStudentViewModel(req, currentPage) {
     questionEntry: null,
     questionHistory,
     calendar,
-    pointLogs,
-    weeklyPointWeekStart,
-    weeklyPointWeekEnd,
-    weeklyPointPrevWeekStart,
-    weeklyPointNextWeekStart,
-    weeklyPointEvaluations,
     message: req.query.message || null,
     error: req.query.error || null
   };
@@ -3115,7 +2185,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'points', 'calendar']);
+    const allowedPages = new Set(['dashboard', 'questions', 'calendar']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -3217,116 +2287,6 @@ app.get(
     });
 
     const fileName = `haftalik-gorevler-${calendar.weekStart}.xlsx`;
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    await workbook.xlsx.write(res);
-    return res.end();
-  })
-);
-
-app.get(
-  '/student/points/export-weekly',
-  requireRole('student'),
-  asyncHandler(async (req, res) => {
-    const today = todayDateString();
-    const weekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
-    const weekEnd = shiftDate(weekStart, 6);
-
-    const [evaluationsRes, logsRes] = await Promise.all([
-      query(
-        `
-          SELECT
-            e.week_start AS "weekStart",
-            c.name AS "categoryName",
-            e.due_count AS "dueCount",
-            e.done_count AS "doneCount",
-            e.completion_rate AS "completionRate",
-            e.result_type AS "resultType",
-            e.points_applied AS "pointsApplied",
-            e.reason_text AS "reasonText",
-            e.calculated_at AS "calculatedAt"
-          FROM weekly_category_evaluations e
-          JOIN categories c ON c.id = e.category_id
-          WHERE e.student_id = $1
-            AND e.week_start = $2
-          ORDER BY c.name ASC
-        `,
-        [req.currentUser.id, weekStart]
-      ),
-      query(
-        `
-          SELECT
-            type,
-            points,
-            delta,
-            reason,
-            created_at AS "createdAt"
-          FROM point_logs
-          WHERE student_id = $1
-            AND created_at::date BETWEEN $2 AND $3
-          ORDER BY created_at DESC
-        `,
-        [req.currentUser.id, weekStart, weekEnd]
-      )
-    ]);
-
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Öğrenci Takip';
-    workbook.created = new Date();
-
-    const evalSheet = workbook.addWorksheet('Haftalık Ödül Ceza');
-    evalSheet.columns = [
-      { header: 'Kategori', key: 'categoryName', width: 24 },
-      { header: 'Toplam Görev', key: 'dueCount', width: 14 },
-      { header: 'Yapılan', key: 'doneCount', width: 11 },
-      { header: 'Oran', key: 'completionRate', width: 10 },
-      { header: 'Sonuç', key: 'resultText', width: 12 },
-      { header: 'Puan', key: 'pointsApplied', width: 10 },
-      { header: 'Açıklama', key: 'reasonText', width: 42 },
-      { header: 'Hesaplama Tarihi', key: 'createdDate', width: 14 }
-    ];
-    evalSheet.getRow(1).font = { bold: true };
-    evalSheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    evaluationsRes.rows.forEach((row) => {
-      evalSheet.addRow({
-        categoryName: row.categoryName,
-        dueCount: Number(row.dueCount || 0),
-        doneCount: Number(row.doneCount || 0),
-        completionRate: `%${Number(row.completionRate || 0).toFixed(1)}`,
-        resultText: row.resultType === 'reward' ? 'Ödül' : row.resultType === 'penalty' ? 'Ceza' : 'Eşik',
-        pointsApplied: Number(row.pointsApplied || 0),
-        reasonText: row.reasonText || '-',
-        createdDate: toDateOnly(row.calculatedAt)
-      });
-    });
-
-    const logSheet = workbook.addWorksheet('Haftalık Puan Logları');
-    logSheet.columns = [
-      { header: 'Tarih', key: 'createdDate', width: 13 },
-      { header: 'Tip', key: 'typeText', width: 10 },
-      { header: 'Puan', key: 'points', width: 8 },
-      { header: 'Delta', key: 'delta', width: 8 },
-      { header: 'Gerekçe', key: 'reason', width: 56 }
-    ];
-    logSheet.getRow(1).font = { bold: true };
-    logSheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    logsRes.rows.forEach((row) => {
-      logSheet.addRow({
-        createdDate: toDateOnly(row.createdAt),
-        typeText: row.type === 'reward' ? 'Ödül' : 'Ceza',
-        points: Number(row.points || 0),
-        delta: Number(row.delta || 0),
-        reason: row.reason
-      });
-    });
-
-    const fileName = `haftalik-odul-ceza-${weekStart}.xlsx`;
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
