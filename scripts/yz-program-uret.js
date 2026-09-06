@@ -31,9 +31,13 @@ const KURS_SIRASI = [
   'derin-ogrenme-egitimi'
 ];
 
-// Icerik haftalarinda haftanin hangi gunlerine ders konur (1=Pzt ... 4=Per).
-// Cuma ders tekrari / odev icin bos birakilir.
-const HAFTALIK_GUNLER = [1, 2, 3, 4];
+// Icerik haftalarinda haftanin hangi gunlerine ders konur (1=Pzt ... 5=Cuma).
+// Varsayilan Pzt-Per: Cuma ders tekrari / odev icin bos kalir. Mufredat
+// takvime sigmiyorsa Cuma da otomatik acilir (--gunler ile elle zorlanabilir).
+const GUN_SECENEKLERI = [
+  [1, 2, 3, 4],
+  [1, 2, 3, 4, 5]
+];
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -71,7 +75,7 @@ function shiftDate(dateStr, days) {
 }
 
 /** Ogretim yilindaki tum ders gunlerini hafta hafta gruplar. */
-function haftalar() {
+function haftalar(haftalikGunler) {
   const { start, end } = academicCalendar.ACADEMIC_YEAR;
   // Ogretim yili pazartesi baslamayabilir; ilk gunun haftasina geri sar.
   const first = new Date(`${start}T00:00:00Z`);
@@ -81,7 +85,7 @@ function haftalar() {
   const liste = [];
   while (weekStart <= end) {
     const gunler = [];
-    for (const offset of HAFTALIK_GUNLER) {
+    for (const offset of haftalikGunler) {
       const gun = shiftDate(weekStart, offset - 1);
       if (gun < start || gun > end) continue;
       if (academicCalendar.getDayInfo(gun).isSchoolDay) gunler.push(gun);
@@ -110,7 +114,27 @@ function main() {
     return a.dersId.localeCompare(b.dersId, 'tr');
   });
 
-  const takvim = haftalar();
+  // Mufredat kac gunluk haftaya siginiyorsa en seyrek olani sec.
+  const zorlanan = arg('gunler', '');
+  const denenecek = zorlanan
+    ? [zorlanan.split(',').map((g) => Number(g.trim())).filter(Boolean)]
+    : GUN_SECENEKLERI;
+
+  let takvim = null;
+  let haftalikGunler = denenecek[denenecek.length - 1];
+  for (const secenek of denenecek) {
+    const aday = haftalar(secenek);
+    const kapasite = aday.reduce((t, h) => t + h.gunler.length, 0);
+    if (kapasite >= sirali.length) {
+      takvim = aday;
+      haftalikGunler = secenek;
+      break;
+    }
+  }
+  if (!takvim) {
+    takvim = haftalar(haftalikGunler);
+  }
+
   const gorevler = [];
   let i = 0;
   for (const hafta of takvim) {
@@ -129,6 +153,7 @@ function main() {
     kaynak: 'akkayasoft/uretken-yz-platform',
     toplamDers: sirali.length,
     yerlesen: gorevler.length,
+    haftalikGun: haftalikGunler.length,
     gorevler
   };
 
@@ -137,6 +162,7 @@ function main() {
   fs.writeFileSync(hedef, `${JSON.stringify(cikti, null, 1)}\n`, 'utf-8');
 
   console.log(`yerlesen ders : ${cikti.yerlesen}/${cikti.toplamDers}`);
+  console.log(`hafta duzeni  : ${haftalikGunler.length} ders gunu/hafta (${haftalikGunler.join(',')})`);
   console.log(`ilk  : ${cikti.baslangic}  ${gorevler[0] && gorevler[0].baslik}`);
   console.log(`son  : ${cikti.bitis}  ${gorevler[gorevler.length - 1] && gorevler[gorevler.length - 1].baslik}`);
   console.log(`kurs : ${new Set(gorevler.map((g) => g.kursAd)).size} farkli kategori olusacak`);
