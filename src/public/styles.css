@@ -936,6 +936,20 @@ td, th {
   margin: 0;
 }
 
+/* Haftalik analiz: onceki haftaya gore degisim gostergesi */
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.trend.up { color: var(--success); }
+.trend.down { color: var(--danger); }
+
 /* Suresi dolan gorev: isaretleme butonlari yerine kilit rozeti */
 .lock-note {
   display: inline-flex;

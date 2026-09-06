@@ -21,6 +21,7 @@
           <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanıcı Yönetimi</a>
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
           <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
+          <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
@@ -677,6 +678,203 @@
             })();
           </script>
           <% } %>
+        </section>
+        <% } %>
+        <% } %>
+
+        <% if (currentPage === 'analysis' && weeklyAnalysis) { %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Haftalık Analiz</h2>
+            <p class="muted">
+              <%= weeklyAnalysis.academic.yearLabel %> Eğitim Öğretim Yılı<%
+              if (weeklyAnalysis.academic.termLabel) { %> · <%= weeklyAnalysis.academic.termLabel %><% }
+              %><% if (weeklyAnalysis.academic.weekNo) { %> · <%= weeklyAnalysis.academic.weekNo %>. Hafta<% } %>
+              &nbsp;·&nbsp; <%= weeklyAnalysis.weekStart %> - <%= weeklyAnalysis.weekEnd %>
+            </p>
+            <p class="muted">
+              <% if (weeklyAnalysis.academic.note) { %>
+              <span class="day-badge off"><%= weeklyAnalysis.academic.note %></span>
+              <% } else { %>
+              <%= weeklyAnalysis.academic.schoolDays %> ders günü
+              <% } %>
+            </p>
+          </div>
+          <div class="row">
+            <a class="button-link" href="/admin/analysis<%= weeklyAnalysis.selectedStudentId ? `?analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Bu Hafta</a>
+            <a class="button-link" href="/admin/analysis?weekStart=<%= weeklyAnalysis.prevWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Önceki Hafta</a>
+            <a class="button-link" href="/admin/analysis?weekStart=<%= weeklyAnalysis.nextWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Sonraki Hafta</a>
+          </div>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi">
+            <p class="kpi-label">Görev Tamamlama</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.completionRate === null ? '-' : weeklyAnalysis.totals.completionRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Görev (yapılan / toplam)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.done %> / <%= weeklyAnalysis.totals.due %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Çözülen Soru</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.questionTotal %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Doğruluk</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.accuracy === null ? '-' : weeklyAnalysis.totals.accuracy + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Çalışma Süresi</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.duration %> dk</p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Öğrenci Karşılaştırması</h3>
+          <% if (!weeklyAnalysis.studentRows.length) { %>
+          <p class="muted">Kayıtlı öğrenci yok.</p>
+          <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Öğrenci</th>
+                  <th>Görev</th>
+                  <th>Yapılan</th>
+                  <th>Tamamlama</th>
+                  <th>Önceki Haftaya Göre</th>
+                  <th>Soru</th>
+                  <th>Doğruluk</th>
+                  <th>Süre (dk)</th>
+                  <th>Detay</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyAnalysis.studentRows.forEach((r) => { %>
+                <tr>
+                  <td><strong><%= r.name %></strong></td>
+                  <td><%= r.current.due %></td>
+                  <td><%= r.current.done %></td>
+                  <td>
+                    <span class="status-pill <%= r.current.completionRate === null ? 'idle' : r.current.completionRate >= 80 ? 'ok' : r.current.completionRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= r.current.completionRate === null ? '-' : r.current.completionRate + '%' %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if (r.delta.completionRate === null) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="trend <%= r.delta.completionRate > 0 ? 'up' : r.delta.completionRate < 0 ? 'down' : 'flat' %>">
+                      <%= r.delta.completionRate > 0 ? '▲' : r.delta.completionRate < 0 ? '▼' : '■' %>
+                      <%= Math.abs(r.delta.completionRate) %> puan
+                    </span>
+                    <% } %>
+                  </td>
+                  <td><%= r.current.questionTotal %></td>
+                  <td><%= r.current.accuracy === null ? '-' : r.current.accuracy + '%' %></td>
+                  <td><%= r.current.duration %></td>
+                  <td>
+                    <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
+                       href="/admin/analysis?weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+
+        <% if (weeklyAnalysis.detail) { %>
+        <section class="panel">
+          <h3><%= weeklyAnalysis.detail.student.name %> — Kategori Kırılımı</h3>
+          <% if (!weeklyAnalysis.detail.categories.length) { %>
+          <p class="muted">Bu hafta için kayıt yok.</p>
+          <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th>Görev</th>
+                  <th>Yapılan</th>
+                  <th>Tamamlama</th>
+                  <th>Soru</th>
+                  <th>Doğru</th>
+                  <th>Yanlış</th>
+                  <th>Doğruluk</th>
+                  <th>Süre (dk)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyAnalysis.detail.categories.forEach((c) => { %>
+                <tr>
+                  <td><strong><%= c.categoryName %></strong></td>
+                  <td><%= c.due %></td>
+                  <td><%= c.done %></td>
+                  <td>
+                    <span class="status-pill <%= c.completionRate === null ? 'idle' : c.completionRate >= 80 ? 'ok' : c.completionRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= c.completionRate === null ? '-' : c.completionRate + '%' %>
+                    </span>
+                  </td>
+                  <td><%= c.questionTotal %></td>
+                  <td><%= c.correct %></td>
+                  <td><%= c.wrong %></td>
+                  <td><%= c.accuracy === null ? '-' : c.accuracy + '%' %></td>
+                  <td><%= c.duration %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3><%= weeklyAnalysis.detail.student.name %> — Gün Kırılımı</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Gün</th>
+                  <th>Tarih</th>
+                  <th>Takvim</th>
+                  <th>Görev</th>
+                  <th>Yapılan</th>
+                  <th>Tamamlama</th>
+                  <th>Soru</th>
+                  <th>Doğruluk</th>
+                  <th>Süre (dk)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeklyAnalysis.detail.days.forEach((d) => { %>
+                <tr class="<%= d.due > 0 ? '' : (!d.isSchoolDay ? 'day-off' : '') %>">
+                  <td><%= d.dayName %></td>
+                  <td><%= d.date %></td>
+                  <td>
+                    <% if (d.isSchoolDay) { %>
+                    <span class="day-badge school">Ders günü</span>
+                    <% } else { %>
+                    <span class="day-badge off"><%= d.dayLabel %></span>
+                    <% } %>
+                  </td>
+                  <td><%= d.due %></td>
+                  <td><%= d.done %></td>
+                  <td><%= d.completionRate === null ? '-' : d.completionRate + '%' %></td>
+                  <td><%= d.questionTotal %></td>
+                  <td><%= d.accuracy === null ? '-' : d.accuracy + '%' %></td>
+                  <td><%= d.duration %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } else { %>
+        <section class="panel">
+          <p class="muted">Kategori ve gün kırılımını görmek için yukarıdaki tablodan bir öğrenci seçin.</p>
         </section>
         <% } %>
         <% } %>

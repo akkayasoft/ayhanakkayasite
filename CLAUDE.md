@@ -110,6 +110,21 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 - Otomatik yazılan `not_done` kayıtları raporlarda durumu
   `İşaretlenmedi` yerine `Yapılmadı` olarak netleştirir.
 
+## Haftalık analiz
+
+`/admin/analysis` — "Haftalık Analiz" sayfası. `buildWeeklyAnalysis(weekStart,
+studentId)` bir haftanın metriklerini üretir:
+
+- **Öğrenci karşılaştırması**: kişi başına görev tamamlama oranı, çözülen
+  soru, doğruluk (%), çalışma süresi ve **önceki haftaya göre puan farkı**.
+- **Seçili öğrenci için kırılım**: kategori bazında ve gün bazında aynı
+  metrikler. Gün satırları `academicCalendar` etiketini taşır.
+- Veri olmayan yerde oran `null` döner ve arayüzde `-` gösterilir — `%0` ile
+  karıştırılmamalı (veri yok ≠ başarısız).
+
+Sorgular tek turda hem içinde bulunulan hem önceki haftayı çeker
+(`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok.
+
 ## Çalışırken dikkat
 
 - Canlı sistem; davranış değiştiren PR'larda önce lokalde doğrula.
