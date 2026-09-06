@@ -246,6 +246,9 @@ a:hover {
 
 .narrow {
   max-width: 760px;
+  /* .container bir flex sutunu; otomatik yan bosluk paneli ortalar */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* --------------------------------------------------------------------------
@@ -637,7 +640,7 @@ button.ghost:hover {
 .table-wrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
@@ -652,7 +655,7 @@ table {
 th {
   padding: 10px var(--sp-4);
   background: var(--surface-soft);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
   text-align: left;
   font-size: 0.75rem;
   font-weight: 600;
@@ -662,9 +665,15 @@ th {
 
 td {
   padding: 11px var(--sp-4);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
   color: var(--text-secondary);
   vertical-align: middle;
+}
+
+/* Dikey ayiricilar: hucrelerin tum kenarlari gorunur olsun */
+th + th,
+td + td {
+  border-left: 1px solid var(--border-strong);
 }
 
 tbody tr:last-child td {
@@ -677,7 +686,7 @@ tbody tr:hover td {
 
 tfoot td {
   background: var(--surface-soft);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-strong);
   border-bottom: none;
   font-weight: 600;
   color: var(--text);
