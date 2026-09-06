@@ -334,6 +334,237 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
   };
 }
 
+// Haftalik analiz: bir hafta icin ogrenci basina gorev tamamlama, soru
+// dogrulugu ve calisma suresi; ayrica secili ogrenci icin kategori ve gun
+// kirilimi ile onceki haftaya gore degisim.
+async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
+  const weekEnd = shiftDate(weekStart, 6);
+  const prevWeekStart = shiftDate(weekStart, -7);
+  const prevWeekEnd = shiftDate(weekStart, -1);
+
+  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes] = await Promise.all([
+    query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
+    query(`SELECT id, name FROM categories ORDER BY name ASC`),
+    query(`
+      SELECT
+        id,
+        category_id AS "categoryId",
+        student_id AS "studentId",
+        repeat_type AS "repeatType",
+        single_date AS "singleDate",
+        weekly_day AS "weeklyDay",
+        monthly_day AS "monthlyDay",
+        custom_dates AS "customDates",
+        start_date AS "startDate",
+        end_date AS "endDate",
+        is_archived AS "isArchived"
+      FROM tasks
+      WHERE is_archived = false
+    `),
+    query(
+      `
+        SELECT task_id AS "taskId", student_id AS "studentId", day, status
+        FROM task_statuses
+        WHERE day BETWEEN $1 AND $2 AND status = 'done'
+      `,
+      [prevWeekStart, weekEnd]
+    ),
+    query(
+      `
+        SELECT
+          student_id AS "studentId",
+          category_id AS "categoryId",
+          day,
+          COALESCE(SUM(correct_count), 0) AS "correctCount",
+          COALESCE(SUM(wrong_count), 0) AS "wrongCount",
+          COALESCE(SUM(duration_minutes), 0) AS "durationMinutes"
+        FROM daily_questions
+        WHERE day BETWEEN $1 AND $2
+        GROUP BY student_id, category_id, day
+      `,
+      [prevWeekStart, weekEnd]
+    )
+  ]);
+
+  const students = studentsRes.rows;
+  const categories = categoriesRes.rows;
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+  const tasks = tasksRes.rows.map((row) => ({
+    id: row.id,
+    categoryId: row.categoryId,
+    studentId: row.studentId,
+    repeatType: row.repeatType,
+    singleDate: toDateOnly(row.singleDate) || null,
+    weeklyDay: row.weeklyDay,
+    monthlyDay: row.monthlyDay,
+    customDates: row.customDates || [],
+    startDate: toDateOnly(row.startDate) || null,
+    endDate: toDateOnly(row.endDate) || null,
+    isArchived: row.isArchived
+  }));
+
+  const doneSet = new Set(
+    statusesRes.rows.map((row) => `${row.studentId}:${row.taskId}:${toDateOnly(row.day)}`)
+  );
+  const questionRows = questionsRes.rows.map((row) => ({
+    ...row,
+    date: toDateOnly(row.day),
+    correctCount: Number(row.correctCount || 0),
+    wrongCount: Number(row.wrongCount || 0),
+    durationMinutes: Number(row.durationMinutes || 0)
+  }));
+
+  const bosMetrik = () => ({ due: 0, done: 0, correct: 0, wrong: 0, duration: 0 });
+
+  // Bir ogrencinin verilen gun araligindaki toplam metrikleri
+  function metricsFor(studentId, days) {
+    const metrik = bosMetrik();
+    const studentTasks = tasks.filter((t) => t.studentId === studentId);
+
+    for (const day of days) {
+      const dayObj = new Date(`${day}T00:00:00`);
+      for (const task of studentTasks) {
+        if (!isTaskDueOnDate(task, dayObj, day)) continue;
+        metrik.due += 1;
+        if (doneSet.has(`${studentId}:${task.id}:${day}`)) metrik.done += 1;
+      }
+    }
+
+    for (const row of questionRows) {
+      if (row.studentId !== studentId || !days.includes(row.date)) continue;
+      metrik.correct += row.correctCount;
+      metrik.wrong += row.wrongCount;
+      metrik.duration += row.durationMinutes;
+    }
+
+    return metrik;
+  }
+
+  const oran = (pay, payda) => (payda > 0 ? Math.round((pay / payda) * 1000) / 10 : null);
+
+  function ozetle(metrik) {
+    const questionTotal = metrik.correct + metrik.wrong;
+    return {
+      ...metrik,
+      questionTotal,
+      completionRate: oran(metrik.done, metrik.due),
+      accuracy: oran(metrik.correct, questionTotal)
+    };
+  }
+
+  const weekDays = getWeekDates(weekStart);
+  const prevDays = getWeekDates(prevWeekStart);
+
+  const studentRows = students.map((student) => {
+    const current = ozetle(metricsFor(student.id, weekDays));
+    const previous = ozetle(metricsFor(student.id, prevDays));
+    return {
+      id: student.id,
+      name: student.name,
+      current,
+      previous,
+      delta: {
+        completionRate:
+          current.completionRate !== null && previous.completionRate !== null
+            ? Math.round((current.completionRate - previous.completionRate) * 10) / 10
+            : null,
+        questionTotal: current.questionTotal - previous.questionTotal,
+        duration: current.duration - previous.duration
+      }
+    };
+  });
+
+  const totals = ozetle(
+    studentRows.reduce((acc, row) => {
+      acc.due += row.current.due;
+      acc.done += row.current.done;
+      acc.correct += row.current.correct;
+      acc.wrong += row.current.wrong;
+      acc.duration += row.current.duration;
+      return acc;
+    }, bosMetrik())
+  );
+
+  // --- Secili ogrenci icin kategori ve gun kirilimi ---
+  let detail = null;
+  const selected = students.find((s) => s.id === selectedStudentId) || null;
+
+  if (selected) {
+    const studentTasks = tasks.filter((t) => t.studentId === selected.id);
+
+    const byCategory = new Map();
+    const kategoriAl = (categoryId) => {
+      const key = categoryId || '__yok__';
+      if (!byCategory.has(key)) {
+        byCategory.set(key, {
+          categoryId: key,
+          categoryName: categoryNameById.get(categoryId) || 'Kategorisiz',
+          ...bosMetrik()
+        });
+      }
+      return byCategory.get(key);
+    };
+
+    const dayRows = weekDays.map((day) => {
+      const dayObj = new Date(`${day}T00:00:00`);
+      const dayInfo = academicCalendar.getDayInfo(day);
+      const gun = bosMetrik();
+
+      for (const task of studentTasks) {
+        if (!isTaskDueOnDate(task, dayObj, day)) continue;
+        const kategori = kategoriAl(task.categoryId);
+        kategori.due += 1;
+        gun.due += 1;
+        if (doneSet.has(`${selected.id}:${task.id}:${day}`)) {
+          kategori.done += 1;
+          gun.done += 1;
+        }
+      }
+
+      for (const row of questionRows) {
+        if (row.studentId !== selected.id || row.date !== day) continue;
+        const kategori = kategoriAl(row.categoryId);
+        kategori.correct += row.correctCount;
+        kategori.wrong += row.wrongCount;
+        kategori.duration += row.durationMinutes;
+        gun.correct += row.correctCount;
+        gun.wrong += row.wrongCount;
+        gun.duration += row.durationMinutes;
+      }
+
+      return {
+        date: day,
+        dayName: getDayName(day),
+        dayLabel: dayInfo.isSchoolDay ? 'Ders günü' : dayInfo.label,
+        isSchoolDay: dayInfo.isSchoolDay,
+        ...ozetle(gun)
+      };
+    });
+
+    detail = {
+      student: selected,
+      categories: Array.from(byCategory.values())
+        .map(ozetle)
+        .sort((a, b) => b.due - a.due || a.categoryName.localeCompare(b.categoryName, 'tr')),
+      days: dayRows
+    };
+  }
+
+  return {
+    weekStart,
+    weekEnd,
+    prevWeekStart,
+    prevWeekEnd,
+    nextWeekStart: shiftDate(weekStart, 7),
+    academic: academicCalendar.describeWeek(weekStart, weekEnd),
+    students,
+    studentRows,
+    totals,
+    detail,
+    selectedStudentId: selected ? selected.id : ''
+  };
+}
+
 function parseDateRange(from, to) {
   const today = todayDateString();
   const fromDate = from || shiftDate(today, -6);
@@ -551,7 +782,7 @@ async function sealOverdueTaskStatuses() {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -758,6 +989,14 @@ async function getAdminViewModel(req, currentPage) {
 
   const today = todayDateString();
   const dateObj = new Date(`${today}T00:00:00`);
+  let weeklyAnalysis = null;
+  if (currentPage === 'analysis') {
+    const analysisWeekStart =
+      normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
+    const analysisStudentIdRaw = normalizeText(req.query.analysisStudentId);
+    weeklyAnalysis = await buildWeeklyAnalysis(analysisWeekStart, analysisStudentIdRaw);
+  }
+
   // Gorev "haftayi kopyala" formunun varsayilan degerleri
   const copyWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const copyWeekNextStart = shiftDate(copyWeekStart, 7);
@@ -930,6 +1169,7 @@ async function getAdminViewModel(req, currentPage) {
     },
     copyWeekStart,
     copyWeekNextStart,
+    weeklyAnalysis,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -1097,7 +1337,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
