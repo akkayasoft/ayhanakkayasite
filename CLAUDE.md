@@ -142,6 +142,42 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
    taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
    sabit kaldığı mesajda bildirilir.
 
+## YDS / YÖKDİL takibi (yds.obs → takip.obs)
+
+`akkayasoft/yds-yokdil-app` (Expo/React Native, `https://yds.obs.akkayasoft.com`)
+ilerlemesi takip.obs'a **yansıtılır**. YZ programının tersi yön: orada takip.obs
+planı üretip görev *iter*, burada uygulama kendi günlük paketini zaten üretir,
+takip.obs sonucu *okur*.
+
+- **Kaynak:** YDS uygulaması cihazlar arası senkron için VPS'te minik bir Node
+  servisi çalıştırır (`server/yds-api`, `127.0.0.1:3210`) ve kullanıcı başına tek
+  JSON tutar. **İki uygulama aynı sunucuda** olduğu için takip.obs dosyayı
+  doğrudan okur — HTTP'ye de Basic Auth şifresini burada saklamaya da gerek yok.
+- `YDS_STATE_FILE` (varsayılan `/var/www/yds-api/data/state-ayhan.json`)
+- `YDS_STUDENT_USERNAME` (varsayılan `ayhan`) — verinin yazılacağı öğrenci.
+- **Okuma:** `src/ydsSync.js`. Dosya biçimi YDS tarafındaki `app/src/sync.ts`
+  `Blob` tipidir; uygulama tek yazıcıdır.
+- **Yansıtma:** `syncYdsProgress()` — `runSealSafely` içinde (açılışta + 5
+  dakikada bir) ve `/admin/yds` sayfasındaki "Şimdi Çek" düğmesiyle. Idempotent.
+- `yds_days` — günlük kırılım (okuma/kelime/gramer/test sayıları, çözülen soru,
+  hedef tuttu mu). Kaynak dosya uygulamadan **sıfırlanabildiği** için veri burada
+  saklanır; canlı ayna olsaydı sıfırlama geçmiş denetim kaydını da silerdi.
+- `daily_questions` — çözülen sorular `source_key = 'yds:<tarih>'` ile yazılır
+  (partial unique index; elle girilen satırlarda `source_key` NULL kalır).
+  Böylece Soru Takibi ve **Haftalık Analiz** ek kod olmadan dolar.
+
+> ⚠️ **Doğruluk yalnızca puanlı testlerden gelir.** YDS tarafında 9 dilbilgisi
+> testi `scored: false`, yalnızca 2 preposition testi puanlı. Bu yüzden
+> `correct + wrong = scoredQuestions ≤ questionsSolved`. Çözülen gerçek toplam
+> `count` sütununda durur; puansız soruları "yanlış" saymak veriyi bozardı.
+> Sonuç: puansız test çözülen bir gün Haftalık Analiz'de "0 soru" görünür.
+> Kalıcı çözüm yukarı akışta — YDS deposunda dilbilgisi testlerine cevap
+> anahtarı eşlenmesi (README'de bilinen iş olarak duruyor).
+
+Hata durumları uygulamayı durdurmaz: dosya yoksa/bozuksa senkron sessizce geçer,
+son hata `yds_sync.last_error`'a yazılır ve `/admin/yds` sayfasında gösterilir;
+daha önce yansıtılmış veri korunur.
+
 ## Uyanma rutini
 
 Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.
