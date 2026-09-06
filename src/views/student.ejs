@@ -17,6 +17,7 @@
 
         <nav class="menu">
           <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevlerim</a>
+          <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
           <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
@@ -180,6 +181,29 @@
           </div>
           <a class="button-link active" href="/student/new-task">Görev Ekle</a>
         </header>
+
+        <% if (wake && wake.routine && wake.routine.isActive) { %>
+        <section class="wake-strip <%= wake.todayLog ? 'done' : '' %>">
+          <div class="wake-strip-info">
+            <p class="wake-strip-label">Uyanma Rutini · hedef <%= wake.routine.targetTime %><% if (wake.routine.toleranceMinutes) { %> (+<%= wake.routine.toleranceMinutes %> dk)<% } %></p>
+            <% if (wake.todayLog) { %>
+            <p class="wake-strip-value">
+              <%= wake.todayLog.wokeAt %> · <%= wake.todayLog.statusText %><% if (wake.todayLog.delayMinutes) { %> (<%= wake.todayLog.delayMinutes %> dk geç)<% } %>
+            </p>
+            <% } else { %>
+            <p class="wake-strip-value">Bugün henüz işaretlemedin · şu an <%= wake.nowHm %></p>
+            <% } %>
+          </div>
+          <% if (!wake.todayLog) { %>
+          <form method="post" action="/student/wake">
+            <input type="hidden" name="next" value="/student/dashboard" />
+            <button type="submit" class="wake-button">Uyandım</button>
+          </form>
+          <% } else { %>
+          <a class="button-link" href="/student/wake">Rutini Gör</a>
+          <% } %>
+        </section>
+        <% } %>
 
         <section class="kpi-grid">
           <article class="kpi"><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
@@ -466,6 +490,107 @@
           <% } %>
         </section>
 
+        <% } %>
+
+        <% if (currentPage === 'wake') { %>
+        <header class="content-header">
+          <h2>Uyanma Rutini</h2>
+          <p class="muted"><%= today %> · şu an <%= wake.nowHm %></p>
+        </header>
+
+        <% if (!wake.routine || !wake.routine.isActive) { %>
+        <section class="panel narrow">
+          <h3>Rutin tanımlı değil</h3>
+          <p class="muted">
+            Uyanma rutini yönetici tarafından ayarlanır. Hedef saat belirlendiğinde
+            burada her sabah tek dokunuşla işaretleyebilirsin.
+          </p>
+        </section>
+        <% } else { %>
+
+        <section class="wake-hero <%= wake.todayLog ? wake.todayLog.status : 'pending' %>">
+          <p class="wake-hero-target">
+            Hedef <strong><%= wake.routine.targetTime %></strong><% if (wake.routine.toleranceMinutes) { %>
+            <span class="muted">+<%= wake.routine.toleranceMinutes %> dk tolerans</span><% } %>
+          </p>
+          <% if (wake.todayLog) { %>
+          <p class="wake-hero-value"><%= wake.todayLog.wokeAt %></p>
+          <p class="wake-hero-status"><%= wake.todayLog.statusText %><% if (wake.todayLog.delayMinutes) { %> · hedeften <%= wake.todayLog.delayMinutes %> dk sonra<% } %></p>
+          <p class="muted">Bugünün kaydı alındı, değiştirilemez.</p>
+          <% } else { %>
+          <p class="wake-hero-value"><%= wake.nowHm %></p>
+          <form method="post" action="/student/wake">
+            <input type="hidden" name="next" value="/student/wake" />
+            <button type="submit" class="wake-button large">Uyandım</button>
+          </form>
+          <p class="muted">Bastığın saat kaydedilir. Günde bir kez, geri alınamaz.</p>
+          <% } %>
+        </section>
+
+        <section class="kpi-grid">
+          <article class="kpi <%= wake.streak > 0 ? 'ok' : '' %>">
+            <p class="kpi-label">Zamanında Serisi</p>
+            <p class="kpi-value"><%= wake.streak %> gün</p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Son <%= wake.summary.gunSayisi %> Gün Zamanında</p>
+            <p class="kpi-value"><%= wake.summary.onTimeRate === null ? '-' : wake.summary.onTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Uyanma</p>
+            <p class="kpi-value"><%= wake.summary.averageWake || '-' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Gecikme</p>
+            <p class="kpi-value"><%= wake.summary.averageDelay === null ? '-' : wake.summary.averageDelay + ' dk' %></p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Son <%= wake.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Zamanında <%= wake.summary.onTime %> · Geç <%= wake.summary.late %> · Kaçırılan <%= wake.summary.missed %>
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Hedef</th>
+                  <th>Kalkış</th>
+                  <th>Gecikme</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% wake.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.day %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.targetTime %></td>
+                  <td><%= r.wokeAt || '-' %></td>
+                  <td><%= r.delayMinutes ? r.delayMinutes + ' dk' : '-' %></td>
+                  <td>
+                    <% if (r.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (r.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else if (r.status === 'missed') { %>
+                    <span class="day-badge miss">Kaçırıldı</span>
+                    <% } else if (r.status === 'pending') { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'calendar' && calendar) { %>

@@ -136,6 +136,40 @@ async function initDb() {
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS wrong_count INTEGER NOT NULL DEFAULT 0`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS duration_minutes INTEGER NOT NULL DEFAULT 0`);
 
+  // --- Uyanma rutini -----------------------------------------------------
+  //
+  // wake_routines: ogrenci basina hedef saat + tolerans (tek satir).
+  // wake_logs   : gun basina tek kayit. Hedef saat ve tolerans kaydin
+  //               icine kopyalanir; rutin sonradan degistirilirse gecmis
+  //               degerlendirmeler bozulmaz.
+  await query(`
+    CREATE TABLE IF NOT EXISTS wake_routines (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      target_time TIME NOT NULL,
+      tolerance_minutes INTEGER NOT NULL DEFAULT 0
+        CHECK (tolerance_minutes >= 0 AND tolerance_minutes <= 240),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS wake_logs (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      target_time TIME NOT NULL,
+      tolerance_minutes INTEGER NOT NULL DEFAULT 0,
+      woke_at TIME NULL,
+      status TEXT NOT NULL CHECK (status IN ('on_time', 'late', 'missed')),
+      delay_minutes INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, day)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS wake_logs_student_day_idx ON wake_logs (student_id, day DESC)`);
+
   // --- Puan sistemi kaldirildi -------------------------------------------
   //
   // Odul/ceza puanlamasi uygulamadan tamamen cikarildi. Asagidaki migrasyon
