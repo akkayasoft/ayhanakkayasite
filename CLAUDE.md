@@ -178,6 +178,41 @@ Hata durumları uygulamayı durdurmaz: dosya yoksa/bozuksa senkron sessizce geç
 son hata `yds_sync.last_error`'a yazılır ve `/admin/yds` sayfasında gösterilir;
 daha önce yansıtılmış veri korunur.
 
+## YDS çalışma programı (yds.obs içeriği → görevler)
+
+`scripts/yds-program-uret.js` — YDS içeriğini 2026-2027 ders günlerine yayıp
+`src/data/ydsProgram.json` üretir. `/admin/yds` → "Görevlere Aktar".
+
+**YZ programından farkı:** YZ müfredatı sabitti (149 ders ≈ 149 gün). YDS içeriği
+Ankara Dil kaynaklarından gün gün üretiliyor: bugün **56 parça**, yıl ise
+**179 ders günü**. Bu yüzden:
+
+1. Her parça **en fazla 3 kez** planlanır (ilk görme + 3 gün + 10 gün sonra).
+   Aralıklı tekrar mantığı; aynı okumayı 45 kez planlamak yerine dürüst olan bu.
+2. Tekrarlar günlük bütçenin **1/3'ünü** aşamaz — yoksa vadesi gelen tekrarlar
+   günü doldurup yeni içeriği kovuyor (ilk denemede 17-18 Eylül baştan sona
+   tekrar çıkmıştı).
+3. İçerik bitince kalan günler **"bekliyor"**: konu uydurulmaz, yalnızca
+   `YDS · Serbest Çalışma` kategorisinde bir günlük çalışma görevi açılır.
+4. Yeni içerik gelince programı yeniden üret + aynı düğmeye bas. Yeni parçalar
+   boş günlere yerleşir; **geçmiş ve işaretli görevler oynamaz**.
+
+Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması değişen
+**işaretlenmemiş ve günü gelmemiş** görevleri tazeler, programda artık olmayan
+**bayat** görevleri (yine yalnızca işaretlenmemiş + gelecek) siler.
+
+> Bir gün "bekliyor"dan "içerikli"ye dönerken o günün serbest görevi
+> **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
+> hem serbest kayıt hem yeni içerik görevleri görünür.
+
+Kategoriler: `YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` /
+`Serbest Çalışma`. `source_key` = `ydsp:<tarih>:<parçaId>`.
+
+> ⚠️ **İki program üst üste biniyor.** YZ (149 gün) ve YDS (179 gün) 149 günde
+> çakışıyor; çakışan günlerde ortalama **95 dk / 2.8 görev** (en yoğun gün
+> 125 dk, 5 görev). Günlük yükü değiştirmek gerekirse `GUNLUK_DAKIKA`
+> (yds-program-uret.js) ve YZ tarafındaki hafta düzeni ayarlanmalı.
+
 ## Uyanma rutini
 
 Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.
