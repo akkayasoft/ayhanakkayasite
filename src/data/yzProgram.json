@@ -1,10 +1,11 @@
 {
  "surum": "2026-2027.1",
  "baslangic": "2026-09-14",
- "bitis": "2027-05-04",
+ "bitis": "2027-05-11",
  "kaynak": "akkayasoft/uretken-yz-platform",
- "toplamDers": 117,
- "yerlesen": 117,
+ "toplamDers": 149,
+ "yerlesen": 149,
+ "haftalikGun": 5,
  "gorevler": [
   {
    "dersId": "python_ders01",
@@ -44,7 +45,7 @@
    "sure": 28,
    "kurs": "python-temelleri",
    "kursAd": "Python Temelleri",
-   "tarih": "2026-09-21"
+   "tarih": "2026-09-18"
   },
   {
    "dersId": "python_ders06",
@@ -52,7 +53,7 @@
    "sure": 26,
    "kurs": "python-temelleri",
    "kursAd": "Python Temelleri",
-   "tarih": "2026-09-22"
+   "tarih": "2026-09-21"
   },
   {
    "dersId": "python_ileri_ders01",
@@ -60,7 +61,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-09-23"
+   "tarih": "2026-09-22"
   },
   {
    "dersId": "python_ileri_ders02",
@@ -68,7 +69,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-09-24"
+   "tarih": "2026-09-23"
   },
   {
    "dersId": "python_ileri_ders03",
@@ -76,7 +77,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-09-28"
+   "tarih": "2026-09-24"
   },
   {
    "dersId": "python_ileri_ders04",
@@ -84,7 +85,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-09-29"
+   "tarih": "2026-09-25"
   },
   {
    "dersId": "python_ileri_ders05",
@@ -92,7 +93,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-09-30"
+   "tarih": "2026-09-28"
   },
   {
    "dersId": "python_ileri_ders06",
@@ -100,7 +101,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-01"
+   "tarih": "2026-09-29"
   },
   {
    "dersId": "python_ileri_ders07",
@@ -108,7 +109,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-05"
+   "tarih": "2026-09-30"
   },
   {
    "dersId": "python_ileri_ders08",
@@ -116,7 +117,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-06"
+   "tarih": "2026-10-01"
   },
   {
    "dersId": "python_ileri_ders09",
@@ -124,7 +125,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-07"
+   "tarih": "2026-10-02"
   },
   {
    "dersId": "python_ileri_ders10",
@@ -132,7 +133,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-08"
+   "tarih": "2026-10-05"
   },
   {
    "dersId": "python_ileri_ders11",
@@ -140,7 +141,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-12"
+   "tarih": "2026-10-06"
   },
   {
    "dersId": "python_ileri_ders12",
@@ -148,7 +149,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-13"
+   "tarih": "2026-10-07"
   },
   {
    "dersId": "python_ileri_ders13",
@@ -156,7 +157,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-14"
+   "tarih": "2026-10-08"
   },
   {
    "dersId": "python_ileri_ders14",
@@ -164,7 +165,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-15"
+   "tarih": "2026-10-09"
   },
   {
    "dersId": "python_ileri_ders15",
@@ -172,7 +173,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-19"
+   "tarih": "2026-10-12"
   },
   {
    "dersId": "python_ileri_ders16",
@@ -180,7 +181,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-20"
+   "tarih": "2026-10-13"
   },
   {
    "dersId": "python_ileri_ders17",
@@ -188,7 +189,7 @@
    "sure": 28,
    "kurs": "python-ileri-seviye",
    "kursAd": "Python İleri Seviye",
-   "tarih": "2026-10-21"
+   "tarih": "2026-10-14"
   },
   {
    "dersId": "numpy_ders01",
@@ -196,7 +197,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-10-22"
+   "tarih": "2026-10-15"
   },
   {
    "dersId": "numpy_ders02",
@@ -204,7 +205,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-10-26"
+   "tarih": "2026-10-16"
   },
   {
    "dersId": "numpy_ders03",
@@ -212,7 +213,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-10-27"
+   "tarih": "2026-10-19"
   },
   {
    "dersId": "numpy_ders04",
@@ -220,7 +221,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-10-28"
+   "tarih": "2026-10-20"
   },
   {
    "dersId": "numpy_ders05",
@@ -228,7 +229,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-11-02"
+   "tarih": "2026-10-21"
   },
   {
    "dersId": "numpy_ders06",
@@ -236,7 +237,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-11-03"
+   "tarih": "2026-10-22"
   },
   {
    "dersId": "numpy_ders07",
@@ -244,7 +245,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-11-04"
+   "tarih": "2026-10-23"
   },
   {
    "dersId": "numpy_ders08",
@@ -252,7 +253,7 @@
    "sure": 30,
    "kurs": "numpy-temelleri",
    "kursAd": "NumPy Temelleri",
-   "tarih": "2026-11-05"
+   "tarih": "2026-10-26"
   },
   {
    "dersId": "pandas_ders01",
@@ -260,7 +261,7 @@
    "sure": 32,
    "kurs": "pandas-temelleri",
    "kursAd": "Pandas Temelleri",
-   "tarih": "2026-11-09"
+   "tarih": "2026-10-27"
   },
   {
    "dersId": "pandas_ders02",
@@ -268,7 +269,7 @@
    "sure": 32,
    "kurs": "pandas-temelleri",
    "kursAd": "Pandas Temelleri",
-   "tarih": "2026-11-10"
+   "tarih": "2026-10-28"
   },
   {
    "dersId": "pandas_ders03",
@@ -276,7 +277,7 @@
    "sure": 32,
    "kurs": "pandas-temelleri",
    "kursAd": "Pandas Temelleri",
-   "tarih": "2026-11-11"
+   "tarih": "2026-10-30"
   },
   {
    "dersId": "pandas_ders04",
@@ -284,7 +285,7 @@
    "sure": 32,
    "kurs": "pandas-temelleri",
    "kursAd": "Pandas Temelleri",
-   "tarih": "2026-11-12"
+   "tarih": "2026-11-02"
   },
   {
    "dersId": "pandas_ders05",
@@ -292,327 +293,583 @@
    "sure": 32,
    "kurs": "pandas-temelleri",
    "kursAd": "Pandas Temelleri",
-   "tarih": "2026-11-23"
+   "tarih": "2026-11-03"
   },
   {
    "dersId": "vg_ders01",
    "baslik": "Matplotlib Veriseti Tanima",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-11-24"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-04"
   },
   {
    "dersId": "vg_ders02",
    "baslik": "Matplotlib Cizgi Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-11-25"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-05"
   },
   {
    "dersId": "vg_ders03",
    "baslik": "Matplotlib Sacilim Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-11-26"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-06"
   },
   {
    "dersId": "vg_ders04",
    "baslik": "Matplotlib Histogram Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-11-30"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-09"
   },
   {
    "dersId": "vg_ders05",
    "baslik": "Matplotlib Cubuk Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-01"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-10"
   },
   {
    "dersId": "vg_ders06",
    "baslik": "Matplotlib Alt Plan Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-02"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-11"
   },
   {
    "dersId": "vg_ders07",
    "baslik": "Seaborn Cizgi/Es Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-03"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-12"
   },
   {
    "dersId": "vg_ders08",
    "baslik": "Seaborn Keman Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-07"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-13"
   },
   {
    "dersId": "vg_ders09",
    "baslik": "Seaborn Kutu Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-08"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-23"
   },
   {
    "dersId": "vg_ders10",
    "baslik": "Seaborn Sacilim Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-09"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-24"
   },
   {
    "dersId": "vg_ders11",
    "baslik": "Seaborn Cubuk Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-10"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-25"
   },
   {
    "dersId": "vg_ders12",
    "baslik": "Seaborn Veriseti Tanima",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-14"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-26"
   },
   {
    "dersId": "vg_ders13",
    "baslik": "Seaborn Isi Haritasi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-15"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-27"
   },
   {
    "dersId": "vg_ders14",
    "baslik": "Seaborn Ortaklik Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-16"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-11-30"
   },
   {
    "dersId": "vg_ders15",
    "baslik": "Seaborn Cizgi Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-17"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-12-01"
   },
   {
    "dersId": "vg_ders16",
    "baslik": "Seaborn Histogram Grafigi",
    "sure": 34,
    "kurs": "veri-gorsellestirme",
-   "kursAd": "Veri Gorsellestirme",
-   "tarih": "2026-12-21"
+   "kursAd": "Veri Görselleştirme",
+   "tarih": "2026-12-02"
   },
   {
    "dersId": "ml_ders01",
    "baslik": "ML Lesson 1: What is Machine Learning?",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-22"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-03"
   },
   {
    "dersId": "ml_ders02",
    "baslik": "ML Lesson 2: Types of Machine Learning",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-23"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-04"
   },
   {
    "dersId": "ml_ders03",
    "baslik": "ML Lesson 3: Machine Learning Process",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-24"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-07"
   },
   {
    "dersId": "ml_ders04",
    "baslik": "ML Lesson 4: Machine Learning Performance Measurement (Classification)",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-28"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-08"
   },
   {
    "dersId": "ml_ders05",
    "baslik": "ML Lesson 5: Machine Learning Performance Measurement - Regression",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-29"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-09"
   },
   {
    "dersId": "ml_ders06",
    "baslik": "ML Lesson 6: Overlearning and Underlearning",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-30"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-10"
   },
   {
    "dersId": "ml_ders07",
    "baslik": "ML Lecture 7: Machine Learning Libraries Overview",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2026-12-31"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-11"
   },
   {
    "dersId": "ml_ders08",
    "baslik": "ML Lesson 8: Importing Libraries into the Project",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2027-01-04"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-14"
   },
   {
    "dersId": "ml_ders09",
    "baslik": "ML Lesson 9: Loading the Dataset",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
-   "tarih": "2027-01-05"
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-15"
   },
   {
    "dersId": "ml_ders10",
    "baslik": "ML Lecture 10: Analyzing the Dataset",
    "sure": 35,
    "kurs": "makine-ogrenmesi-temelleri",
-   "kursAd": "Makine Ogrenmesi Temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-16"
+  },
+  {
+   "dersId": "ml_ders11",
+   "baslik": "Veri Ön İşleme: Eksik Değerler ve Aykırı Gözlemler",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-17"
+  },
+  {
+   "dersId": "ml_ders12",
+   "baslik": "Kategorik Değişkenler: Label ve One-Hot Encoding",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-18"
+  },
+  {
+   "dersId": "ml_ders13",
+   "baslik": "Özellik Ölçekleme: Standardizasyon ve Normalizasyon",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-21"
+  },
+  {
+   "dersId": "ml_ders14",
+   "baslik": "Eğitim/Test Ayrımı ve Veri Sızıntısı",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-22"
+  },
+  {
+   "dersId": "ml_ders15",
+   "baslik": "Basit Doğrusal Regresyon",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-23"
+  },
+  {
+   "dersId": "ml_ders16",
+   "baslik": "Çoklu Doğrusal Regresyon ve Katsayı Yorumu",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-24"
+  },
+  {
+   "dersId": "ml_ders17",
+   "baslik": "Polinom Regresyon ve Model Karmaşıklığı",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-25"
+  },
+  {
+   "dersId": "ml_ders18",
+   "baslik": "Düzenlileştirme: Ridge, Lasso ve ElasticNet",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-28"
+  },
+  {
+   "dersId": "ml_ders19",
+   "baslik": "Lojistik Regresyon ile Sınıflandırma",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-29"
+  },
+  {
+   "dersId": "ml_ders20",
+   "baslik": "K-En Yakın Komşu (KNN)",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-30"
+  },
+  {
+   "dersId": "ml_ders21",
+   "baslik": "Naive Bayes ve Olasılıksal Sınıflandırma",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2026-12-31"
+  },
+  {
+   "dersId": "ml_ders22",
+   "baslik": "Destek Vektör Makineleri (SVM) ve Kernel Hilesi",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-04"
+  },
+  {
+   "dersId": "ml_ders23",
+   "baslik": "Karar Ağaçları: Bölme Ölçütleri",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-05"
+  },
+  {
+   "dersId": "ml_ders24",
+   "baslik": "Rastgele Orman ve Torbalama (Bagging)",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
    "tarih": "2027-01-06"
+  },
+  {
+   "dersId": "ml_ders25",
+   "baslik": "Gradient Boosting, XGBoost ve LightGBM",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-07"
+  },
+  {
+   "dersId": "ml_ders26",
+   "baslik": "Çapraz Doğrulama ve Hiperparametre Arama",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-08"
+  },
+  {
+   "dersId": "ml_ders27",
+   "baslik": "Dengesiz Veri: Örnekleme, Ağırlıklandırma ve Eşik",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-11"
+  },
+  {
+   "dersId": "ml_ders28",
+   "baslik": "Kümeleme: K-Means, Hiyerarşik ve DBSCAN",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-12"
+  },
+  {
+   "dersId": "ml_ders29",
+   "baslik": "Boyut İndirgeme: PCA ve t-SNE",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-13"
+  },
+  {
+   "dersId": "ml_ders30",
+   "baslik": "Yorumlanabilirlik, Pipeline ve Üretime Alma",
+   "sure": 35,
+   "kurs": "makine-ogrenmesi-temelleri",
+   "kursAd": "Makine Öğrenmesi Temelleri",
+   "tarih": "2027-01-14"
   },
   {
    "dersId": "dl_ders01",
    "baslik": "Derin Ogrenmeye Giris ve Yapay Sinir Agi Sezgisi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-07"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-15"
   },
   {
    "dersId": "dl_ders02",
    "baslik": "Perceptron ve Aktivasyon Fonksiyonlari",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-11"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-18"
   },
   {
    "dersId": "dl_ders03",
    "baslik": "Cok Katmanli Aglar (MLP) ve Ileri Yayilim",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-12"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-19"
   },
   {
    "dersId": "dl_ders04",
    "baslik": "Kayip Fonksiyonlari ve Geri Yayilim Mantigi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-13"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-20"
   },
   {
    "dersId": "dl_ders05",
    "baslik": "Optimizasyon: Gradient Descent, Momentum, Adam",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-14"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-21"
   },
   {
    "dersId": "dl_ders06",
    "baslik": "Asiri Ogrenme, Regulerizasyon ve Dropout",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-18"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-01-22"
   },
   {
    "dersId": "dl_ders07",
    "baslik": "Batch Normalization ve Egitim Stabilitesi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-19"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-08"
   },
   {
    "dersId": "dl_ders08",
    "baslik": "CNN Temelleri: Konvolusyon, Filtre ve Ozellik Haritalari",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-20"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-09"
   },
   {
    "dersId": "dl_ders09",
    "baslik": "CNN ile Goruntu Siniflandirma Tasarimi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-01-21"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-10"
   },
   {
    "dersId": "dl_ders10",
    "baslik": "RNN, LSTM ve GRU ile Sira Verisi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-02-08"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-11"
   },
   {
    "dersId": "dl_ders11",
    "baslik": "Attention ve Transformer Temelleri",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-02-09"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-12"
   },
   {
    "dersId": "dl_ders12",
    "baslik": "Transfer Learning ve Fine-tuning Stratejileri",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-02-10"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-15"
   },
   {
    "dersId": "dl_ders13",
    "baslik": "Model Degerlendirme, Hata Analizi ve Guvenilirlik",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-02-11"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-16"
   },
   {
    "dersId": "dl_ders14",
    "baslik": "Capstone: Uctan Uca Derin Ogrenme Projesi Tasarimi",
    "sure": 42,
    "kurs": "derin-ogrenme-egitimi",
-   "kursAd": "Derin Ogrenme Egitimi",
-   "tarih": "2027-02-15"
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-17"
+  },
+  {
+   "dersId": "dl_ders15",
+   "baslik": "Tensörler, Otomatik Türev ve Hesap Grafiği",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-18"
+  },
+  {
+   "dersId": "dl_ders16",
+   "baslik": "Ağırlık İlkleme ve Kaybolan/Patlayan Gradyanlar",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-19"
+  },
+  {
+   "dersId": "dl_ders17",
+   "baslik": "Öğrenme Oranı Programları ve Erken Durdurma",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-22"
+  },
+  {
+   "dersId": "dl_ders18",
+   "baslik": "Veri Artırma (Data Augmentation) Stratejileri",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-23"
+  },
+  {
+   "dersId": "dl_ders19",
+   "baslik": "Modern CNN Mimarileri: VGG, ResNet, Inception",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-24"
+  },
+  {
+   "dersId": "dl_ders20",
+   "baslik": "Nesne Tespiti ve Segmentasyona Giriş",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-25"
+  },
+  {
+   "dersId": "dl_ders21",
+   "baslik": "Word Embedding: Word2Vec, GloVe ve Bağlamsal Vektörler",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-02-26"
+  },
+  {
+   "dersId": "dl_ders22",
+   "baslik": "Seq2Seq, Encoder-Decoder ve Makine Çevirisi",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-03-01"
+  },
+  {
+   "dersId": "dl_ders23",
+   "baslik": "Otokodlayıcılar (Autoencoder) ve Gürültü Giderme",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-03-02"
+  },
+  {
+   "dersId": "dl_ders24",
+   "baslik": "Hiperparametre Arama ve Deney Takibi",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-03-03"
+  },
+  {
+   "dersId": "dl_ders25",
+   "baslik": "Model Sıkıştırma: Nicemleme, Budama ve Damıtma",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-03-04"
+  },
+  {
+   "dersId": "dl_ders26",
+   "baslik": "Açıklanabilirlik: Saliency, Grad-CAM ve Sınırlar",
+   "sure": 42,
+   "kurs": "derin-ogrenme-egitimi",
+   "kursAd": "Derin Öğrenme Eğitimi",
+   "tarih": "2027-03-05"
   },
   {
    "dersId": "modul00_ders01",
@@ -620,7 +877,7 @@
    "sure": 30,
    "kurs": "modul-01-temeller",
    "kursAd": "Üretken Yapay Zekanın Teorik Temelleri",
-   "tarih": "2027-02-16"
+   "tarih": "2027-03-15"
   },
   {
    "dersId": "modul01_ders01",
@@ -628,7 +885,7 @@
    "sure": 60,
    "kurs": "modul-01-temeller",
    "kursAd": "Üretken Yapay Zekanın Teorik Temelleri",
-   "tarih": "2027-02-17"
+   "tarih": "2027-03-16"
   },
   {
    "dersId": "modul01_ders02",
@@ -636,7 +893,7 @@
    "sure": 50,
    "kurs": "modul-01-temeller",
    "kursAd": "Üretken Yapay Zekanın Teorik Temelleri",
-   "tarih": "2027-02-18"
+   "tarih": "2027-03-17"
   },
   {
    "dersId": "modul02_ders01",
@@ -644,7 +901,7 @@
    "sure": 60,
    "kurs": "modul-02-token-embedding",
    "kursAd": "Tokenizasyon & Embedding",
-   "tarih": "2027-02-22"
+   "tarih": "2027-03-18"
   },
   {
    "dersId": "modul02_ders02",
@@ -652,7 +909,7 @@
    "sure": 40,
    "kurs": "modul-02-token-embedding",
    "kursAd": "Tokenizasyon & Embedding",
-   "tarih": "2027-02-23"
+   "tarih": "2027-03-19"
   },
   {
    "dersId": "modul03_ders01",
@@ -660,7 +917,7 @@
    "sure": 50,
    "kurs": "modul-03-attention",
    "kursAd": "Attention Mekanizması",
-   "tarih": "2027-02-24"
+   "tarih": "2027-03-22"
   },
   {
    "dersId": "modul03_ders02",
@@ -668,7 +925,7 @@
    "sure": 55,
    "kurs": "modul-03-attention",
    "kursAd": "Attention Mekanizması",
-   "tarih": "2027-02-25"
+   "tarih": "2027-03-23"
   },
   {
    "dersId": "modul03_ders03",
@@ -676,7 +933,7 @@
    "sure": 45,
    "kurs": "modul-03-attention",
    "kursAd": "Attention Mekanizması",
-   "tarih": "2027-03-01"
+   "tarih": "2027-03-24"
   },
   {
    "dersId": "modul03_ders04",
@@ -684,7 +941,7 @@
    "sure": 65,
    "kurs": "modul-03-attention",
    "kursAd": "Attention Mekanizması",
-   "tarih": "2027-03-02"
+   "tarih": "2027-03-25"
   },
   {
    "dersId": "modul04_ders01",
@@ -692,7 +949,7 @@
    "sure": 60,
    "kurs": "modul-04-transformer",
    "kursAd": "Transformer Mimarisi",
-   "tarih": "2027-03-03"
+   "tarih": "2027-03-26"
   },
   {
    "dersId": "modul05_ders01",
@@ -700,7 +957,7 @@
    "sure": 60,
    "kurs": "modul-05-pretraining",
    "kursAd": "LLM Ön Eğitimi & Scaling Laws",
-   "tarih": "2027-03-04"
+   "tarih": "2027-03-29"
   },
   {
    "dersId": "modul06_ders01",
@@ -708,7 +965,7 @@
    "sure": 50,
    "kurs": "modul-06-alignment",
    "kursAd": "Model Hizalama: RLHF ve DPO",
-   "tarih": "2027-03-15"
+   "tarih": "2027-03-30"
   },
   {
    "dersId": "modul07_ders01",
@@ -716,7 +973,7 @@
    "sure": 40,
    "kurs": "modul-07-prompt",
    "kursAd": "Prompt Engineering & Claude API",
-   "tarih": "2027-03-16"
+   "tarih": "2027-03-31"
   },
   {
    "dersId": "modul07_ders02",
@@ -724,7 +981,7 @@
    "sure": 45,
    "kurs": "modul-07-prompt",
    "kursAd": "Prompt Engineering & Claude API",
-   "tarih": "2027-03-17"
+   "tarih": "2027-04-01"
   },
   {
    "dersId": "modul08_ders01",
@@ -732,7 +989,7 @@
    "sure": 60,
    "kurs": "modul-08-rag",
    "kursAd": "Retrieval-Augmented Generation (RAG)",
-   "tarih": "2027-03-18"
+   "tarih": "2027-04-02"
   },
   {
    "dersId": "modul08_ders02",
@@ -740,7 +997,7 @@
    "sure": 65,
    "kurs": "modul-08-rag",
    "kursAd": "Retrieval-Augmented Generation (RAG)",
-   "tarih": "2027-03-22"
+   "tarih": "2027-04-05"
   },
   {
    "dersId": "modul09_ders01",
@@ -748,7 +1005,7 @@
    "sure": 60,
    "kurs": "modul-09-agents",
    "kursAd": "Yapay Zeka Ajanları",
-   "tarih": "2027-03-23"
+   "tarih": "2027-04-06"
   },
   {
    "dersId": "modul10_ders01",
@@ -756,7 +1013,7 @@
    "sure": 35,
    "kurs": "modul-10-finetuning",
    "kursAd": "Fine-tuning: LoRA & QLoRA",
-   "tarih": "2027-03-24"
+   "tarih": "2027-04-07"
   },
   {
    "dersId": "modul10_ders02",
@@ -764,7 +1021,7 @@
    "sure": 40,
    "kurs": "modul-10-finetuning",
    "kursAd": "Fine-tuning: LoRA & QLoRA",
-   "tarih": "2027-03-25"
+   "tarih": "2027-04-08"
   },
   {
    "dersId": "modul10_ders03",
@@ -772,7 +1029,7 @@
    "sure": 35,
    "kurs": "modul-10-finetuning",
    "kursAd": "Fine-tuning: LoRA & QLoRA",
-   "tarih": "2027-03-29"
+   "tarih": "2027-04-09"
   },
   {
    "dersId": "modul11_ders01",
@@ -780,7 +1037,7 @@
    "sure": 35,
    "kurs": "modul-11-vae-gan",
    "kursAd": "VAE & GAN ile Görüntü Üretimi",
-   "tarih": "2027-03-30"
+   "tarih": "2027-04-12"
   },
   {
    "dersId": "modul11_ders02",
@@ -788,7 +1045,7 @@
    "sure": 45,
    "kurs": "modul-11-vae-gan",
    "kursAd": "VAE & GAN ile Görüntü Üretimi",
-   "tarih": "2027-03-31"
+   "tarih": "2027-04-13"
   },
   {
    "dersId": "modul11_ders03",
@@ -796,7 +1053,7 @@
    "sure": 40,
    "kurs": "modul-11-vae-gan",
    "kursAd": "VAE & GAN ile Görüntü Üretimi",
-   "tarih": "2027-04-01"
+   "tarih": "2027-04-14"
   },
   {
    "dersId": "modul12_ders01",
@@ -804,7 +1061,7 @@
    "sure": 40,
    "kurs": "modul-12-diffusion-teori",
    "kursAd": "Diffusion Modelleri: Teori",
-   "tarih": "2027-04-05"
+   "tarih": "2027-04-15"
   },
   {
    "dersId": "modul12_ders02",
@@ -812,7 +1069,7 @@
    "sure": 45,
    "kurs": "modul-12-diffusion-teori",
    "kursAd": "Diffusion Modelleri: Teori",
-   "tarih": "2027-04-06"
+   "tarih": "2027-04-16"
   },
   {
    "dersId": "modul12_ders03",
@@ -820,7 +1077,7 @@
    "sure": 35,
    "kurs": "modul-12-diffusion-teori",
    "kursAd": "Diffusion Modelleri: Teori",
-   "tarih": "2027-04-07"
+   "tarih": "2027-04-19"
   },
   {
    "dersId": "modul13_ders01",
@@ -828,7 +1085,7 @@
    "sure": 40,
    "kurs": "modul-13-diffusion-pratik",
    "kursAd": "Stable Diffusion ile Pratik",
-   "tarih": "2027-04-08"
+   "tarih": "2027-04-20"
   },
   {
    "dersId": "modul13_ders02",
@@ -836,7 +1093,7 @@
    "sure": 35,
    "kurs": "modul-13-diffusion-pratik",
    "kursAd": "Stable Diffusion ile Pratik",
-   "tarih": "2027-04-12"
+   "tarih": "2027-04-21"
   },
   {
    "dersId": "modul13_ders03",
@@ -844,7 +1101,7 @@
    "sure": 40,
    "kurs": "modul-13-diffusion-pratik",
    "kursAd": "Stable Diffusion ile Pratik",
-   "tarih": "2027-04-13"
+   "tarih": "2027-04-22"
   },
   {
    "dersId": "modul14_ders01",
@@ -852,7 +1109,7 @@
    "sure": 35,
    "kurs": "modul-14-video",
    "kursAd": "Video Üretim Modelleri",
-   "tarih": "2027-04-14"
+   "tarih": "2027-04-26"
   },
   {
    "dersId": "modul14_ders02",
@@ -860,7 +1117,7 @@
    "sure": 35,
    "kurs": "modul-14-video",
    "kursAd": "Video Üretim Modelleri",
-   "tarih": "2027-04-15"
+   "tarih": "2027-04-27"
   },
   {
    "dersId": "modul14_ders03",
@@ -868,7 +1125,7 @@
    "sure": 35,
    "kurs": "modul-14-video",
    "kursAd": "Video Üretim Modelleri",
-   "tarih": "2027-04-19"
+   "tarih": "2027-04-28"
   },
   {
    "dersId": "modul15_ders01",
@@ -876,7 +1133,7 @@
    "sure": 40,
    "kurs": "modul-15-degerlendirme",
    "kursAd": "Üretken Modelleri Değerlendirme",
-   "tarih": "2027-04-20"
+   "tarih": "2027-04-29"
   },
   {
    "dersId": "modul15_ders02",
@@ -884,7 +1141,7 @@
    "sure": 35,
    "kurs": "modul-15-degerlendirme",
    "kursAd": "Üretken Modelleri Değerlendirme",
-   "tarih": "2027-04-21"
+   "tarih": "2027-04-30"
   },
   {
    "dersId": "modul15_ders03",
@@ -892,7 +1149,7 @@
    "sure": 40,
    "kurs": "modul-15-degerlendirme",
    "kursAd": "Üretken Modelleri Değerlendirme",
-   "tarih": "2027-04-22"
+   "tarih": "2027-05-03"
   },
   {
    "dersId": "modul16_ders01",
@@ -900,7 +1157,7 @@
    "sure": 40,
    "kurs": "modul-16-deployment",
    "kursAd": "Dağıtım, Güvenlik ve Etik",
-   "tarih": "2027-04-26"
+   "tarih": "2027-05-04"
   },
   {
    "dersId": "modul16_ders02",
@@ -908,7 +1165,7 @@
    "sure": 35,
    "kurs": "modul-16-deployment",
    "kursAd": "Dağıtım, Güvenlik ve Etik",
-   "tarih": "2027-04-27"
+   "tarih": "2027-05-05"
   },
   {
    "dersId": "modul16_ders03",
@@ -916,7 +1173,7 @@
    "sure": 35,
    "kurs": "modul-16-deployment",
    "kursAd": "Dağıtım, Güvenlik ve Etik",
-   "tarih": "2027-04-28"
+   "tarih": "2027-05-06"
   },
   {
    "dersId": "modul17_ders01",
@@ -924,7 +1181,7 @@
    "sure": 35,
    "kurs": "modul-17-capstone",
    "kursAd": "Uçtan Uca Üretken YZ Uygulaması",
-   "tarih": "2027-04-29"
+   "tarih": "2027-05-07"
   },
   {
    "dersId": "modul17_ders02",
@@ -932,7 +1189,7 @@
    "sure": 45,
    "kurs": "modul-17-capstone",
    "kursAd": "Uçtan Uca Üretken YZ Uygulaması",
-   "tarih": "2027-05-03"
+   "tarih": "2027-05-10"
   },
   {
    "dersId": "modul17_ders03",
@@ -940,7 +1197,7 @@
    "sure": 40,
    "kurs": "modul-17-capstone",
    "kursAd": "Uçtan Uca Üretken YZ Uygulaması",
-   "tarih": "2027-05-04"
+   "tarih": "2027-05-11"
   }
  ]
 }

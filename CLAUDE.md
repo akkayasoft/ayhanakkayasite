@@ -112,14 +112,15 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 
 ## Yapay zekâ programı (yapayzeka.obs → takip.obs)
 
-`akkayasoft/uretken-yz-platform` müfredatı (117 ders) 2026-2027 takvimine
+`akkayasoft/uretken-yz-platform` müfredatı (149 ders) 2026-2027 takvimine
 yayılıp görev olarak aktarılır.
 
 - **Program dosyası:** `src/data/yzProgram.json` — commit edilir.
 - **Üretim:** `node scripts/yz-program-uret.js --platform /yol/uretken-yz-platform`
   Platform deposundaki `dersler.py`'yi okur, `academicCalendar`'dan ders
-  günlerini alır, haftada 4 ders (Pzt-Per) yerleştirir; tatil/bayram günü
-  atlanır.
+  günlerini alır; tatil/bayram günü atlanır. Hafta düzeni **otomatik**:
+  müfredat sığıyorsa Pzt-Per (4 ders/hafta), sığmıyorsa Cuma da açılır
+  (5 ders/hafta). `--gunler 1,2,3` ile elle zorlanabilir.
 - **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
   Kurs adları kategori olarak otomatik açılır; her ders `tasks.source_key`
   (`yz:<dersId>`) ile işaretlenir.
@@ -129,10 +130,17 @@ yayılıp görev olarak aktarılır.
 - Görevler `estimated_time` olmadan yazılır; otomatik kilit son saati gün sonu
   (23:59) kabul eder.
 
-> Kurs adları platformdan aynen gelir. Platformdaki "Veri Gorsellestirme",
-> "Makine Ogrenmesi Temelleri", "Derin Ogrenme Egitimi" başlıklarında Türkçe
-> karakter eksik; orada düzeltilirse burada **yeni kategori** oluşur, eski
-> kategorinin adını da elle güncellemek gerekir.
+Aktarım tekrar çalıştırıldığında üç şey birden olur:
+
+1. **Yeni dersler** görev olarak eklenir.
+2. **Kategori adı değiştiyse** (platformda kurs adı düzeltilince) mevcut
+   kategori *yeniden adlandırılır* — ikinci bir kategori açılmaz. Eşleşme
+   kategori adına değil, o kursun daha önce aktarılmış derslerinin
+   `source_key`'ine bakılarak yapılır.
+3. **Ders tarihi kaydıysa** (ör. 4 ders/hafta → 5 ders/hafta) görev programa
+   hizalanır — ama yalnızca **işaretlenmemiş ve günü gelmemiş** görevler
+   taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
+   sabit kaldığı mesajda bildirilir.
 
 ## Haftalık analiz
 
