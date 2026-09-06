@@ -276,8 +276,12 @@ a:hover {
 .grid {
   display: grid;
   gap: var(--sp-4);
-  /* Yan yana paneller icerikleri kadar yukselsin; kisa olan panelin
-     altinda yuz piksellik bosluk kalmasin. */
+}
+
+/* Yan yana paneller icerikleri kadar yukselsin; kisa olan panelin altinda
+   yuz piksellik bosluk kalmasin. Yalnizca <section class="grid ..."> icin:
+   form'lar (<form class="grid two">) alanlarini esit yukseklikte tutar. */
+section.grid {
   align-items: start;
 }
 
