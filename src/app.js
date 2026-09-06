@@ -13,6 +13,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { pool, query, initDb, seedAdmin } = require('./db');
 const academicCalendar = require('./academicCalendar');
 const yzProgram = require('./yzProgram');
+const ydsSync = require('./ydsSync');
 
 const app = express();
 
@@ -1308,10 +1309,303 @@ async function importYzProgram(studentId, createdBy) {
   }
 }
 
+// --- YDS / YOKDIL takibi ---------------------------------------------------
+//
+// yds.obs uygulamasi ilerlemeyi AYNI SUNUCUDA bir JSON dosyasinda tutar
+// (bkz. ydsSync.js). Burada o dosya okunup takip.obs tablolarina yansitilir:
+//   yds_days        -> gunluk kirilim (denetim ekrani)
+//   daily_questions -> cozulen sorular (Soru Takibi + Haftalik Analiz'e akar)
+// Yansitma idempotenttir; zamanlayicidan sik sik cagrilabilir.
+
+// Verinin hangi ogrenciye yazilacagi. YDS tarafinda Basic Auth kullanicisi
+// 'ayhan'; takip.obs'ta ayni kullanici adina sahip ogrenci hedeflenir.
+const YDS_STUDENT_USERNAME = normalizeText(process.env.YDS_STUDENT_USERNAME) || 'ayhan';
+
+async function findYdsStudent() {
+  const res = await query(
+    `SELECT id, name, username FROM users WHERE role = 'student' AND lower(username) = lower($1)`,
+    [YDS_STUDENT_USERNAME]
+  );
+  return res.rowCount > 0 ? res.rows[0] : null;
+}
+
+/**
+ * Durum dosyasini okuyup ogrencinin YDS tablolarina yansitir.
+ * Dosya yoksa/bozuksa hata firlatmaz; sonucu rapor eder ve son hatayi saklar.
+ */
+async function syncYdsProgress() {
+  const student = await findYdsStudent();
+  if (!student) {
+    return { ok: false, reason: `'${YDS_STUDENT_USERNAME}' kullanıcı adlı öğrenci bulunamadı.` };
+  }
+
+  const state = ydsSync.readYdsState();
+  if (!state.ok) {
+    await query(
+      `
+        INSERT INTO yds_sync (student_id, last_error)
+        VALUES ($1, $2)
+        ON CONFLICT (student_id) DO UPDATE SET last_error = EXCLUDED.last_error
+      `,
+      [student.id, state.reason]
+    );
+    return { ok: false, reason: state.reason, filePath: state.filePath, student };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      `
+        INSERT INTO yds_sync (
+          student_id, goal_okuma, goal_kelime, goal_gramer, goal_test,
+          streak_count, streak_max, streak_last_day, plan_start, learned_cards,
+          synced_at, last_error
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'')
+        ON CONFLICT (student_id) DO UPDATE SET
+          goal_okuma = EXCLUDED.goal_okuma,
+          goal_kelime = EXCLUDED.goal_kelime,
+          goal_gramer = EXCLUDED.goal_gramer,
+          goal_test = EXCLUDED.goal_test,
+          streak_count = EXCLUDED.streak_count,
+          streak_max = EXCLUDED.streak_max,
+          streak_last_day = EXCLUDED.streak_last_day,
+          plan_start = EXCLUDED.plan_start,
+          learned_cards = EXCLUDED.learned_cards,
+          synced_at = NOW(),
+          last_error = ''
+      `,
+      [
+        student.id,
+        state.goals.okuma,
+        state.goals.kelime,
+        state.goals.gramer,
+        state.goals.test,
+        state.streak.count,
+        state.streak.max,
+        state.streak.lastDay,
+        state.planStart,
+        state.learnedCards
+      ]
+    );
+
+    let gunler = 0;
+    let soruSatiri = 0;
+    for (const gun of state.days) {
+      const hedef = ydsSync.goalStatus(gun, state.goals);
+      await client.query(
+        `
+          INSERT INTO yds_days (
+            student_id, day, lessons, decks, quizzes, readings, words_learned,
+            questions_solved, scored_questions, questions_correct, goal_met, updated_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())
+          ON CONFLICT (student_id, day) DO UPDATE SET
+            lessons = EXCLUDED.lessons,
+            decks = EXCLUDED.decks,
+            quizzes = EXCLUDED.quizzes,
+            readings = EXCLUDED.readings,
+            words_learned = EXCLUDED.words_learned,
+            questions_solved = EXCLUDED.questions_solved,
+            scored_questions = EXCLUDED.scored_questions,
+            questions_correct = EXCLUDED.questions_correct,
+            goal_met = EXCLUDED.goal_met,
+            updated_at = NOW()
+        `,
+        [
+          student.id,
+          gun.date,
+          gun.lessons,
+          gun.decks,
+          gun.quizzes,
+          gun.readings,
+          gun.wordsLearned,
+          gun.questionsSolved,
+          gun.scoredQuestions,
+          gun.questionsCorrect,
+          hedef.allDone
+        ]
+      );
+      gunler += 1;
+
+      // Soru Takibi'ne yalnizca soru cozulen gunler yazilir.
+      //
+      // DIKKAT: dogru/yanlis yalnizca PUANLI testlerden gelir (YDS tarafinda
+      // dilbilgisi testleri scored:false). Bu yuzden correct + wrong =
+      // scoredQuestions <= questionsSolved. Cozulen toplam `count` sutununda
+      // durur; puansiz sorulari "yanlis" saymak veriyi bozardi.
+      if (gun.questionsSolved > 0) {
+        const not = gun.scoredQuestions
+          ? `YDS · ${gun.questionsSolved} soru çözüldü, ${gun.scoredQuestions} tanesi puanlı`
+          : `YDS · ${gun.questionsSolved} soru çözüldü (puanlı test yok)`;
+        await client.query(
+          `
+            INSERT INTO daily_questions (
+              id, student_id, day, category_id, lesson_name,
+              correct_count, wrong_count, duration_minutes, count, note, source_key, updated_at
+            )
+            VALUES ($1,$2,$3,NULL,'YDS / YÖKDİL',$4,$5,0,$6,$7,$8,NOW())
+            ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL
+            DO UPDATE SET
+              correct_count = EXCLUDED.correct_count,
+              wrong_count = EXCLUDED.wrong_count,
+              count = EXCLUDED.count,
+              note = EXCLUDED.note,
+              updated_at = NOW()
+          `,
+          [
+            makeId('dq'),
+            student.id,
+            gun.date,
+            gun.questionsCorrect,
+            gun.questionsWrong,
+            gun.questionsSolved,
+            not,
+            gun.sourceKey
+          ]
+        );
+        soruSatiri += 1;
+      }
+    }
+
+    await client.query('COMMIT');
+    return { ok: true, student, days: gunler, questionRows: soruSatiri, filePath: state.filePath };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Admin "YDS Takibi" sayfasinin goruntusu. */
+async function buildYdsView(gunSayisi = 30) {
+  const student = await findYdsStudent();
+  const dosya = ydsSync.stateFilePath();
+
+  if (!student) {
+    return {
+      student: null,
+      filePath: dosya,
+      expectedUsername: YDS_STUDENT_USERNAME,
+      sync: null,
+      rows: [],
+      totals: null
+    };
+  }
+
+  const today = todayDateString();
+  const [syncRes, daysRes] = await Promise.all([
+    query(
+      `
+        SELECT goal_okuma AS "okuma", goal_kelime AS "kelime", goal_gramer AS "gramer",
+               goal_test AS "test", streak_count AS "streakCount", streak_max AS "streakMax",
+               streak_last_day AS "streakLastDay", plan_start AS "planStart",
+               learned_cards AS "learnedCards", synced_at AS "syncedAt", last_error AS "lastError"
+        FROM yds_sync WHERE student_id = $1
+      `,
+      [student.id]
+    ),
+    query(
+      `
+        SELECT day, lessons, decks, quizzes, readings, words_learned AS "wordsLearned",
+               questions_solved AS "questionsSolved", scored_questions AS "scoredQuestions",
+               questions_correct AS "questionsCorrect", goal_met AS "goalMet"
+        FROM yds_days
+        WHERE student_id = $1 AND day >= $2
+        ORDER BY day DESC
+      `,
+      [student.id, shiftDate(today, -(gunSayisi - 1))]
+    )
+  ]);
+
+  const rows = daysRes.rows.map((row) => {
+    const scored = Number(row.scoredQuestions) || 0;
+    const correct = Number(row.questionsCorrect) || 0;
+    return {
+      date: toDateOnly(row.day),
+      gunAdi: getDayName(toDateOnly(row.day)),
+      lessons: Number(row.lessons) || 0,
+      decks: Number(row.decks) || 0,
+      quizzes: Number(row.quizzes) || 0,
+      readings: Number(row.readings) || 0,
+      wordsLearned: Number(row.wordsLearned) || 0,
+      questionsSolved: Number(row.questionsSolved) || 0,
+      scoredQuestions: scored,
+      questionsCorrect: correct,
+      // Veri yoksa null doner ve arayuzde '-' gosterilir (%0 ile karistirilmamali).
+      accuracy: scored ? Math.round((correct / scored) * 100) : null,
+      goalMet: row.goalMet
+    };
+  });
+
+  const toplam = rows.reduce(
+    (acc, r) => {
+      acc.lessons += r.lessons;
+      acc.decks += r.decks;
+      acc.quizzes += r.quizzes;
+      acc.readings += r.readings;
+      acc.wordsLearned += r.wordsLearned;
+      acc.questionsSolved += r.questionsSolved;
+      acc.scoredQuestions += r.scoredQuestions;
+      acc.questionsCorrect += r.questionsCorrect;
+      if (r.goalMet) acc.goalDays += 1;
+      return acc;
+    },
+    {
+      lessons: 0,
+      decks: 0,
+      quizzes: 0,
+      readings: 0,
+      wordsLearned: 0,
+      questionsSolved: 0,
+      scoredQuestions: 0,
+      questionsCorrect: 0,
+      goalDays: 0
+    }
+  );
+
+  const sync = syncRes.rowCount > 0 ? syncRes.rows[0] : null;
+
+  return {
+    student,
+    filePath: dosya,
+    expectedUsername: YDS_STUDENT_USERNAME,
+    gunSayisi,
+    sync: sync
+      ? {
+          goals: {
+            okuma: sync.okuma,
+            kelime: sync.kelime,
+            gramer: sync.gramer,
+            test: sync.test
+          },
+          streakCount: sync.streakCount,
+          streakMax: sync.streakMax,
+          streakLastDay: toDateOnly(sync.streakLastDay),
+          planStart: toDateOnly(sync.planStart),
+          learnedCards: sync.learnedCards,
+          syncedAt: sync.syncedAt,
+          lastError: sync.lastError || ''
+        }
+      : null,
+    rows,
+    totals: {
+      ...toplam,
+      dayCount: rows.length,
+      accuracy: toplam.scoredQuestions
+        ? Math.round((toplam.questionsCorrect / toplam.scoredQuestions) * 100)
+        : null
+    }
+  };
+}
+
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -1528,6 +1822,8 @@ async function getAdminViewModel(req, currentPage) {
 
   const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
 
+  const ydsView = currentPage === 'yds' ? await buildYdsView(30) : null;
+
   let wakeAdmin = null;
   if (currentPage === 'wake') {
     const secilenIdRaw = normalizeText(req.query.wakeStudentId);
@@ -1734,6 +2030,7 @@ async function getAdminViewModel(req, currentPage) {
     copyWeekNextStart,
     weeklyAnalysis,
     yzProgramView,
+    ydsView,
     wakeAdmin,
     dailyBoard,
     report,
@@ -1902,7 +2199,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -2284,6 +2581,20 @@ app.post(
     );
 
     return adminRedirect(req, res, { message: 'Görev oluşturuldu.' });
+  })
+);
+
+app.post(
+  '/admin/yds/sync',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const sonuc = await syncYdsProgress();
+    if (!sonuc.ok) {
+      return adminRedirect(req, res, { error: `YDS verisi çekilemedi: ${sonuc.reason}` });
+    }
+    return adminRedirect(req, res, {
+      message: `${sonuc.student.name} için ${sonuc.days} gün yansıtıldı, ${sonuc.questionRows} güne soru kaydı yazıldı.`
+    });
   })
 );
 
@@ -3802,6 +4113,17 @@ async function runSealSafely() {
     }
   } catch (err) {
     console.error('Uyanma rutini mühürleme hatası:', err);
+  }
+
+  // YDS ilerlemesi: dosya yoksa (lokal gelistirme) sessizce gecilir, log
+  // kirletmez; gercek bir hata olursa yds_sync.last_error'a da yazilir.
+  try {
+    const sonuc = await syncYdsProgress();
+    if (sonuc.ok && sonuc.days > 0) {
+      console.log(`YDS ilerlemesi yansıtıldı: ${sonuc.days} gün.`);
+    }
+  } catch (err) {
+    console.error('YDS senkron hatası:', err);
   }
 }
 

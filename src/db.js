@@ -136,6 +136,57 @@ async function initDb() {
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS wrong_count INTEGER NOT NULL DEFAULT 0`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS duration_minutes INTEGER NOT NULL DEFAULT 0`);
 
+  // Dis kaynaktan (orn. yds.obs) aktarilan satirlar source_key ile isaretlenir;
+  // elle girilen kayitlarda NULL kalir. Partial unique index sayesinde ayni
+  // gun ikinci kez aktarilmaz, elle girilen satirlar kisitlanmaz.
+  await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS source_key TEXT`);
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS daily_questions_student_source_key_idx
+    ON daily_questions (student_id, source_key)
+    WHERE source_key IS NOT NULL
+  `);
+
+  // --- YDS / YOKDIL takibi -----------------------------------------------
+  //
+  // yds.obs uygulamasinin ilerlemesi bu tablolara YANSITILIR. Kaynak dosya
+  // (state-<kullanici>.json) uygulamadan sifirlanabildigi icin veriyi burada
+  // saklamak gecmis denetim kaydini korur — canli aynada olsaydi sifirlama
+  // gecmisi de silerdi.
+  await query(`
+    CREATE TABLE IF NOT EXISTS yds_days (
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      lessons INTEGER NOT NULL DEFAULT 0,
+      decks INTEGER NOT NULL DEFAULT 0,
+      quizzes INTEGER NOT NULL DEFAULT 0,
+      readings INTEGER NOT NULL DEFAULT 0,
+      words_learned INTEGER NOT NULL DEFAULT 0,
+      questions_solved INTEGER NOT NULL DEFAULT 0,
+      scored_questions INTEGER NOT NULL DEFAULT 0,
+      questions_correct INTEGER NOT NULL DEFAULT 0,
+      goal_met BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (student_id, day)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS yds_sync (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      goal_okuma INTEGER NOT NULL DEFAULT 0,
+      goal_kelime INTEGER NOT NULL DEFAULT 0,
+      goal_gramer INTEGER NOT NULL DEFAULT 0,
+      goal_test INTEGER NOT NULL DEFAULT 0,
+      streak_count INTEGER NOT NULL DEFAULT 0,
+      streak_max INTEGER NOT NULL DEFAULT 0,
+      streak_last_day DATE NULL,
+      plan_start DATE NULL,
+      learned_cards INTEGER NOT NULL DEFAULT 0,
+      synced_at TIMESTAMPTZ NULL,
+      last_error TEXT NOT NULL DEFAULT ''
+    )
+  `);
+
   // --- Uyanma rutini -----------------------------------------------------
   //
   // wake_routines: ogrenci basina hedef saat + tolerans (tek satir).

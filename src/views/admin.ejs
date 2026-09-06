@@ -24,6 +24,7 @@
           <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
           <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
+          <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>">YDS Takibi</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
@@ -1219,6 +1220,136 @@
               </tbody>
             </table>
           </div>
+        </section>
+        <% } %>
+        <% } %>
+
+        <% if (currentPage === 'yds' && ydsView) { %>
+        <header class="content-header">
+          <h2>YDS / YÖKDİL Takibi</h2>
+          <p class="muted">
+            Kaynak: yds.obs · aynı sunucudaki durum dosyası okunur, 5 dakikada bir
+            otomatik yenilenir. Çözülen sorular <strong>Soru Takibi</strong>'ne de
+            yazılır, böylece Haftalık Analiz'e akar.
+          </p>
+        </header>
+
+        <% if (!ydsView.student) { %>
+        <section class="panel narrow">
+          <h3>Öğrenci eşleşmedi</h3>
+          <p class="muted">
+            YDS verisi <strong>@<%= ydsView.expectedUsername %></strong> kullanıcı adlı
+            öğrenciye yazılır ama böyle bir öğrenci yok. Bu kullanıcı adıyla bir öğrenci
+            ekleyin ya da <code>YDS_STUDENT_USERNAME</code> ortam değişkenini değiştirin.
+          </p>
+          <p class="muted">Okunan dosya: <code><%= ydsView.filePath %></code></p>
+        </section>
+        <% } else { %>
+
+        <% if (ydsView.sync && ydsView.sync.lastError) { %>
+        <section class="panel narrow">
+          <h3>Veri çekilemiyor</h3>
+          <p class="muted"><%= ydsView.sync.lastError %></p>
+          <p class="muted">Okunan dosya: <code><%= ydsView.filePath %></code></p>
+        </section>
+        <% } %>
+
+        <section class="kpi-grid">
+          <article class="kpi <%= ydsView.sync && ydsView.sync.streakCount > 0 ? 'ok' : '' %>">
+            <p class="kpi-label">Gün Serisi</p>
+            <p class="kpi-value"><%= ydsView.sync ? ydsView.sync.streakCount : 0 %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Hedef Tutan Gün</p>
+            <p class="kpi-value"><%= ydsView.totals.goalDays %> / <%= ydsView.totals.dayCount %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Çözülen Soru</p>
+            <p class="kpi-value"><%= ydsView.totals.questionsSolved %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Doğruluk (puanlı)</p>
+            <p class="kpi-value"><%= ydsView.totals.accuracy === null ? '-' : ydsView.totals.accuracy + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Öğrenilen Kelime</p>
+            <p class="kpi-value"><%= ydsView.sync ? ydsView.sync.learnedCards : 0 %></p>
+          </article>
+        </section>
+
+        <section class="panel narrow">
+          <h3>Durum</h3>
+          <ul class="clean-list">
+            <li>Öğrenci: <strong><%= ydsView.student.name %></strong> (@<%= ydsView.student.username %>)</li>
+            <% if (ydsView.sync) { %>
+            <li>Günlük hedef: <%= ydsView.sync.goals.okuma %> okuma · <%= ydsView.sync.goals.kelime %> kelime · <%= ydsView.sync.goals.gramer %> gramer · <%= ydsView.sync.goals.test %> test</li>
+            <li>En uzun seri: <%= ydsView.sync.streakMax %> gün<% if (ydsView.sync.streakLastDay) { %> · son: <%= ydsView.sync.streakLastDay %><% } %></li>
+            <% if (ydsView.sync.planStart) { %><li>Plan başlangıcı: <%= ydsView.sync.planStart %></li><% } %>
+            <li>Son senkron: <%= ydsView.sync.syncedAt ? new Date(ydsView.sync.syncedAt).toLocaleString('tr-TR') : 'hiç' %></li>
+            <% } else { %>
+            <li class="muted">Henüz senkron yapılmadı.</li>
+            <% } %>
+            <li class="muted">Dosya: <code><%= ydsView.filePath %></code></li>
+          </ul>
+          <form method="post" action="/admin/yds/sync" class="stack">
+            <input type="hidden" name="next" value="/admin/yds" />
+            <button type="submit">Şimdi Çek</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3>Son <%= ydsView.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Doğruluk yalnızca <strong>puanlı</strong> testlerden hesaplanır; YDS tarafında
+            dilbilgisi testleri puansız olduğu için çözülen soruların bir kısmı doğruluk
+            paydasına girmez.
+          </p>
+          <% if (!ydsView.rows.length) { %>
+          <p class="muted">Bu aralıkta kayıt yok.</p>
+          <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Okuma</th>
+                  <th>Kelime</th>
+                  <th>Gramer</th>
+                  <th>Test</th>
+                  <th>Kelime Kartı</th>
+                  <th>Çözülen</th>
+                  <th>Puanlı</th>
+                  <th>Doğruluk</th>
+                  <th>Hedef</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ydsView.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.date %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.readings %></td>
+                  <td><%= r.decks %></td>
+                  <td><%= r.lessons %></td>
+                  <td><%= r.quizzes %></td>
+                  <td><%= r.wordsLearned %></td>
+                  <td><%= r.questionsSolved %></td>
+                  <td><%= r.scoredQuestions %></td>
+                  <td><%= r.accuracy === null ? '-' : r.accuracy + '%' %></td>
+                  <td>
+                    <% if (r.goalMet) { %>
+                    <span class="day-badge ok">Tuttu</span>
+                    <% } else { %>
+                    <span class="day-badge off">Eksik</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
         </section>
         <% } %>
         <% } %>
