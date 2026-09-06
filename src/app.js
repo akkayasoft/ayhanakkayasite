@@ -179,6 +179,52 @@ function normalizeEstimatedTimeForDisplay(value) {
   return `${match[1]}:${match[2]}`;
 }
 
+// --- Sure dolumu / otomatik "yapilmadi" isaretleme -------------------------
+//
+// Bir gorev ornegi (gorev + gun) kendi son saatini gecince kilitlenir:
+// artik "yapildi" olarak isaretlenemez ve isareti degistirilemez.
+// Tahmini Saat girilmemisse son saat gun sonudur (23:59).
+//
+// AUTO_LOCK_START_DATE: bu tarihten onceki gunlere hic dokunulmaz. Ozellik
+// devreye girmeden onceki gecmis kayitlar geriye donuk muhurlenmesin diye
+// vardir; ortam degiskeniyle degistirilebilir.
+const AUTO_LOCK_START_DATE = normalizeText(process.env.AUTO_LOCK_START_DATE) || '2026-09-06';
+const DEFAULT_TASK_DEADLINE = '23:59';
+// Muhurleme penceresi: bugunden geriye en fazla bu kadar gun taranir.
+const AUTO_LOCK_LOOKBACK_DAYS = 14;
+
+function timeStringInTimeZone(timeZone = process.env.APP_TIMEZONE || 'Europe/Istanbul') {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date());
+}
+
+function taskDeadlineTime(task) {
+  return normalizeEstimatedTimeForDisplay(task.estimatedTime) || DEFAULT_TASK_DEADLINE;
+}
+
+// Verilen gun icin gorev ornegi kilitli mi? (HH:MM sifir dolgulu oldugu icin
+// duz string karsilastirmasi dogru sonuc verir.)
+function isTaskInstanceLocked(task, dayStr, today, nowHm) {
+  if (!dayStr || dayStr < AUTO_LOCK_START_DATE) return false;
+  if (dayStr > today) return false;
+  if (dayStr < today) return true;
+  return nowHm > taskDeadlineTime(task);
+}
+
+// Ogrenci ekranindaki satir icin: 'once' gorevde kendi tarihi, tekrarli
+// gorevde bugunku ornek esas alinir (durum yazma rotasi her zaman bugune yazar).
+function isTaskLockedNow(task, today, nowHm) {
+  if (task.repeatType === 'once') {
+    return isTaskInstanceLocked(task, task.singleDate || today, today, nowHm);
+  }
+  if (!isTaskDueOnDate(task, new Date(`${today}T00:00:00`), today)) return false;
+  return isTaskInstanceLocked(task, today, today, nowHm);
+}
+
 function normalizeWeekStart(value, fallbackDate = null) {
   if (isDateOnly(value)) return startOfWeek(value);
   if (fallbackDate && isDateOnly(fallbackDate)) return startOfWeek(fallbackDate);
@@ -363,6 +409,136 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
   if (task.repeatType === 'custom') return Array.isArray(task.customDates) && task.customDates.includes(dateStr);
 
   return false;
+}
+
+// Ogrencinin kendi gorevi uzerinde islem yapabilmesi icin gorevi getirir ve
+// suresi dolmussa null doner. Kilit yalnizca isareti degil, gorevin kendisini
+// de dondurur: aksi halde ogrenci gorevi silerek ya da saatini ileri alarak
+// otomatik "yapilmadi" kaydindan kurtulabilirdi.
+async function findStudentTaskIfEditable(taskId, studentId) {
+  const result = await query(
+    `
+      SELECT
+        id,
+        title,
+        description,
+        category_id AS "categoryId",
+        student_id AS "studentId",
+        repeat_type AS "repeatType",
+        single_date AS "singleDate",
+        weekly_day AS "weeklyDay",
+        monthly_day AS "monthlyDay",
+        custom_dates AS "customDates",
+        start_date AS "startDate",
+        end_date AS "endDate",
+        estimated_time AS "estimatedTime",
+        is_archived AS "isArchived",
+        created_by AS "createdBy",
+        created_at AS "createdAt"
+      FROM tasks
+      WHERE id = $1 AND student_id = $2 AND is_archived = false
+      LIMIT 1
+    `,
+    [taskId, studentId]
+  );
+
+  if (result.rowCount === 0) return { task: null, locked: false };
+
+  const task = mapTask(result.rows[0]);
+  const locked = isTaskLockedNow(task, todayDateString(), timeStringInTimeZone());
+  return { task, locked };
+}
+
+// Suresi dolmus ve hic isaretlenmemis gorev orneklerine 'not_done' yazar.
+// Idempotent: var olan kayitlara ON CONFLICT DO NOTHING ile dokunmaz, yani
+// ogrencinin kendi isaretledigi 'done' kayitlari korunur.
+async function sealOverdueTaskStatuses() {
+  const today = todayDateString();
+  const nowHm = timeStringInTimeZone();
+  const lookbackStart = shiftDate(today, -AUTO_LOCK_LOOKBACK_DAYS);
+  const windowStart = AUTO_LOCK_START_DATE > lookbackStart ? AUTO_LOCK_START_DATE : lookbackStart;
+
+  if (windowStart > today) return { inserted: 0 };
+
+  const days = getDateRangeInclusive(windowStart, today, AUTO_LOCK_LOOKBACK_DAYS + 2);
+  if (!days) return { inserted: 0 };
+
+  const tasksRes = await query(`
+    SELECT
+      id,
+      student_id AS "studentId",
+      repeat_type AS "repeatType",
+      single_date AS "singleDate",
+      weekly_day AS "weeklyDay",
+      monthly_day AS "monthlyDay",
+      custom_dates AS "customDates",
+      start_date AS "startDate",
+      end_date AS "endDate",
+      estimated_time AS "estimatedTime",
+      is_archived AS "isArchived"
+    FROM tasks
+    WHERE is_archived = false
+  `);
+
+  if (!tasksRes.rowCount) return { inserted: 0 };
+
+  const tasks = tasksRes.rows.map((row) => ({
+    id: row.id,
+    studentId: row.studentId,
+    repeatType: row.repeatType,
+    singleDate: toDateOnly(row.singleDate) || null,
+    weeklyDay: row.weeklyDay,
+    monthlyDay: row.monthlyDay,
+    customDates: row.customDates || [],
+    startDate: toDateOnly(row.startDate) || null,
+    endDate: toDateOnly(row.endDate) || null,
+    estimatedTime: normalizeEstimatedTimeForDisplay(row.estimatedTime),
+    isArchived: row.isArchived
+  }));
+
+  const statusesRes = await query(
+    `SELECT task_id AS "taskId", day FROM task_statuses WHERE day BETWEEN $1 AND $2`,
+    [windowStart, today]
+  );
+  const existing = new Set(statusesRes.rows.map((row) => `${row.taskId}:${toDateOnly(row.day)}`));
+
+  const pending = [];
+  for (const day of days) {
+    const dayObj = new Date(`${day}T00:00:00`);
+    for (const task of tasks) {
+      if (!isTaskDueOnDate(task, dayObj, day)) continue;
+      if (!isTaskInstanceLocked(task, day, today, nowHm)) continue;
+      if (existing.has(`${task.id}:${day}`)) continue;
+      pending.push({ task, day });
+    }
+  }
+
+  if (!pending.length) return { inserted: 0 };
+
+  let inserted = 0;
+  const CHUNK = 200;
+  for (let i = 0; i < pending.length; i += CHUNK) {
+    const chunk = pending.slice(i, i + CHUNK);
+    const values = [];
+    const params = [];
+    chunk.forEach(({ task, day }, index) => {
+      const base = index * 4;
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, 'not_done', '')`);
+      params.push(makeId('status'), task.id, task.studentId, day);
+    });
+
+    const result = await query(
+      `
+        INSERT INTO task_statuses (id, task_id, student_id, day, status, note)
+        VALUES ${values.join(', ')}
+        ON CONFLICT (task_id, student_id, day) DO NOTHING
+      `,
+      params
+    );
+    inserted += result.rowCount || 0;
+  }
+
+  return { inserted };
 }
 
 function adminRedirect(req, res, queryParams) {
@@ -2711,6 +2887,7 @@ app.get(
 
 async function getStudentViewModel(req, currentPage) {
   const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const nowHm = timeStringInTimeZone();
   const weeklyPointWeekStart = normalizeWeekStart(normalizeText(req.query.weekStart), today) || startOfWeek(today);
   const weeklyPointWeekEnd = shiftDate(weeklyPointWeekStart, 6);
   const weeklyPointPrevWeekStart = shiftDate(weeklyPointWeekStart, -7);
@@ -2846,7 +3023,11 @@ async function getStudentViewModel(req, currentPage) {
         displayStatus,
         displayStatusDay: displayStatus ? toDateOnly(displayStatus.day) : '',
         displayStatusIsToday: Boolean(todayStatus),
-        canManage: task.createdBy === req.currentUser.id && task.repeatType === 'once'
+        canManage:
+          task.createdBy === req.currentUser.id &&
+          task.repeatType === 'once' &&
+          !isTaskLockedNow(task, today, nowHm),
+        isLocked: isTaskLockedNow(task, today, nowHm)
       };
     });
 
@@ -3337,6 +3518,11 @@ app.post(
       return res.status(404).json({ ok: false, error: 'Bu görev güncellenemez.' });
     }
 
+    const { locked: cellLocked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    if (cellLocked) {
+      return res.status(403).json({ ok: false, error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+    }
+
     if (field === 'title') {
       const titleValidation = validateTaskTitle(value);
       if (!titleValidation.ok) {
@@ -3438,6 +3624,11 @@ app.post(
       return studentRedirect(req, res, { error: 'Bu görev güncellenemez.' });
     }
 
+    const { locked: updateLocked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    if (updateLocked) {
+      return studentRedirect(req, res, { error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+    }
+
     if (categoryRes.rowCount === 0) {
       return studentRedirect(req, res, { error: 'Kategori bulunamadı.' });
     }
@@ -3460,6 +3651,11 @@ app.post(
   requireRole('student'),
   asyncHandler(async (req, res) => {
     const { taskId } = req.params;
+
+    const { locked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    if (locked) {
+      return studentRedirect(req, res, { error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+    }
 
     const deleted = await query(
       `
@@ -3495,12 +3691,37 @@ app.post(
     }
 
     const taskRes = await query(
-      `SELECT id FROM tasks WHERE id = $1 AND student_id = $2 AND is_archived = false LIMIT 1`,
+      `
+        SELECT
+          id,
+          repeat_type AS "repeatType",
+          single_date AS "singleDate",
+          weekly_day AS "weeklyDay",
+          monthly_day AS "monthlyDay",
+          custom_dates AS "customDates",
+          start_date AS "startDate",
+          end_date AS "endDate",
+          estimated_time AS "estimatedTime",
+          is_archived AS "isArchived"
+        FROM tasks
+        WHERE id = $1 AND student_id = $2 AND is_archived = false
+        LIMIT 1
+      `,
       [taskId, req.currentUser.id]
     );
 
     if (taskRes.rowCount === 0) {
       return res.redirect(`/student/dashboard?error=${encodeURIComponent('Görev bulunamadı.')}`);
+    }
+
+    // Suresi dolan gorev orneginin isareti degistirilemez.
+    const task = mapTask(taskRes.rows[0]);
+    if (isTaskLockedNow(task, day, timeStringInTimeZone())) {
+      return res.redirect(
+        `/student/dashboard?error=${encodeURIComponent(
+          'Bu görevin süresi doldu, işareti değiştirilemez.'
+        )}`
+      );
     }
 
     await query(
@@ -3601,9 +3822,27 @@ app.use((err, req, res, _next) => {
   return res.status(500).send('Sunucu hatası.');
 });
 
+// Muhurleme yalnizca sayfa acildiginda degil, arka planda da calisir; boylece
+// kimse giris yapmasa bile suresi dolan gorevler isaretlenir.
+const AUTO_LOCK_INTERVAL_MS = 5 * 60 * 1000;
+
+async function runSealSafely() {
+  try {
+    const { inserted } = await sealOverdueTaskStatuses();
+    if (inserted > 0) {
+      console.log(`Süresi dolan ${inserted} görev otomatik "yapılmadı" olarak işaretlendi.`);
+    }
+  } catch (err) {
+    console.error('Otomatik işaretleme hatası:', err);
+  }
+}
+
 async function bootstrap() {
   await initDb();
   await seedAdmin();
+
+  await runSealSafely();
+  setInterval(runSealSafely, AUTO_LOCK_INTERVAL_MS).unref();
 
   const port = Number(process.env.PORT || 3000);
   app.listen(port, () => {

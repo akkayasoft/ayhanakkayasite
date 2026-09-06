@@ -252,6 +252,14 @@
                   <td data-label="Açıklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td data-label="İşlem">
                     <div class="task-table-actions">
+                      <% if (task.isLocked) { %>
+                      <span class="lock-note" title="Süresi doldu, işaret değiştirilemez.">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <path d="M7 11V8a5 5 0 0 1 10 0v3m-11 0h12v9H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        Süresi doldu
+                      </span>
+                      <% } else { %>
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
                         <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
@@ -270,6 +278,7 @@
                           </svg>
                         </button>
                       </form>
+                      <% } %>
                       <% if (task.canManage) { %>
                       <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu görev silinsin mi?')">
                         <input type="hidden" name="next" value="/student/dashboard" />

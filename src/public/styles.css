@@ -927,6 +927,27 @@ td, th {
   margin: 0;
 }
 
+/* Suresi dolan gorev: isaretleme butonlari yerine kilit rozeti */
+.lock-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 10px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.lock-note svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
 /* --------------------------------------------------------------------------
    Duzenlenebilir tablo hucreleri (inline edit)
    JS bu siniflara bagli: .editable-cell, .is-editing, .is-saving
