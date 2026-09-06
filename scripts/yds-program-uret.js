@@ -27,11 +27,18 @@ const path = require('path');
 
 const academicCalendar = require('../src/academicCalendar');
 
+function arg(name, fallback) {
+  const i = process.argv.indexOf(`--${name}`);
+  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+}
+
 // Programin baslangici (kullanici 14 Eylul dedi; ogretim yilinin ilk gunu).
 const BASLANGIC = process.env.YDS_PROGRAM_START || academicCalendar.ACADEMIC_YEAR.start;
 
 // Gunluk hedef sure (dk). Paket bu butceye gore doldurulur.
-const GUNLUK_DAKIKA = 60;
+// YDS hafta sonuna alindi (hafta ici YZ programi calisiyor), o yuzden gunluk
+// butce 60 degil 120 dk: hafta sonu daha genis blok var. --dakika ile degisir.
+const GUNLUK_DAKIKA = Number(arg('dakika', process.env.YDS_GUNLUK_DAKIKA || 120));
 
 // Bir parcanin kac kez planlanacagi ve tekrar araliklari (gun).
 const TEKRAR_ARALIKLARI = [3, 10];
@@ -50,11 +57,6 @@ const TUR_ADI = {
   okuma: 'Okuma',
   test: 'Test'
 };
-
-function arg(name, fallback) {
-  const i = process.argv.indexOf(`--${name}`);
-  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
-}
 
 function shiftDate(dateStr, days) {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -137,15 +139,28 @@ function parcalariTopla(ydsDir) {
   return parcalar;
 }
 
-/** Ogretim yilindaki ders gunleri (Pzt-Cum), BASLANGIC'tan itibaren. */
-function dersGunleri() {
+/**
+ * Calisma gunleri: ogretim yilindaki CUMARTESI ve PAZAR gunleri.
+ *
+ * YDS hafta sonuna alindi ki hafta ici calisan YZ programiyla cakismasin.
+ * Yalnizca resmi/dini bayramlar cikarilir; ara tatil ve yariyil tatiline denk
+ * gelen hafta sonlari DAHILDIR (okul tatili YDS calismasini engellemez, aksine
+ * o gunlerde daha cok vakit vardir).
+ *
+ * Not: getDayInfo() tatil donemini hafta sonundan once dondurdugu icin
+ * (ara tatildeki cumartesi type='break' gelir) gun secimi takvim etiketine
+ * degil, gercek hafta gunune bakar.
+ */
+function calismaGunleri() {
   const { end } = academicCalendar.ACADEMIC_YEAR;
   const gunler = [];
   let g = BASLANGIC;
   while (g <= end) {
+    const haftaninGunu = new Date(`${g}T00:00:00Z`).getUTCDay(); // 0=Pazar, 6=Cumartesi
     const bilgi = academicCalendar.getDayInfo(g);
-    const haftaninGunu = new Date(`${g}T00:00:00Z`).getUTCDay();
-    if (bilgi.isSchoolDay && haftaninGunu >= 1 && haftaninGunu <= 5) gunler.push(g);
+    if ((haftaninGunu === 0 || haftaninGunu === 6) && bilgi.type !== 'holiday' && bilgi.type !== 'outside') {
+      gunler.push(g);
+    }
     g = shiftDate(g, 1);
   }
   return gunler;
@@ -237,7 +252,7 @@ function main() {
   }
 
   const parcalar = parcalariTopla(ydsDir);
-  const gunler = dersGunleri();
+  const gunler = calismaGunleri();
   const program = programUret(parcalar, gunler);
 
   const dolu = program.filter((g) => g.durum === 'dolu');
@@ -246,11 +261,13 @@ function main() {
   const cikti = {
     surum: `${academicCalendar.ACADEMIC_YEAR.label}.1`,
     kaynak: 'akkayasoft/yds-yokdil-app',
-    baslangic: BASLANGIC,
+    // Ilk gercek calisma gunu (BASLANGIC hafta ici bir gune denk gelebilir).
+    baslangic: gunler[0] || null,
     bitis: gunler[gunler.length - 1] || null,
     gunlukDakika: GUNLUK_DAKIKA,
     toplamParca: parcalar.length,
-    dersGunu: gunler.length,
+    calismaGunu: gunler.length,
+    gunDuzeni: 'hafta-sonu',
     doluGun: dolu.length,
     bekleyenGun: bekleyen.length,
     gunler: program
@@ -264,7 +281,7 @@ function main() {
   parcalar.forEach((p) => (turSayisi[p.tur] = (turSayisi[p.tur] || 0) + 1));
 
   console.log(`parca         : ${parcalar.length}  (${Object.entries(turSayisi).map(([k, v]) => `${k}:${v}`).join(' ')})`);
-  console.log(`ders gunu     : ${gunler.length}  (${BASLANGIC} -> ${cikti.bitis})`);
+  console.log(`calisma gunu  : ${gunler.length} hafta sonu gunu  (${cikti.baslangic} -> ${cikti.bitis})`);
   console.log(`icerikli gun  : ${dolu.length}   (son: ${dolu.length ? dolu[dolu.length - 1].tarih : '-'})`);
   console.log(`bekleyen gun  : ${bekleyen.length}`);
   const ortalama = dolu.length

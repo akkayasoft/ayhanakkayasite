@@ -180,12 +180,22 @@ daha önce yansıtılmış veri korunur.
 
 ## YDS çalışma programı (yds.obs içeriği → görevler)
 
-`scripts/yds-program-uret.js` — YDS içeriğini 2026-2027 ders günlerine yayıp
+`scripts/yds-program-uret.js` — YDS içeriğini 2026-2027 **hafta sonlarına** yayıp
 `src/data/ydsProgram.json` üretir. `/admin/yds` → "Görevlere Aktar".
+
+**Gün düzeni:** YDS hafta sonuna (Cmt+Paz) alındı ki hafta içi çalışan YZ
+programıyla çakışmasın. Günlük bütçe bu yüzden 60 değil **120 dk**
+(`--dakika` ya da `YDS_GUNLUK_DAKIKA` ile değişir). Resmî/dinî bayramlar
+çıkarılır; **ara tatil ve yarıyıl tatiline denk gelen hafta sonları dahildir**
+(okul tatili YDS çalışmasını engellemez).
+
+> `getDayInfo()` tatil dönemini hafta sonundan önce döndürdüğü için (ara
+> tatildeki cumartesi `type='break'` gelir) gün seçimi takvim etiketine değil
+> **gerçek hafta gününe** bakar.
 
 **YZ programından farkı:** YZ müfredatı sabitti (149 ders ≈ 149 gün). YDS içeriği
 Ankara Dil kaynaklarından gün gün üretiliyor: bugün **56 parça**, yıl ise
-**179 ders günü**. Bu yüzden:
+**78 hafta sonu günü**. Bu yüzden:
 
 1. Her parça **en fazla 3 kez** planlanır (ilk görme + 3 gün + 10 gün sonra).
    Aralıklı tekrar mantığı; aynı okumayı 45 kez planlamak yerine dürüst olan bu.
@@ -208,10 +218,16 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 Kategoriler: `YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` /
 `Serbest Çalışma`. `source_key` = `ydsp:<tarih>:<parçaId>`.
 
-> ⚠️ **İki program üst üste biniyor.** YZ (149 gün) ve YDS (179 gün) 149 günde
-> çakışıyor; çakışan günlerde ortalama **95 dk / 2.8 görev** (en yoğun gün
-> 125 dk, 5 görev). Günlük yükü değiştirmek gerekirse `GUNLUK_DAKIKA`
-> (yds-program-uret.js) ve YZ tarafındaki hafta düzeni ayarlanmalı.
+Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
+**53 bekleyen hafta sonu günü**, toplam **221 görev**.
+
+**İki program çakışmaz:** YZ hafta içi (Pzt-Cum, ~20-42 dk/gün), YDS hafta sonu
+(Cmt+Paz, ~112 dk/gün). Doğrulandı: ortak gün 0.
+
+> Gün düzeni değişince (ör. hafta içinden hafta sonuna geçiş) yeniden aktarım
+> eski günlerdeki görevleri bayat sayıp siler — ama yalnızca işaretlenmemiş ve
+> günü gelmemiş olanları. **İşaretli bir görev eski gününde kalır**; o gün iki
+> programın çakıştığı tek yer olabilir.
 
 ## Uyanma rutini
 
