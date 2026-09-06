@@ -559,7 +559,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   const prevWeekStart = shiftDate(weekStart, -7);
   const prevWeekEnd = shiftDate(weekStart, -1);
 
-  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes] = await Promise.all([
+  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes, wakeRes] = await Promise.all([
     query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
     query(`SELECT id, name FROM categories ORDER BY name ASC`),
     query(`
@@ -600,6 +600,15 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         GROUP BY student_id, category_id, day
       `,
       [prevWeekStart, weekEnd]
+    ),
+    query(
+      `
+        SELECT student_id AS "studentId", day, woke_at AS "wokeAt",
+               status, delay_minutes AS "delayMinutes"
+        FROM wake_logs
+        WHERE day BETWEEN $1 AND $2
+      `,
+      [prevWeekStart, weekEnd]
     )
   ]);
 
@@ -631,7 +640,46 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     durationMinutes: Number(row.durationMinutes || 0)
   }));
 
-  const bosMetrik = () => ({ due: 0, done: 0, correct: 0, wrong: 0, duration: 0 });
+  const wakeRows = wakeRes.rows.map((row) => ({
+    studentId: row.studentId,
+    date: toDateOnly(row.day),
+    wokeAt: normalizeEstimatedTimeForDisplay(row.wokeAt),
+    status: row.status,
+    delayMinutes: Number(row.delayMinutes || 0)
+  }));
+  const wakeByStudentDay = new Map(wakeRows.map((r) => [`${r.studentId}:${r.date}`, r]));
+
+  const bosMetrik = () => ({
+    due: 0,
+    done: 0,
+    correct: 0,
+    wrong: 0,
+    duration: 0,
+    // Uyanma: wakeTracked kayit girilmis gun sayisi (missed dahil),
+    // wakeWoke ise gercekten basilan gun sayisi (ortalama saat/gecikme paydasi).
+    wakeTracked: 0,
+    wakeOnTime: 0,
+    wakeLate: 0,
+    wakeMissed: 0,
+    wakeWoke: 0,
+    wakeMinutesSum: 0,
+    wakeDelaySum: 0
+  });
+
+  /** Bir gunun uyanma kaydini metrige ekler. */
+  function addWake(metrik, log) {
+    if (!log) return;
+    metrik.wakeTracked += 1;
+    if (log.status === 'on_time') metrik.wakeOnTime += 1;
+    else if (log.status === 'late') metrik.wakeLate += 1;
+    else if (log.status === 'missed') metrik.wakeMissed += 1;
+    const dakika = hmToMinutes(log.wokeAt);
+    if (dakika !== null) {
+      metrik.wakeWoke += 1;
+      metrik.wakeMinutesSum += dakika;
+      metrik.wakeDelaySum += log.delayMinutes;
+    }
+  }
 
   // Bir ogrencinin verilen gun araligindaki toplam metrikleri
   function metricsFor(studentId, days) {
@@ -654,6 +702,10 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       metrik.duration += row.durationMinutes;
     }
 
+    for (const day of days) {
+      addWake(metrik, wakeByStudentDay.get(`${studentId}:${day}`));
+    }
+
     return metrik;
   }
 
@@ -665,7 +717,13 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       ...metrik,
       questionTotal,
       completionRate: oran(metrik.done, metrik.due),
-      accuracy: oran(metrik.correct, questionTotal)
+      accuracy: oran(metrik.correct, questionTotal),
+      // Veri yoksa null doner ve arayuzde '-' gosterilir (%0 ile karistirilmamali).
+      wakeOnTimeRate: oran(metrik.wakeOnTime, metrik.wakeTracked),
+      averageWake: metrik.wakeWoke
+        ? minutesToHm(metrik.wakeMinutesSum / metrik.wakeWoke)
+        : null,
+      averageDelay: metrik.wakeWoke ? Math.round(metrik.wakeDelaySum / metrik.wakeWoke) : null
     };
   }
 
@@ -686,7 +744,11 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
             ? Math.round((current.completionRate - previous.completionRate) * 10) / 10
             : null,
         questionTotal: current.questionTotal - previous.questionTotal,
-        duration: current.duration - previous.duration
+        duration: current.duration - previous.duration,
+        wakeOnTimeRate:
+          current.wakeOnTimeRate !== null && previous.wakeOnTimeRate !== null
+            ? Math.round((current.wakeOnTimeRate - previous.wakeOnTimeRate) * 10) / 10
+            : null
       }
     };
   });
@@ -698,6 +760,13 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       acc.correct += row.current.correct;
       acc.wrong += row.current.wrong;
       acc.duration += row.current.duration;
+      acc.wakeTracked += row.current.wakeTracked;
+      acc.wakeOnTime += row.current.wakeOnTime;
+      acc.wakeLate += row.current.wakeLate;
+      acc.wakeMissed += row.current.wakeMissed;
+      acc.wakeWoke += row.current.wakeWoke;
+      acc.wakeMinutesSum += row.current.wakeMinutesSum;
+      acc.wakeDelaySum += row.current.wakeDelaySum;
       return acc;
     }, bosMetrik())
   );
@@ -749,11 +818,17 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         gun.duration += row.durationMinutes;
       }
 
+      const wakeLog = wakeByStudentDay.get(`${selected.id}:${day}`) || null;
+      addWake(gun, wakeLog);
+
       return {
         date: day,
         dayName: getDayName(day),
         dayLabel: dayInfo.isSchoolDay ? 'Ders günü' : dayInfo.label,
         isSchoolDay: dayInfo.isSchoolDay,
+        wake: wakeLog
+          ? { ...wakeLog, statusText: wakeStatusText(wakeLog.status) }
+          : null,
         ...ozetle(gun)
       };
     });
