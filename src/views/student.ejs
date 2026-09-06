@@ -13,14 +13,12 @@
           <p class="sidebar-kicker">Öğrenci</p>
           <h1 class="sidebar-title">Çalışma Paneli</h1>
           <p class="sidebar-user"><strong><%= user.name %></strong></p>
-          <p class="muted">Toplam Puan: <strong><%= user.points || 0 %></strong></p>
         </div>
 
         <nav class="menu">
           <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevler</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
-          <a href="/student/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Geçmişi</a>
         </nav>
 
         <form method="post" action="/logout" class="sidebar-logout">
@@ -176,7 +174,6 @@
           <article class="kpi"><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
           <article class="kpi"><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= doneCount %></p></article>
           <article class="kpi"><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(activeTasks.length - doneCount, 0) %></p></article>
-          <article class="kpi"><p class="kpi-label">Puan</p><p class="kpi-value"><%= user.points || 0 %></p></article>
         </section>
 
         <section class="panel compact-panel">
@@ -627,72 +624,6 @@
         </section>
         <% } %>
 
-        <% if (currentPage === 'points') { %>
-        <header class="content-header">
-          <h2>Puan Geçmişi</h2>
-          <p class="muted">Haftalık Ödül/Ceza: <strong><%= weeklyPointWeekStart %> - <%= weeklyPointWeekEnd %></strong></p>
-        </header>
-
-        <section class="panel">
-          <form method="get" action="/student/points" class="row center">
-            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointPrevWeekStart %>">Önceki Hafta</a>
-            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointNextWeekStart %>">Sonraki Hafta</a>
-            <label>Hafta Başlangıcı</label>
-            <input type="date" name="weekStart" value="<%= weeklyPointWeekStart %>" required />
-            <button type="submit">Haftayı Getir</button>
-            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Haftalık Excel İndir</a>
-          </form>
-        </section>
-
-        <section class="panel">
-          <h3>Haftalık Ödül/Ceza Sonuçları</h3>
-          <% if (!weeklyPointEvaluations.length) { %>
-          <p class="muted">Seçili hafta için ödül/ceza değerlendirmesi bulunmuyor.</p>
-          <% } %>
-          <% if (weeklyPointEvaluations.length) { %>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Kategori</th>
-                  <th>Toplam Görev</th>
-                  <th>Yapılan</th>
-                  <th>Oran</th>
-                  <th>Sonuç</th>
-                  <th>Puan</th>
-                  <th>Açıklama</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% weeklyPointEvaluations.forEach((e) => { %>
-                <tr>
-                  <td><%= e.categoryName %></td>
-                  <td><%= e.dueCount %></td>
-                  <td><%= e.doneCount %></td>
-                  <td>%<%= e.completionRate.toFixed(1) %></td>
-                  <td><%= e.resultType === 'reward' ? 'Ödül' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %></td>
-                  <td><%= e.pointsApplied %></td>
-                  <td><%= e.reasonText || '-' %></td>
-                </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
-          <% } %>
-        </section>
-
-        <section class="panel">
-          <h3>Son Puan Kayıtları</h3>
-          <ul class="clean-list">
-            <% pointLogs.forEach((p) => { %>
-            <li>
-              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Ödül' : 'Ceza' %></strong>
-              - <%= p.points %> puan - <%= p.reason %>
-            </li>
-            <% }) %>
-          </ul>
-        </section>
-        <% } %>
       </section>
     </main>
   </body>

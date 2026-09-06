@@ -9,7 +9,6 @@ Bu proje Hostinger Node.js ortaminda calisacak sekilde PostgreSQL ile gelistiril
 - Gorev atama (tek seferlik, haftalik, aylik, ozel tarih)
 - Gorevleri yapildi/yapilmadi olarak isaretleme
 - Gunluk soru cozum adedi girisi
-- Odul/ceza puan sistemi
 - Admin gunluk durum panosu
 - Ogrenci bazli tarih aralikli performans raporu
 - Gorev arsivleme / yeniden aktif etme

@@ -38,7 +38,6 @@ async function initDb() {
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL CHECK (role IN ('admin', 'student')),
-      points INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
@@ -122,71 +121,22 @@ async function initDb() {
   await query(`ALTER TABLE daily_questions DROP CONSTRAINT IF EXISTS daily_questions_student_id_day_key`);
   await query(`ALTER TABLE daily_questions DROP CONSTRAINT IF EXISTS daily_questions_student_day_category_lesson_key`);
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS weekly_category_rules (
-      id TEXT PRIMARY KEY,
-      week_start DATE NOT NULL,
-      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-      student_id TEXT NULL REFERENCES users(id) ON DELETE CASCADE,
-      reward_points INTEGER NOT NULL DEFAULT 0 CHECK (reward_points >= 0),
-      penalty_points INTEGER NOT NULL DEFAULT 0 CHECK (penalty_points >= 0),
-      reward_label TEXT NOT NULL DEFAULT '',
-      penalty_label TEXT NOT NULL DEFAULT '',
-      created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-  await query(`ALTER TABLE weekly_category_rules ADD COLUMN IF NOT EXISTS student_id TEXT`);
-  await query(`ALTER TABLE weekly_category_rules DROP CONSTRAINT IF EXISTS weekly_category_rules_student_id_fkey`);
-  await query(`
-    ALTER TABLE weekly_category_rules
-    ADD CONSTRAINT weekly_category_rules_student_id_fkey
-    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
-  `);
-  await query(`ALTER TABLE weekly_category_rules DROP CONSTRAINT IF EXISTS weekly_category_rules_week_start_category_id_key`);
-  await query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS weekly_category_rules_week_category_student_unique
-    ON weekly_category_rules (week_start, category_id, COALESCE(student_id, ''))
-  `);
-
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS category_id TEXT`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS lesson_name TEXT NOT NULL DEFAULT ''`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS correct_count INTEGER NOT NULL DEFAULT 0`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS wrong_count INTEGER NOT NULL DEFAULT 0`);
   await query(`ALTER TABLE daily_questions ADD COLUMN IF NOT EXISTS duration_minutes INTEGER NOT NULL DEFAULT 0`);
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS point_logs (
-      id TEXT PRIMARY KEY,
-      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      type TEXT NOT NULL CHECK (type IN ('reward', 'penalty')),
-      points INTEGER NOT NULL CHECK (points > 0),
-      reason TEXT NOT NULL,
-      delta INTEGER NOT NULL,
-      created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS weekly_category_evaluations (
-      id TEXT PRIMARY KEY,
-      week_start DATE NOT NULL,
-      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-      due_count INTEGER NOT NULL DEFAULT 0 CHECK (due_count >= 0),
-      done_count INTEGER NOT NULL DEFAULT 0 CHECK (done_count >= 0),
-      completion_rate NUMERIC(5, 2) NOT NULL DEFAULT 0,
-      result_type TEXT NOT NULL CHECK (result_type IN ('reward', 'penalty', 'none')),
-      points_applied INTEGER NOT NULL DEFAULT 0,
-      reason_text TEXT NOT NULL DEFAULT '',
-      point_log_id TEXT NULL REFERENCES point_logs(id) ON DELETE SET NULL,
-      calculated_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-      calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (week_start, student_id, category_id)
-    )
-  `);
+  // --- Puan sistemi kaldirildi -------------------------------------------
+  //
+  // Odul/ceza puanlamasi uygulamadan tamamen cikarildi. Asagidaki migrasyon
+  // ilgili tablolari ve users.points sutununu kalici olarak dusurur.
+  // weekly_category_evaluations, point_logs'a referans verdigi icin once o
+  // dusuruluyor. Islem idempotenttir: tablolar yoksa sessizce gecer.
+  await query(`DROP TABLE IF EXISTS weekly_category_evaluations`);
+  await query(`DROP TABLE IF EXISTS point_logs`);
+  await query(`DROP TABLE IF EXISTS weekly_category_rules`);
+  await query(`ALTER TABLE users DROP COLUMN IF EXISTS points`);
 }
 
 async function seedAdmin() {
@@ -198,8 +148,8 @@ async function seedAdmin() {
 
   await query(
     `
-      INSERT INTO users (id, name, username, password_hash, role, points)
-      VALUES ($1, $2, $3, $4, 'admin', 0)
+      INSERT INTO users (id, name, username, password_hash, role)
+      VALUES ($1, $2, $3, $4, 'admin')
     `,
     [
       `user_${crypto.randomUUID()}`,
