@@ -3,28 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ogrenci Paneli</title>
+    <title>Öğrenci Paneli</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="shell">
       <aside class="sidebar">
         <div>
-          <p class="sidebar-kicker">Ogrenci</p>
-          <h1 class="sidebar-title">Calisma Paneli</h1>
+          <p class="sidebar-kicker">Öğrenci</p>
+          <h1 class="sidebar-title">Çalışma Paneli</h1>
           <p class="sidebar-user"><strong><%= user.name %></strong></p>
           <p class="muted">Toplam Puan: <strong><%= user.points || 0 %></strong></p>
         </div>
 
         <nav class="menu">
-          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Gorevler</a>
-          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalik Takvim</a>
+          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevler</a>
+          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
-          <a href="/student/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Gecmisi</a>
+          <a href="/student/points" class="menu-link <%= currentPage === 'points' ? 'active' : '' %>">Puan Geçmişi</a>
         </nav>
 
         <form method="post" action="/logout" class="sidebar-logout">
-          <button type="submit" class="ghost">Cikis</button>
+          <button type="submit" class="ghost">Çıkış</button>
         </form>
       </aside>
 
@@ -38,22 +38,22 @@
 
         <% if (currentPage === 'dashboard') { %>
         <header class="content-header">
-          <h2>Aktif Gorevlerim</h2>
+          <h2>Aktif Görevlerim</h2>
           <p class="muted"><%= today %></p>
         </header>
 
         <section class="panel">
-          <h3>Gunluk Gorev Ekle</h3>
+          <h3>Günlük Görev Ekle</h3>
           <form id="studentTaskCreateForm" method="post" action="/student/tasks" class="grid two">
             <input type="hidden" name="next" value="/student/dashboard" />
             <div class="stack">
-              <label>Gorev Basligi</label>
+              <label>Görev Başlığı</label>
               <input type="text" name="title" minlength="2" maxlength="120" autocomplete="off" required />
             </div>
             <div class="stack">
               <label>Kategori</label>
               <select id="studentTaskCategorySelect" name="categoryId" required>
-                <option value="">Kategori Sec</option>
+                <option value="">Kategori Seç</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>"><%= c.name %></option>
                 <% }) %>
@@ -62,23 +62,23 @@
             <div class="stack">
               <label>Plan Tipi</label>
               <select id="studentTaskPlanningMode" name="planningMode" required>
-                <option value="single">Tek Gun</option>
-                <option value="multi_daily">Toplu Gunluk Plan</option>
+                <option value="single">Tek Gün</option>
+                <option value="multi_daily">Toplu Günlük Plan</option>
               </select>
             </div>
             <div id="studentTaskSingleDateFields" class="stack">
               <label>Tarih</label>
               <input id="studentTaskDateInput" type="date" name="singleDate" value="<%= today %>" required />
               <div class="quick-date-row">
-                <button type="button" class="quick-date-btn" data-offset-days="0">Bugun</button>
-                <button type="button" class="quick-date-btn" data-offset-days="1">Yarin</button>
-                <button type="button" class="quick-date-btn" data-offset-days="7">+7 Gun</button>
+                <button type="button" class="quick-date-btn" data-offset-days="0">Bugün</button>
+                <button type="button" class="quick-date-btn" data-offset-days="1">Yarın</button>
+                <button type="button" class="quick-date-btn" data-offset-days="7">+7 Gün</button>
               </div>
             </div>
             <div id="studentTaskRangeFields" class="stack form-block-hidden">
-              <label>Baslangic Tarihi</label>
+              <label>Başlangıç Tarihi</label>
               <input id="studentTaskRangeStartInput" type="date" name="rangeStartDate" value="<%= today %>" />
-              <label>Kac Gun Surecek?</label>
+              <label>Kaç Gün Sürecek?</label>
               <input id="studentTaskRangeDayCountInput" type="number" name="rangeDayCount" min="1" max="180" value="30" />
             </div>
             <div class="stack">
@@ -86,12 +86,12 @@
               <input type="time" name="estimatedTime" />
             </div>
             <div class="stack">
-              <label>Aciklama</label>
-              <input type="text" name="description" maxlength="300" placeholder="Yaptiklarini kisaca yazabilirsin" />
+              <label>Açıklama</label>
+              <input type="text" name="description" maxlength="300" placeholder="Yaptıklarını kısaca yazabilirsin" />
             </div>
             <div>
-              <button type="submit" data-default-label="Gorev Ekle">Gorev Ekle</button>
-              <p class="muted form-helper">Ayni gun, ayni kategori ve ayni baslikta cift kayit engellenir. Toplu planda mevcut gunler atlanir.</p>
+              <button type="submit" data-default-label="Görev Ekle">Görev Ekle</button>
+              <p class="muted form-helper">Aynı gün, aynı kategori ve aynı başlıkta çift kayıt engellenir. Toplu planda mevcut günler atlanır.</p>
             </div>
           </form>
         </section>
@@ -155,7 +155,7 @@
               });
 
               if (submitButton) {
-                submitButton.textContent = isMulti ? 'Toplu Gorev Olustur' : 'Gorev Ekle';
+                submitButton.textContent = isMulti ? 'Toplu Görev Oluştur' : 'Görev Ekle';
               }
             };
 
@@ -173,7 +173,7 @@
         </script>
 
         <section class="kpi-grid">
-          <article class="kpi"><p class="kpi-label">Toplam Gorev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
+          <article class="kpi"><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
           <article class="kpi"><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= doneCount %></p></article>
           <article class="kpi"><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(activeTasks.length - doneCount, 0) %></p></article>
           <article class="kpi"><p class="kpi-label">Puan</p><p class="kpi-value"><%= user.points || 0 %></p></article>
@@ -181,8 +181,8 @@
 
         <section class="panel compact-panel">
           <div class="legend-row">
-            <span class="legend-item"><span class="dot done"></span> Yapildi</span>
-            <span class="legend-item"><span class="dot not-done"></span> Yapilmadi</span>
+            <span class="legend-item"><span class="dot done"></span> Yapıldı</span>
+            <span class="legend-item"><span class="dot not-done"></span> Yapılmadı</span>
             <span class="legend-item"><span class="dot open"></span> Bekliyor</span>
           </div>
         </section>
@@ -191,13 +191,13 @@
           <% if (activeTasks.length) { %>
           <div class="datatable-filter-row">
             <div class="datatable-search">
-              <label for="studentTaskTitleFilter">Baslik</label>
-              <input id="studentTaskTitleFilter" type="text" placeholder="Basliga gore filtrele" />
+              <label for="studentTaskTitleFilter">Başlık</label>
+              <input id="studentTaskTitleFilter" type="text" placeholder="Başlığa göre filtrele" />
             </div>
             <div class="datatable-search">
               <label for="studentTaskCategoryFilter">Kategori</label>
               <select id="studentTaskCategoryFilter">
-                <option value="">Tum Kategoriler</option>
+                <option value="">Tüm Kategoriler</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.name %>"><%= c.name %></option>
                 <% }) %>
@@ -211,7 +211,7 @@
           <% } %>
 
           <% if (!activeTasks.length) { %>
-          <p class="muted">Aktif gorev yok.</p>
+          <p class="muted">Aktif görev yok.</p>
           <% } %>
 
           <% if (activeTasks.length) { %>
@@ -220,12 +220,12 @@
               <thead>
                 <tr>
                   <th>Durum</th>
-                  <th>Baslik</th>
+                  <th>Başlık</th>
                   <th>Kategori</th>
                   <th>Tarih</th>
                   <th>Saat</th>
-                  <th>Aciklama</th>
-                  <th>Islem</th>
+                  <th>Açıklama</th>
+                  <th>İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,17 +245,17 @@
                     <small class="muted"><%= task.displayStatusDay %></small>
                     <% } %>
                   </td>
-                  <td data-label="Baslik" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
+                  <td data-label="Başlık" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
                   <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
                   <td data-label="Saat" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
-                  <td data-label="Aciklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
-                  <td data-label="Islem">
+                  <td data-label="Açıklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
+                  <td data-label="İşlem">
                     <div class="task-table-actions">
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="done" />
                         <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
-                        <button type="submit" class="icon-btn ok" title="Yapildi" aria-label="Yapildi">
+                        <button type="submit" class="icon-btn ok" title="Yapıldı" aria-label="Yapıldı">
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
                           </svg>
@@ -264,14 +264,14 @@
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
                         <input type="hidden" name="status" value="not_done" />
                         <input type="hidden" name="note" value="<%= task.description || task.todayStatus?.note || task.displayStatus?.note || '' %>" />
-                        <button type="submit" class="icon-btn bad" title="Yapilmadi" aria-label="Yapilmadi">
+                        <button type="submit" class="icon-btn bad" title="Yapılmadı" aria-label="Yapılmadı">
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
                           </svg>
                         </button>
                       </form>
                       <% if (task.canManage) { %>
-                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu gorev silinsin mi?')">
+                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu görev silinsin mi?')">
                         <input type="hidden" name="next" value="/student/dashboard" />
                         <button type="submit" class="icon-btn danger" title="Sil" aria-label="Sil">
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -365,7 +365,7 @@
                   });
                   const data = await response.json();
                   if (!response.ok || !data.ok) {
-                    throw new Error(data.error || 'Kayit basarisiz.');
+                    throw new Error(data.error || 'Kayıt başarısız.');
                   }
 
                   cell.setAttribute('data-value', data.value || '');
@@ -383,7 +383,7 @@
                   refreshRowSearch(row);
                   applyFilters();
                 } catch (err) {
-                  alert(err.message || 'Kayit basarisiz.');
+                  alert(err.message || 'Kayıt başarısız.');
                   finishEdit(cell, originalMarkup);
                 } finally {
                   cell.classList.remove('is-saving');
@@ -454,12 +454,12 @@
         <% if (currentPage === 'calendar' && calendar) { %>
         <header class="content-header row space-between center">
           <div>
-            <h2>Haftalik Takvim</h2>
+            <h2>Haftalık Takvim</h2>
             <p class="muted"><%= calendar.weekStart %> - <%= calendar.weekEnd %></p>
           </div>
           <div class="row">
-            <a class="button-link" href="/student/calendar/export?weekStart=<%= calendar.weekStart %>">Excel Indir</a>
-            <a class="button-link" href="/student/calendar?weekStart=<%= calendar.prevWeekStart %>">Onceki Hafta</a>
+            <a class="button-link" href="/student/calendar/export?weekStart=<%= calendar.weekStart %>">Excel İndir</a>
+            <a class="button-link" href="/student/calendar?weekStart=<%= calendar.prevWeekStart %>">Önceki Hafta</a>
             <a class="button-link" href="/student/calendar?weekStart=<%= calendar.nextWeekStart %>">Sonraki Hafta</a>
           </div>
         </header>
@@ -469,12 +469,12 @@
             <table>
               <thead>
                 <tr>
-                  <th>Gun</th>
+                  <th>Gün</th>
                   <th>Tarih</th>
-                  <th>Gorev</th>
+                  <th>Görev</th>
                   <th>Tamamlanan</th>
                   <th>Soru</th>
-                  <th>Sure (dk)</th>
+                  <th>Süre (dk)</th>
                 </tr>
               </thead>
               <tbody>
@@ -498,7 +498,7 @@
           <article class="panel">
             <h3><%= d.dayName %> - <%= d.date %></h3>
             <% if (!d.tasks.length) { %>
-            <p class="muted">Gorev yok.</p>
+            <p class="muted">Görev yok.</p>
             <% } %>
             <% if (d.tasks.length) { %>
             <ul class="clean-list">
@@ -506,7 +506,7 @@
               <li class="row space-between center">
                 <span><%= t.title %></span>
                 <span class="status-pill <%= t.status === 'done' ? 'ok' : t.status === 'not_done' ? 'bad' : 'idle' %>">
-                  <%= t.status === 'done' ? 'Yapildi' : t.status === 'not_done' ? 'Yapilmadi' : 'Isaretlenmedi' %>
+                  <%= t.status === 'done' ? 'Yapıldı' : t.status === 'not_done' ? 'Yapılmadı' : 'İşaretlenmedi' %>
                 </span>
               </li>
               <% }) %>
@@ -519,7 +519,7 @@
 
         <% if (currentPage === 'questions') { %>
         <header class="content-header">
-          <h2>Gunluk Soru Takibi</h2>
+          <h2>Günlük Soru Takibi</h2>
           <p class="muted"><%= today %></p>
         </header>
 
@@ -528,13 +528,13 @@
             <div class="stack">
               <label>Kategori</label>
               <select name="categoryId" required>
-                <option value="">Seciniz</option>
+                <option value="">Seçiniz</option>
                 <% categories.forEach((c) => { %>
                 <option value="<%= c.id %>" <%= questionEntry?.categoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
                 <% }) %>
               </select>
 
-              <label>Ders Adi</label>
+              <label>Ders Adı</label>
               <input type="text" name="lessonName" value="<%= questionEntry?.lessonName || '' %>" required />
 
               <label>Tarih</label>
@@ -542,13 +542,13 @@
             </div>
 
             <div class="stack">
-              <label>Dogru</label>
+              <label>Doğru</label>
               <input type="number" min="0" name="correctCount" value="<%= questionEntry?.correctCount ?? 0 %>" required />
 
-              <label>Yanlis</label>
+              <label>Yanlış</label>
               <input type="number" min="0" name="wrongCount" value="<%= questionEntry?.wrongCount ?? 0 %>" required />
 
-              <label>Sure (dakika)</label>
+              <label>Süre (dakika)</label>
               <input type="number" min="0" name="durationMinutes" value="<%= questionEntry?.durationMinutes ?? 0 %>" required />
 
               <button type="submit">Kaydet</button>
@@ -557,9 +557,9 @@
         </section>
 
         <section class="panel">
-          <h3>Son Kayitlar</h3>
+          <h3>Son Kayıtlar</h3>
           <% if (!questionHistory.length) { %>
-          <p class="muted">Henuz soru kaydi yok.</p>
+          <p class="muted">Henüz soru kaydı yok.</p>
           <% } %>
           <% if (questionHistory.length) { %>
           <div class="table-wrap">
@@ -568,11 +568,11 @@
                 <tr>
                   <th>Tarih</th>
                   <th>Kategori</th>
-                  <th>Ders Adi</th>
-                  <th>Dogru</th>
-                  <th>Yanlis</th>
+                  <th>Ders Adı</th>
+                  <th>Doğru</th>
+                  <th>Yanlış</th>
                   <th>Toplam</th>
-                  <th>Sure (dk)</th>
+                  <th>Süre (dk)</th>
                 </tr>
               </thead>
               <tbody>
@@ -596,25 +596,25 @@
 
         <% if (currentPage === 'points') { %>
         <header class="content-header">
-          <h2>Puan Gecmisi</h2>
-          <p class="muted">Haftalik Odul/Ceza: <strong><%= weeklyPointWeekStart %> - <%= weeklyPointWeekEnd %></strong></p>
+          <h2>Puan Geçmişi</h2>
+          <p class="muted">Haftalık Ödül/Ceza: <strong><%= weeklyPointWeekStart %> - <%= weeklyPointWeekEnd %></strong></p>
         </header>
 
         <section class="panel">
           <form method="get" action="/student/points" class="row center">
-            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointPrevWeekStart %>">Onceki Hafta</a>
+            <a class="button-link" href="/student/points?weekStart=<%= weeklyPointPrevWeekStart %>">Önceki Hafta</a>
             <a class="button-link" href="/student/points?weekStart=<%= weeklyPointNextWeekStart %>">Sonraki Hafta</a>
-            <label>Hafta Baslangici</label>
+            <label>Hafta Başlangıcı</label>
             <input type="date" name="weekStart" value="<%= weeklyPointWeekStart %>" required />
-            <button type="submit">Haftayi Getir</button>
-            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Haftalik Excel Indir</a>
+            <button type="submit">Haftayı Getir</button>
+            <a class="button-link" href="/student/points/export-weekly?weekStart=<%= weeklyPointWeekStart %>">Haftalık Excel İndir</a>
           </form>
         </section>
 
         <section class="panel">
-          <h3>Haftalik Odul/Ceza Sonuclari</h3>
+          <h3>Haftalık Ödül/Ceza Sonuçları</h3>
           <% if (!weeklyPointEvaluations.length) { %>
-          <p class="muted">Secili hafta icin odul/ceza degerlendirmesi bulunmuyor.</p>
+          <p class="muted">Seçili hafta için ödül/ceza değerlendirmesi bulunmuyor.</p>
           <% } %>
           <% if (weeklyPointEvaluations.length) { %>
           <div class="table-wrap">
@@ -622,12 +622,12 @@
               <thead>
                 <tr>
                   <th>Kategori</th>
-                  <th>Toplam Gorev</th>
-                  <th>Yapilan</th>
+                  <th>Toplam Görev</th>
+                  <th>Yapılan</th>
                   <th>Oran</th>
-                  <th>Sonuc</th>
+                  <th>Sonuç</th>
                   <th>Puan</th>
-                  <th>Aciklama</th>
+                  <th>Açıklama</th>
                 </tr>
               </thead>
               <tbody>
@@ -637,7 +637,7 @@
                   <td><%= e.dueCount %></td>
                   <td><%= e.doneCount %></td>
                   <td>%<%= e.completionRate.toFixed(1) %></td>
-                  <td><%= e.resultType === 'reward' ? 'Odul' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %></td>
+                  <td><%= e.resultType === 'reward' ? 'Ödül' : e.resultType === 'penalty' ? 'Ceza' : 'Esik' %></td>
                   <td><%= e.pointsApplied %></td>
                   <td><%= e.reasonText || '-' %></td>
                 </tr>
@@ -649,11 +649,11 @@
         </section>
 
         <section class="panel">
-          <h3>Son Puan Kayitlari</h3>
+          <h3>Son Puan Kayıtları</h3>
           <ul class="clean-list">
             <% pointLogs.forEach((p) => { %>
             <li>
-              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Odul' : 'Ceza' %></strong>
+              <%= p.createdDate %> - <strong><%= p.type === 'reward' ? 'Ödül' : 'Ceza' %></strong>
               - <%= p.points %> puan - <%= p.reason %>
             </li>
             <% }) %>

@@ -36,7 +36,7 @@ const loginLimiter = rateLimit({
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Cok fazla giris denemesi yaptiniz. Lutfen daha sonra tekrar deneyin.'
+  message: 'Çok fazla giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin.'
 });
 
 const sessionConfig = {
@@ -75,16 +75,16 @@ function normalizeText(value) {
 
 function validateTaskTitle(value) {
   const title = normalizeText(value);
-  if (!title) return { ok: false, error: 'Gorev basligi zorunlu.' };
-  if (title.length < 2) return { ok: false, error: 'Gorev basligi en az 2 karakter olmali.' };
-  if (title.length > 120) return { ok: false, error: 'Gorev basligi en fazla 120 karakter olabilir.' };
+  if (!title) return { ok: false, error: 'Görev başlığı zorunlu.' };
+  if (title.length < 2) return { ok: false, error: 'Görev başlığı en az 2 karakter olmalı.' };
+  if (title.length > 120) return { ok: false, error: 'Görev başlığı en fazla 120 karakter olabilir.' };
   return { ok: true, value: title };
 }
 
 function validateTaskDescription(value) {
   const description = normalizeText(value);
   if (description.length > 300) {
-    return { ok: false, error: 'Aciklama en fazla 300 karakter olabilir.' };
+    return { ok: false, error: 'Açıklama en fazla 300 karakter olabilir.' };
   }
   return { ok: true, value: description };
 }
@@ -139,7 +139,7 @@ function getDateRangeInclusive(startDate, endDate, maxDays = 366) {
 }
 
 function getDayName(dateStr) {
-  const names = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
+  const names = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
   const d = new Date(`${dateStr}T00:00:00`);
   return names[d.getDay()];
 }
@@ -166,7 +166,7 @@ function normalizeEstimatedTimeForStorage(value) {
   const timeValue = normalizeText(value);
   if (!timeValue) return { ok: true, value: null };
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) {
-    return { ok: false, error: 'Tahmini saat HH:MM formatinda olmali.' };
+    return { ok: false, error: 'Tahmini saat HH:MM formatında olmalı.' };
   }
   return { ok: true, value: timeValue };
 }
@@ -287,7 +287,7 @@ function parseDateRange(from, to) {
   const toDate = to || today;
 
   if (fromDate > toDate) {
-    return { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' };
+    return { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' };
   }
 
   const days = [];
@@ -300,7 +300,7 @@ function parseDateRange(from, to) {
     count += 1;
 
     if (count > 93) {
-      return { error: 'Rapor araligi en fazla 93 gun olabilir.' };
+      return { error: 'Rapor aralığı en fazla 93 gün olabilir.' };
     }
   }
 
@@ -309,10 +309,10 @@ function parseDateRange(from, to) {
 
 function formatRepeat(task) {
   if (task.repeatType === 'once') return `Tek seferlik (${task.singleDate || '-'})`;
-  if (task.repeatType === 'daily') return 'Her gun';
-  if (task.repeatType === 'weekly') return `Haftalik (Gun ${task.weeklyDay})`;
-  if (task.repeatType === 'monthly') return `Aylik (Gun ${task.monthlyDay})`;
-  if (task.repeatType === 'custom') return `Ozel (${(task.customDates || []).join(', ')})`;
+  if (task.repeatType === 'daily') return 'Her gün';
+  if (task.repeatType === 'weekly') return `Haftalık (Gün ${task.weeklyDay})`;
+  if (task.repeatType === 'monthly') return `Aylık (Gün ${task.monthlyDay})`;
+  if (task.repeatType === 'custom') return `Özel (${(task.customDates || []).join(', ')})`;
   return '-';
 }
 
@@ -477,7 +477,7 @@ function requireRole(role) {
     }
 
     if (req.currentUser.role !== role) {
-      return res.status(403).send('Yetkisiz erisim.');
+      return res.status(403).send('Yetkisiz erişim.');
     }
 
     return next();
@@ -512,12 +512,12 @@ app.post(
     );
 
     if (result.rowCount === 0) {
-      return res.status(401).render('login', { error: 'Kullanici adi veya sifre hatali.' });
+      return res.status(401).render('login', { error: 'Kullanıcı adı veya şifre hatalı.' });
     }
 
     const user = result.rows[0];
     if (!bcrypt.compareSync(password, user.passwordHash)) {
-      return res.status(401).render('login', { error: 'Kullanici adi veya sifre hatali.' });
+      return res.status(401).render('login', { error: 'Kullanıcı adı veya şifre hatalı.' });
     }
 
     req.session.userId = user.id;
@@ -613,7 +613,7 @@ async function getAdminViewModel(req, currentPage) {
     ? {
         isEdit: true,
         action: `/admin/tasks/${editingTask.id}/update`,
-        submitText: 'Gorevi Guncelle',
+        submitText: 'Görevi Güncelle',
         title: editingTask.title || '',
         description: editingTask.description || '',
         categoryId: editingTask.categoryId || '',
@@ -630,7 +630,7 @@ async function getAdminViewModel(req, currentPage) {
     : {
         isEdit: false,
         action: '/admin/tasks',
-        submitText: 'Gorevi Kaydet',
+        submitText: 'Görevi Kaydet',
         title: '',
         description: '',
         categoryId: '',
@@ -776,7 +776,7 @@ async function getAdminViewModel(req, currentPage) {
   let weeklyRuleForm = {
     isEdit: false,
     action: '/admin/weekly-rules',
-    submitText: 'Haftalik Kurali Kaydet',
+    submitText: 'Haftalık Kuralı Kaydet',
     weekStart: weeklyRuleWeekStart,
     studentId: '',
     categoryId: '',
@@ -843,7 +843,7 @@ async function getAdminViewModel(req, currentPage) {
       weeklyRuleForm = {
         isEdit: true,
         action: `/admin/weekly-rules/${editingRule.id}/update`,
-        submitText: 'Haftalik Kurali Guncelle',
+        submitText: 'Haftalık Kuralı Güncelle',
         weekStart: toDateOnly(editingRule.weekStart) || weeklyRuleWeekStart,
         studentId: editingRule.studentId || '',
         categoryId: editingRule.categoryId,
@@ -900,7 +900,7 @@ async function getAdminViewModel(req, currentPage) {
   };
 }
 
-// --- JSON API (React island'lari ve ileride mobil icin) ---
+// --- JSON API (React island'lari ve ileride mobil için) ---
 async function getDailyBoardData() {
   const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
   const dateObj = new Date(`${today}T00:00:00`);
@@ -1003,19 +1003,19 @@ app.get(
     const tasks = viewModel.taskTableTasks || [];
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Ogrenci Takip';
+    workbook.creator = 'Öğrenci Takip';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet('Tum Gorevler');
+    const sheet = workbook.addWorksheet('Tüm Görevler');
     sheet.columns = [
-      { header: 'Baslik', key: 'title', width: 32 },
+      { header: 'Başlık', key: 'title', width: 32 },
       { header: 'Konu', key: 'description', width: 42 },
-      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Öğrenci', key: 'studentName', width: 24 },
       { header: 'Kategori', key: 'categoryName', width: 20 },
       { header: 'Saat', key: 'estimatedTime', width: 10 },
       { header: 'Tarih', key: 'dateText', width: 26 },
       { header: 'Tekrar', key: 'repeatText', width: 24 },
-      { header: 'Arsivde Mi', key: 'archivedText', width: 12 }
+      { header: 'Arşivde Mi', key: 'archivedText', width: 12 }
     ];
 
     sheet.getRow(1).font = { bold: true };
@@ -1025,12 +1025,12 @@ app.get(
       sheet.addRow({
         title: task.title || '',
         description: task.description || '',
-        studentName: task.student ? task.student.name : 'Ogrenci yok',
+        studentName: task.student ? task.student.name : 'Öğrenci yok',
         categoryName: task.category ? task.category.name : 'Kategori yok',
         estimatedTime: task.estimatedTime || '-',
         dateText: task.dateText || '',
         repeatText: task.repeatText || '',
-        archivedText: task.isArchived ? 'Evet' : 'Hayir'
+        archivedText: task.isArchived ? 'Evet' : 'Hayır'
       });
     });
 
@@ -1070,16 +1070,16 @@ app.post(
     const password = normalizeText(req.body.password);
 
     if (!name || !username || !password) {
-      return adminRedirect(req, res, { error: 'Ogrenci bilgileri eksik.' });
+      return adminRedirect(req, res, { error: 'Öğrenci bilgileri eksik.' });
     }
 
     if (password.length < 6) {
-      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
+      return adminRedirect(req, res, { error: 'Şifre en az 6 karakter olmalı.' });
     }
 
     const exists = await query(`SELECT id FROM users WHERE username = $1 LIMIT 1`, [username]);
     if (exists.rowCount > 0) {
-      return adminRedirect(req, res, { error: 'Bu kullanici adi zaten var.' });
+      return adminRedirect(req, res, { error: 'Bu kullanıcı adı zaten var.' });
     }
 
     await query(
@@ -1090,7 +1090,7 @@ app.post(
       [makeId('user'), name, username, bcrypt.hashSync(password, 10)]
     );
 
-    return adminRedirect(req, res, { message: 'Ogrenci eklendi.' });
+    return adminRedirect(req, res, { message: 'Öğrenci eklendi.' });
   })
 );
 
@@ -1104,20 +1104,20 @@ app.post(
     const role = normalizeText(req.body.role);
 
     if (!name || !username || !password || !role) {
-      return adminRedirect(req, res, { error: 'Kullanici bilgileri eksik.' });
+      return adminRedirect(req, res, { error: 'Kullanıcı bilgileri eksik.' });
     }
 
     if (!['admin', 'student'].includes(role)) {
-      return adminRedirect(req, res, { error: 'Gecersiz rol.' });
+      return adminRedirect(req, res, { error: 'Geçersiz rol.' });
     }
 
     if (password.length < 6) {
-      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
+      return adminRedirect(req, res, { error: 'Şifre en az 6 karakter olmalı.' });
     }
 
     const exists = await query(`SELECT id FROM users WHERE username = $1 LIMIT 1`, [username]);
     if (exists.rowCount > 0) {
-      return adminRedirect(req, res, { error: 'Bu kullanici adi zaten var.' });
+      return adminRedirect(req, res, { error: 'Bu kullanıcı adı zaten var.' });
     }
 
     await query(
@@ -1128,7 +1128,7 @@ app.post(
       [makeId('user'), name, username, bcrypt.hashSync(password, 10), role]
     );
 
-    return adminRedirect(req, res, { message: 'Kullanici eklendi.' });
+    return adminRedirect(req, res, { message: 'Kullanıcı eklendi.' });
   })
 );
 
@@ -1140,28 +1140,28 @@ app.post(
     const role = normalizeText(req.body.role);
 
     if (!['admin', 'student'].includes(role)) {
-      return adminRedirect(req, res, { error: 'Gecersiz rol.' });
+      return adminRedirect(req, res, { error: 'Geçersiz rol.' });
     }
 
     if (userId === req.currentUser.id) {
-      return adminRedirect(req, res, { error: 'Kendi rolunuzu bu ekrandan degistiremezsiniz.' });
+      return adminRedirect(req, res, { error: 'Kendi rolünüzü bu ekrandan değiştiremezsiniz.' });
     }
 
     const userRes = await query(`SELECT id, role FROM users WHERE id = $1 LIMIT 1`, [userId]);
     if (userRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Kullanıcı bulunamadı.' });
     }
 
     const target = userRes.rows[0];
     if (target.role === 'admin' && role !== 'admin') {
       const adminCountRes = await query(`SELECT COUNT(*)::int AS "count" FROM users WHERE role = 'admin'`);
       if (Number(adminCountRes.rows[0].count) <= 1) {
-        return adminRedirect(req, res, { error: 'Son admin kullanici ogrenciye dusurulemez.' });
+        return adminRedirect(req, res, { error: 'Son admin kullanıcı öğrenciye düşürülemez.' });
       }
     }
 
     await query(`UPDATE users SET role = $1 WHERE id = $2`, [role, userId]);
-    return adminRedirect(req, res, { message: 'Kullanici rolu guncellendi.' });
+    return adminRedirect(req, res, { message: 'Kullanıcı rolü güncellendi.' });
   })
 );
 
@@ -1173,15 +1173,15 @@ app.post(
     const password = normalizeText(req.body.password);
 
     if (password.length < 6) {
-      return adminRedirect(req, res, { error: 'Sifre en az 6 karakter olmali.' });
+      return adminRedirect(req, res, { error: 'Şifre en az 6 karakter olmalı.' });
     }
 
     const updated = await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [bcrypt.hashSync(password, 10), userId]);
     if (updated.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Kullanıcı bulunamadı.' });
     }
 
-    return adminRedirect(req, res, { message: 'Kullanici sifresi guncellendi.' });
+    return adminRedirect(req, res, { message: 'Kullanıcı şifresi güncellendi.' });
   })
 );
 
@@ -1192,19 +1192,19 @@ app.post(
     const { userId } = req.params;
 
     if (userId === req.currentUser.id) {
-      return adminRedirect(req, res, { error: 'Kendi hesabinizi silemezsiniz.' });
+      return adminRedirect(req, res, { error: 'Kendi hesabınızı silemezsiniz.' });
     }
 
     const userRes = await query(`SELECT id, role FROM users WHERE id = $1 LIMIT 1`, [userId]);
     if (userRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kullanici bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Kullanıcı bulunamadı.' });
     }
 
     const target = userRes.rows[0];
     if (target.role === 'admin') {
       const adminCountRes = await query(`SELECT COUNT(*)::int AS "count" FROM users WHERE role = 'admin'`);
       if (Number(adminCountRes.rows[0].count) <= 1) {
-        return adminRedirect(req, res, { error: 'Son admin kullanici silinemez.' });
+        return adminRedirect(req, res, { error: 'Son admin kullanıcı silinemez.' });
       }
     }
 
@@ -1212,12 +1212,12 @@ app.post(
       await query(`DELETE FROM users WHERE id = $1`, [userId]);
     } catch (err) {
       if (err.code === '23503') {
-        return adminRedirect(req, res, { error: 'Bu kullanici bagli kayitlar nedeniyle silinemiyor.' });
+        return adminRedirect(req, res, { error: 'Bu kullanıcı bağlı kayıtlar nedeniyle silinemiyor.' });
       }
       throw err;
     }
 
-    return adminRedirect(req, res, { message: 'Kullanici silindi.' });
+    return adminRedirect(req, res, { message: 'Kullanıcı silindi.' });
   })
 );
 
@@ -1228,7 +1228,7 @@ app.post(
     const name = normalizeText(req.body.name);
 
     if (!name) {
-      return adminRedirect(req, res, { error: 'Kategori adi zorunlu.' });
+      return adminRedirect(req, res, { error: 'Kategori adı zorunlu.' });
     }
 
     try {
@@ -1259,13 +1259,13 @@ app.post(
     );
 
     if (activeUse.rowCount > 0) {
-      return adminRedirect(req, res, { error: 'Bu kategori aktif gorevlerde kullaniliyor.' });
+      return adminRedirect(req, res, { error: 'Bu kategori aktif görevlerde kullanılıyor.' });
     }
 
     const deleted = await query(`DELETE FROM categories WHERE id = $1`, [categoryId]);
 
     if (deleted.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kategori bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Kategori bulunamadı.' });
     }
 
     return adminRedirect(req, res, { message: 'Kategori silindi.' });
@@ -1295,11 +1295,11 @@ app.post(
     const estimatedTime = estimatedTimeValidation.value;
 
     if (!title || !categoryId || !studentId || !repeatType) {
-      return adminRedirect(req, res, { error: 'Gorev icin zorunlu alanlar eksik.' });
+      return adminRedirect(req, res, { error: 'Görev için zorunlu alanlar eksik.' });
     }
 
     if (startDate && endDate && startDate > endDate) {
-      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+      return adminRedirect(req, res, { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' });
     }
 
     const [categoryRes, studentRes] = await Promise.all([
@@ -1308,7 +1308,7 @@ app.post(
     ]);
 
     if (categoryRes.rowCount === 0 || studentRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kategori veya ogrenci gecersiz.' });
+      return adminRedirect(req, res, { error: 'Kategori veya öğrenci geçersiz.' });
     }
 
     let singleDateVal = null;
@@ -1318,21 +1318,21 @@ app.post(
 
     if (repeatType === 'once') {
       if (!singleDate) {
-        return adminRedirect(req, res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
+        return adminRedirect(req, res, { error: 'Tek seferlik görev için tarih zorunlu.' });
       }
       singleDateVal = singleDate;
     } else if (repeatType === 'daily') {
       if (!startDate || !endDate) {
-        return adminRedirect(req, res, { error: 'Her gun gorev icin baslangic ve bitis tarihi zorunlu.' });
+        return adminRedirect(req, res, { error: 'Her gün görev için başlangıç ve bitiş tarihi zorunlu.' });
       }
     } else if (repeatType === 'weekly') {
       if (weeklyDay === '') {
-        return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Haftalık görev için gün zorunlu.' });
       }
       weeklyDayVal = Number(weeklyDay);
     } else if (repeatType === 'monthly') {
       if (!monthlyDay) {
-        return adminRedirect(req, res, { error: 'Aylik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Aylık görev için gün zorunlu.' });
       }
       monthlyDayVal = Number(monthlyDay);
     } else if (repeatType === 'custom') {
@@ -1342,17 +1342,17 @@ app.post(
         .filter(Boolean);
 
       if (!parsedDates.length) {
-        return adminRedirect(req, res, { error: 'Ozel tarihli gorev icin en az bir tarih girin.' });
+        return adminRedirect(req, res, { error: 'Özel tarihli görev için en az bir tarih girin.' });
       }
       customDatesVal = parsedDates;
     } else {
-      return adminRedirect(req, res, { error: 'Gecersiz tekrar tipi.' });
+      return adminRedirect(req, res, { error: 'Geçersiz tekrar tipi.' });
     }
 
     if (repeatType === 'daily') {
       const dayList = getDateRangeInclusive(startDate, endDate);
       if (!dayList || dayList.length === 0) {
-        return adminRedirect(req, res, { error: 'Tarih araligi gecersiz veya cok uzun.' });
+        return adminRedirect(req, res, { error: 'Tarih aralığı geçersiz veya çok uzun.' });
       }
 
       const client = await pool.connect();
@@ -1393,7 +1393,7 @@ app.post(
         client.release();
       }
 
-      return adminRedirect(req, res, { message: `${dayList.length} adet gunluk gorev olusturuldu.` });
+      return adminRedirect(req, res, { message: `${dayList.length} adet günlük görev oluşturuldu.` });
     }
 
     await query(
@@ -1435,7 +1435,7 @@ app.post(
       ]
     );
 
-    return adminRedirect(req, res, { message: 'Gorev olusturuldu.' });
+    return adminRedirect(req, res, { message: 'Görev oluşturuldu.' });
   })
 );
 
@@ -1451,11 +1451,11 @@ app.post(
     const targetWeekStart = normalizeWeekStart(targetWeekInput, null);
 
     if (!sourceWeekStart || !targetWeekStart) {
-      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta tarihleri gecersiz.' });
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta tarihleri geçersiz.' });
     }
 
     if (sourceWeekStart === targetWeekStart) {
-      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta ayni olamaz.' });
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta aynı olamaz.' });
     }
 
     if (studentId) {
@@ -1464,7 +1464,7 @@ app.post(
         [studentId]
       );
       if (studentRes.rowCount === 0) {
-        return adminRedirect(req, res, { error: 'Ogrenci secimi gecersiz.' });
+        return adminRedirect(req, res, { error: 'Öğrenci seçimi geçersiz.' });
       }
     }
 
@@ -1541,7 +1541,7 @@ app.post(
     }
 
     if (!planned.length) {
-      return adminRedirect(req, res, { message: 'Kaynak haftada kopyalanacak gorev bulunamadi.' });
+      return adminRedirect(req, res, { message: 'Kaynak haftada kopyalanacak görev bulunamadı.' });
     }
 
     let insertedCount = 0;
@@ -1601,7 +1601,7 @@ app.post(
     }
 
     return adminRedirect(req, res, {
-      message: `${insertedCount} gorev hedef haftaya kopyalandi. ${skippedCount} gorev zaten var oldugu icin atlandi.`
+      message: `${insertedCount} görev hedef haftaya kopyalandı. ${skippedCount} görev zaten var olduğu için atlandı.`
     });
   })
 );
@@ -1630,11 +1630,11 @@ app.post(
     const estimatedTime = estimatedTimeValidation.value;
 
     if (!title || !categoryId || !studentId || !repeatType) {
-      return adminRedirect(req, res, { error: 'Gorev guncelleme alanlari eksik.' });
+      return adminRedirect(req, res, { error: 'Görev güncelleme alanları eksik.' });
     }
 
     if (startDate && endDate && startDate > endDate) {
-      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+      return adminRedirect(req, res, { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' });
     }
 
     const [taskRes, categoryRes, studentRes] = await Promise.all([
@@ -1644,10 +1644,10 @@ app.post(
     ]);
 
     if (taskRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Görev bulunamadı.' });
     }
     if (categoryRes.rowCount === 0 || studentRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Kategori veya ogrenci gecersiz.' });
+      return adminRedirect(req, res, { error: 'Kategori veya öğrenci geçersiz.' });
     }
 
     let singleDateVal = null;
@@ -1657,19 +1657,19 @@ app.post(
 
     if (repeatType === 'once') {
       if (!singleDate) {
-        return adminRedirect(req, res, { error: 'Tek seferlik gorev icin tarih zorunlu.' });
+        return adminRedirect(req, res, { error: 'Tek seferlik görev için tarih zorunlu.' });
       }
       singleDateVal = singleDate;
     } else if (repeatType === 'daily') {
-      return adminRedirect(req, res, { error: 'Her gun tipi sadece yeni gorev olusturmada kullanilir.' });
+      return adminRedirect(req, res, { error: 'Her gün tipi sadece yeni görev oluşturmada kullanılır.' });
     } else if (repeatType === 'weekly') {
       if (weeklyDay === '') {
-        return adminRedirect(req, res, { error: 'Haftalik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Haftalık görev için gün zorunlu.' });
       }
       weeklyDayVal = Number(weeklyDay);
     } else if (repeatType === 'monthly') {
       if (!monthlyDay) {
-        return adminRedirect(req, res, { error: 'Aylik gorev icin gun zorunlu.' });
+        return adminRedirect(req, res, { error: 'Aylık görev için gün zorunlu.' });
       }
       monthlyDayVal = Number(monthlyDay);
     } else if (repeatType === 'custom') {
@@ -1679,11 +1679,11 @@ app.post(
         .filter(Boolean);
 
       if (!parsedDates.length) {
-        return adminRedirect(req, res, { error: 'Ozel tarihli gorev icin en az bir tarih girin.' });
+        return adminRedirect(req, res, { error: 'Özel tarihli görev için en az bir tarih girin.' });
       }
       customDatesVal = parsedDates;
     } else {
-      return adminRedirect(req, res, { error: 'Gecersiz tekrar tipi.' });
+      return adminRedirect(req, res, { error: 'Geçersiz tekrar tipi.' });
     }
 
     await query(
@@ -1721,7 +1721,7 @@ app.post(
       ]
     );
 
-    return adminRedirect(req, res, { message: 'Gorev guncellendi.' });
+    return adminRedirect(req, res, { message: 'Görev güncellendi.' });
   })
 );
 
@@ -1735,12 +1735,12 @@ app.post(
 
     const taskRes = await query(`SELECT id FROM tasks WHERE id = $1 LIMIT 1`, [taskId]);
     if (taskRes.rowCount === 0) {
-      return res.status(404).json({ ok: false, error: 'Gorev bulunamadi.' });
+      return res.status(404).json({ ok: false, error: 'Görev bulunamadı.' });
     }
 
     if (field === 'title') {
       if (!value) {
-        return res.status(400).json({ ok: false, error: 'Baslik bos olamaz.' });
+        return res.status(400).json({ ok: false, error: 'Başlık boş olamaz.' });
       }
       await query(`UPDATE tasks SET title = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: value });
@@ -1757,7 +1757,7 @@ app.post(
         [value]
       );
       if (studentRes.rowCount === 0) {
-        return res.status(400).json({ ok: false, error: 'Ogrenci gecersiz.' });
+        return res.status(400).json({ ok: false, error: 'Öğrenci geçersiz.' });
       }
       await query(`UPDATE tasks SET student_id = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: studentRes.rows[0].name });
@@ -1766,7 +1766,7 @@ app.post(
     if (field === 'categoryId') {
       const categoryRes = await query(`SELECT id, name FROM categories WHERE id = $1 LIMIT 1`, [value]);
       if (categoryRes.rowCount === 0) {
-        return res.status(400).json({ ok: false, error: 'Kategori gecersiz.' });
+        return res.status(400).json({ ok: false, error: 'Kategori geçersiz.' });
       }
       await query(`UPDATE tasks SET category_id = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: categoryRes.rows[0].name });
@@ -1785,7 +1785,7 @@ app.post(
       });
     }
 
-    return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
+    return res.status(400).json({ ok: false, error: 'Güncellenebilir alan bulunamadı.' });
   })
 );
 
@@ -1806,17 +1806,17 @@ app.post(
     const archiveAction = normalizeText(req.body.archiveAction) || 'keep';
 
     if (!taskIds.length) {
-      return adminRedirect(req, res, { error: 'Toplu guncelleme icin en az bir gorev secin.' });
+      return adminRedirect(req, res, { error: 'Toplu güncelleme için en az bir görev seçin.' });
     }
 
     if (startDate && endDate && startDate > endDate) {
-      return adminRedirect(req, res, { error: 'Baslangic tarihi bitis tarihinden buyuk olamaz.' });
+      return adminRedirect(req, res, { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' });
     }
 
     if (categoryId) {
       const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
       if (categoryRes.rowCount === 0) {
-        return adminRedirect(req, res, { error: 'Kategori gecersiz.' });
+        return adminRedirect(req, res, { error: 'Kategori geçersiz.' });
       }
     }
 
@@ -1826,7 +1826,7 @@ app.post(
         [studentId]
       );
       if (studentRes.rowCount === 0) {
-        return adminRedirect(req, res, { error: 'Ogrenci gecersiz.' });
+        return adminRedirect(req, res, { error: 'Öğrenci geçersiz.' });
       }
     }
 
@@ -1846,7 +1846,7 @@ app.post(
     if (repeatType) {
       if (!['once', 'weekly', 'monthly', 'custom'].includes(repeatType)) {
         return adminRedirect(req, res, {
-          error: 'Toplu guncellemede tekrar tipi olarak Tek Seferlik, Haftalik, Aylik veya Ozel secin.'
+          error: 'Toplu güncellemede tekrar tipi olarak Tek Seferlik, Haftalık, Aylık veya Özel seçin.'
         });
       }
 
@@ -1857,17 +1857,17 @@ app.post(
 
       if (repeatType === 'once') {
         if (!singleDate) {
-          return adminRedirect(req, res, { error: 'Tek seferlik icin tarih zorunlu.' });
+          return adminRedirect(req, res, { error: 'Tek seferlik için tarih zorunlu.' });
         }
         singleDateVal = singleDate;
       } else if (repeatType === 'weekly') {
         if (weeklyDay === '') {
-          return adminRedirect(req, res, { error: 'Haftalik icin gun zorunlu.' });
+          return adminRedirect(req, res, { error: 'Haftalık için gün zorunlu.' });
         }
         weeklyDayVal = Number(weeklyDay);
       } else if (repeatType === 'monthly') {
         if (!monthlyDay) {
-          return adminRedirect(req, res, { error: 'Aylik icin gun zorunlu.' });
+          return adminRedirect(req, res, { error: 'Aylık için gün zorunlu.' });
         }
         monthlyDayVal = Number(monthlyDay);
       } else if (repeatType === 'custom') {
@@ -1877,7 +1877,7 @@ app.post(
           .filter(Boolean);
 
         if (!parsedDates.length) {
-          return adminRedirect(req, res, { error: 'Ozel tekrar icin en az bir tarih girin.' });
+          return adminRedirect(req, res, { error: 'Özel tekrar için en az bir tarih girin.' });
         }
         customDatesVal = parsedDates;
       }
@@ -1908,11 +1908,11 @@ app.post(
       values.push(archiveAction === 'archive');
       setClauses.push(`is_archived = $${values.length}`);
     } else if (archiveAction !== 'keep') {
-      return adminRedirect(req, res, { error: 'Arsiv islemi gecersiz.' });
+      return adminRedirect(req, res, { error: 'Arşiv işlemi geçersiz.' });
     }
 
     if (!setClauses.length) {
-      return adminRedirect(req, res, { error: 'Toplu guncelleme icin en az bir alan secin.' });
+      return adminRedirect(req, res, { error: 'Toplu güncelleme için en az bir alan seçin.' });
     }
 
     values.push(taskIds);
@@ -1926,11 +1926,11 @@ app.post(
     );
 
     if (updated.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Secili gorevler bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Seçili görevler bulunamadı.' });
     }
 
     return adminRedirect(req, res, {
-      message: `${updated.rowCount}/${taskIds.length} gorev toplu olarak guncellendi.`
+      message: `${updated.rowCount}/${taskIds.length} görev toplu olarak güncellendi.`
     });
   })
 );
@@ -1943,10 +1943,10 @@ app.post(
     const updated = await query(`UPDATE tasks SET is_archived = true WHERE id = $1`, [taskId]);
 
     if (updated.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Görev bulunamadı.' });
     }
 
-    return adminRedirect(req, res, { message: 'Gorev arsive alindi.' });
+    return adminRedirect(req, res, { message: 'Görev arşive alındı.' });
   })
 );
 
@@ -1958,10 +1958,10 @@ app.post(
     const updated = await query(`UPDATE tasks SET is_archived = false WHERE id = $1`, [taskId]);
 
     if (updated.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Görev bulunamadı.' });
     }
 
-    return adminRedirect(req, res, { message: 'Gorev yeniden aktiflesti.' });
+    return adminRedirect(req, res, { message: 'Görev yeniden aktifleşti.' });
   })
 );
 
@@ -1973,10 +1973,10 @@ app.post(
     const deleted = await query(`DELETE FROM tasks WHERE id = $1`, [taskId]);
 
     if (deleted.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Gorev bulunamadi.' });
+      return adminRedirect(req, res, { error: 'Görev bulunamadı.' });
     }
 
-    return adminRedirect(req, res, { message: 'Gorev kalici olarak silindi.' });
+    return adminRedirect(req, res, { message: 'Görev kalıcı olarak silindi.' });
   })
 );
 
@@ -1993,11 +1993,11 @@ app.post(
     const penaltyLabel = normalizeText(req.body.penaltyLabel);
 
     if (!weekStart || !studentId || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta, ogrenci ve kategori zorunlu.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Hafta, öğrenci ve kategori zorunlu.', weekStart: weekStart || '' });
     }
 
     if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
-      return adminRedirect(req, res, { error: 'Odul/ceza puani 0 veya daha buyuk bir tam sayi olmali.', weekStart });
+      return adminRedirect(req, res, { error: 'Ödül/ceza puanı 0 veya daha büyük bir tam sayı olmalı.', weekStart });
     }
 
     const [studentRes, categoryRes] = await Promise.all([
@@ -2005,7 +2005,7 @@ app.post(
       query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId])
     ]);
     if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Ogrenci veya kategori bulunamadi.', weekStart });
+      return adminRedirect(req, res, { error: 'Öğrenci veya kategori bulunamadı.', weekStart });
     }
 
     const existingRes = await query(
@@ -2065,7 +2065,7 @@ app.post(
       );
     }
 
-    return adminRedirect(req, res, { message: 'Ogrenciye ozel haftalik kategori kurali kaydedildi.', weekStart });
+    return adminRedirect(req, res, { message: 'Öğrenciye özel haftalık kategori kuralı kaydedildi.', weekStart });
   })
 );
 
@@ -2083,11 +2083,11 @@ app.post(
     const penaltyLabel = normalizeText(req.body.penaltyLabel);
 
     if (!weekStart || !studentId || !categoryId) {
-      return adminRedirect(req, res, { error: 'Hafta, ogrenci ve kategori zorunlu.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Hafta, öğrenci ve kategori zorunlu.', weekStart: weekStart || '' });
     }
 
     if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || !Number.isInteger(penaltyPoints) || penaltyPoints < 0) {
-      return adminRedirect(req, res, { error: 'Odul/ceza puani 0 veya daha buyuk bir tam sayi olmali.', weekStart });
+      return adminRedirect(req, res, { error: 'Ödül/ceza puanı 0 veya daha büyük bir tam sayı olmalı.', weekStart });
     }
 
     const [ruleRes, studentRes, categoryRes] = await Promise.all([
@@ -2097,10 +2097,10 @@ app.post(
     ]);
 
     if (ruleRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Guncellenecek haftalik kural bulunamadi.', weekStart });
+      return adminRedirect(req, res, { error: 'Güncellenecek haftalık kural bulunamadı.', weekStart });
     }
     if (studentRes.rowCount === 0 || categoryRes.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Ogrenci veya kategori bulunamadi.', weekStart });
+      return adminRedirect(req, res, { error: 'Öğrenci veya kategori bulunamadı.', weekStart });
     }
 
     const duplicateRes = await query(
@@ -2117,7 +2117,7 @@ app.post(
     );
     if (duplicateRes.rowCount > 0) {
       return adminRedirect(req, res, {
-        error: 'Bu hafta, ogrenci ve kategori icin zaten bir kural var.',
+        error: 'Bu hafta, öğrenci ve kategori için zaten bir kural var.',
         weekStart
       });
     }
@@ -2153,14 +2153,14 @@ app.post(
     } catch (err) {
       if (err.code === '23505') {
         return adminRedirect(req, res, {
-          error: 'Bu hafta, ogrenci ve kategori icin zaten bir kural var.',
+          error: 'Bu hafta, öğrenci ve kategori için zaten bir kural var.',
           weekStart
         });
       }
       throw err;
     }
 
-    return adminRedirect(req, res, { message: 'Ogrenciye ozel haftalik kategori kurali guncellendi.', weekStart });
+    return adminRedirect(req, res, { message: 'Öğrenciye özel haftalık kategori kuralı güncellendi.', weekStart });
   })
 );
 
@@ -2173,10 +2173,10 @@ app.post(
 
     const deleted = await query(`DELETE FROM weekly_category_rules WHERE id = $1`, [ruleId]);
     if (deleted.rowCount === 0) {
-      return adminRedirect(req, res, { error: 'Silinecek haftalik kural bulunamadi.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Silinecek haftalık kural bulunamadı.', weekStart: weekStart || '' });
     }
 
-    return adminRedirect(req, res, { message: 'Haftalik kategori kurali silindi.', weekStart: weekStart || '' });
+    return adminRedirect(req, res, { message: 'Haftalık kategori kuralı silindi.', weekStart: weekStart || '' });
   })
 );
 
@@ -2188,7 +2188,7 @@ app.post(
     const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart), todayDateString());
 
     if (!isDateOnly(cutoffDate)) {
-      return adminRedirect(req, res, { error: 'Kesim tarihi formati gecersiz.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Kesim tarihi formatı geçersiz.', weekStart: weekStart || '' });
     }
 
     const client = await pool.connect();
@@ -2226,7 +2226,7 @@ app.post(
       await client.query('COMMIT');
 
       return adminRedirect(req, res, {
-        message: `${cutoffDate} oncesi puanlama verileri silindi. Log: ${deletedLogs.rowCount}, Degerlendirme: ${deletedEvaluations.rowCount}, Kural: ${deletedRules.rowCount}.`,
+        message: `${cutoffDate} öncesi puanlama verileri silindi. Log: ${deletedLogs.rowCount}, Değerlendirme: ${deletedEvaluations.rowCount}, Kural: ${deletedRules.rowCount}.`,
         weekStart: weekStart || ''
       });
     } catch (err) {
@@ -2247,7 +2247,7 @@ app.post(
     const studentId = normalizeText(req.body.studentId);
 
     if (!weekStart) {
-      return adminRedirect(req, res, { error: 'Hafta bilgisi gecersiz.' });
+      return adminRedirect(req, res, { error: 'Hafta bilgisi geçersiz.' });
     }
 
     const client = await pool.connect();
@@ -2267,7 +2267,7 @@ app.post(
 
       if (!studentsRes.rowCount) {
         await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Degerlendirilecek ogrenci bulunamadi.', weekStart });
+        return adminRedirect(req, res, { error: 'Değerlendirilecek öğrenci bulunamadı.', weekStart });
       }
 
       const studentIds = studentsRes.rows.map((row) => row.id);
@@ -2293,7 +2293,7 @@ app.post(
 
       if (!rulesRes.rowCount) {
         await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Bu hafta icin kategori odul/ceza tanimi yok.', weekStart });
+        return adminRedirect(req, res, { error: 'Bu hafta için kategori ödül/ceza tanımı yok.', weekStart });
       }
 
       const genericRuleByCategory = new Map();
@@ -2313,7 +2313,7 @@ app.post(
       );
       if (!categoryIds.length) {
         await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Secili ogrenciler icin uygulanabilir kural bulunamadi.', weekStart });
+        return adminRedirect(req, res, { error: 'Seçili öğrenciler için uygulanabilir kural bulunamadı.', weekStart });
       }
       const weekDates = getWeekDates(weekStart);
 
@@ -2434,11 +2434,11 @@ app.post(
           if (metric.due > 0 && completionRate > 80 && Number(rule.rewardPoints) > 0) {
             resultType = 'reward';
             pointsApplied = Number(rule.rewardPoints);
-            reasonText = normalizeText(rule.rewardLabel) || `${rule.categoryName} haftalik odul`;
+            reasonText = normalizeText(rule.rewardLabel) || `${rule.categoryName} haftalık ödül`;
           } else if (metric.due > 0 && completionRate < 80 && Number(rule.penaltyPoints) > 0) {
             resultType = 'penalty';
             pointsApplied = -Number(rule.penaltyPoints);
-            reasonText = normalizeText(rule.penaltyLabel) || `${rule.categoryName} haftalik ceza`;
+            reasonText = normalizeText(rule.penaltyLabel) || `${rule.categoryName} haftalık ceza`;
           }
 
           if (pointsApplied !== 0) {
@@ -2512,7 +2512,7 @@ app.post(
       await client.query('COMMIT');
 
       return adminRedirect(req, res, {
-        message: `Haftalik degerlendirme tamamlandi. Kayit: ${createdCount}, Odul: ${rewardCount}, Ceza: ${penaltyCount}, Atlanan: ${skippedCount}.`,
+        message: `Haftalık değerlendirme tamamlandı. Kayıt: ${createdCount}, Ödül: ${rewardCount}, Ceza: ${penaltyCount}, Atlanan: ${skippedCount}.`,
         weekStart,
         weeklyEvalStudentId: studentId
       });
@@ -2536,11 +2536,11 @@ app.post(
     const parsedPoints = Number(req.body.points);
 
     if (!studentId || !type || !parsedPoints || !reason) {
-      return adminRedirect(req, res, { error: 'Odul/ceza alanlari eksik.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Ödül/ceza alanları eksik.', weekStart: weekStart || '' });
     }
 
     if (!['reward', 'penalty'].includes(type)) {
-      return adminRedirect(req, res, { error: 'Gecersiz puan tipi.', weekStart: weekStart || '' });
+      return adminRedirect(req, res, { error: 'Geçersiz puan tipi.', weekStart: weekStart || '' });
     }
 
     const delta = type === 'reward' ? Math.abs(parsedPoints) : -Math.abs(parsedPoints);
@@ -2556,7 +2556,7 @@ app.post(
 
       if (studentRes.rowCount === 0) {
         await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: 'Ogrenci bulunamadi.', weekStart: weekStart || '' });
+        return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.', weekStart: weekStart || '' });
       }
 
       await client.query(
@@ -2580,7 +2580,7 @@ app.post(
       client.release();
     }
 
-    return adminRedirect(req, res, { message: 'Puan islemi kaydedildi.', weekStart: weekStart || '' });
+    return adminRedirect(req, res, { message: 'Puan işlemi kaydedildi.', weekStart: weekStart || '' });
   })
 );
 
@@ -2642,19 +2642,19 @@ app.get(
     ]);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Ogrenci Takip';
+    workbook.creator = 'Öğrenci Takip';
     workbook.created = new Date();
 
-    const evalSheet = workbook.addWorksheet('Haftalik Degerlendirme');
+    const evalSheet = workbook.addWorksheet('Haftalık Değerlendirme');
     evalSheet.columns = [
-      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Öğrenci', key: 'studentName', width: 24 },
       { header: 'Kategori', key: 'categoryName', width: 20 },
-      { header: 'Toplam Gorev', key: 'dueCount', width: 14 },
-      { header: 'Yapilan', key: 'doneCount', width: 11 },
+      { header: 'Toplam Görev', key: 'dueCount', width: 14 },
+      { header: 'Yapılan', key: 'doneCount', width: 11 },
       { header: 'Oran', key: 'completionRate', width: 10 },
-      { header: 'Sonuc', key: 'resultText', width: 12 },
+      { header: 'Sonuç', key: 'resultText', width: 12 },
       { header: 'Puan', key: 'pointsApplied', width: 10 },
-      { header: 'Aciklama', key: 'reasonText', width: 42 },
+      { header: 'Açıklama', key: 'reasonText', width: 42 },
       { header: 'Hesaplama Tarihi', key: 'createdDate', width: 14 }
     ];
     evalSheet.getRow(1).font = { bold: true };
@@ -2667,21 +2667,21 @@ app.get(
         dueCount: Number(row.dueCount || 0),
         doneCount: Number(row.doneCount || 0),
         completionRate: `%${Number(row.completionRate || 0).toFixed(1)}`,
-        resultText: row.resultType === 'reward' ? 'Odul' : row.resultType === 'penalty' ? 'Ceza' : 'Esik',
+        resultText: row.resultType === 'reward' ? 'Ödül' : row.resultType === 'penalty' ? 'Ceza' : 'Eşik',
         pointsApplied: Number(row.pointsApplied || 0),
         reasonText: row.reasonText || '-',
         createdDate: toDateOnly(row.calculatedAt)
       });
     });
 
-    const logSheet = workbook.addWorksheet('Haftalik Puan Loglari');
+    const logSheet = workbook.addWorksheet('Haftalık Puan Logları');
     logSheet.columns = [
       { header: 'Tarih', key: 'createdDate', width: 13 },
-      { header: 'Ogrenci', key: 'studentName', width: 24 },
+      { header: 'Öğrenci', key: 'studentName', width: 24 },
       { header: 'Tip', key: 'typeText', width: 10 },
       { header: 'Puan', key: 'points', width: 8 },
       { header: 'Delta', key: 'delta', width: 8 },
-      { header: 'Gerekce', key: 'reason', width: 56 }
+      { header: 'Gerekçe', key: 'reason', width: 56 }
     ];
     logSheet.getRow(1).font = { bold: true };
     logSheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -2690,7 +2690,7 @@ app.get(
       logSheet.addRow({
         createdDate: toDateOnly(row.createdAt),
         studentName: row.studentName,
-        typeText: row.type === 'reward' ? 'Odul' : 'Ceza',
+        typeText: row.type === 'reward' ? 'Ödül' : 'Ceza',
         points: Number(row.points || 0),
         delta: Number(row.delta || 0),
         reason: row.reason
@@ -2946,22 +2946,22 @@ app.get(
     );
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Ogrenci Takip';
+    workbook.creator = 'Öğrenci Takip';
     workbook.created = new Date();
 
     const categoriesRes = await query(`SELECT id, name FROM categories`);
     const categoryNameById = new Map(categoriesRes.rows.map((c) => [c.id, c.name]));
     const statusLabel = (status) => {
-      if (status === 'done') return 'Yapildi';
-      if (status === 'not_done') return 'Yapilmadi';
-      return 'Isaretlenmedi';
+      if (status === 'done') return 'Yapıldı';
+      if (status === 'not_done') return 'Yapılmadı';
+      return 'İşaretlenmedi';
     };
 
-    const sheet = workbook.addWorksheet('Gorevler');
+    const sheet = workbook.addWorksheet('Görevler');
     sheet.columns = [
       { header: 'Tarih', key: 'date', width: 13 },
-      { header: 'Gun', key: 'dayName', width: 14 },
-      { header: 'Gorev', key: 'title', width: 46 },
+      { header: 'Gün', key: 'dayName', width: 14 },
+      { header: 'Görev', key: 'title', width: 46 },
       { header: 'Kategori', key: 'categoryName', width: 20 },
       { header: 'Saat', key: 'estimatedTime', width: 10 },
       { header: 'Durum', key: 'statusText', width: 16 }
@@ -2970,7 +2970,7 @@ app.get(
     sheet.getRow(1).font = { bold: true };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-    // Liste formati: her gorev icin ayri satir (tek hucreye toplama yok)
+    // Liste formatı: her görev için ayrı satır (tek hücreye toplama yok)
     calendar.days.forEach((day) => {
       day.tasks.forEach((task) => {
         sheet.addRow({
@@ -2991,11 +2991,11 @@ app.get(
     const totalDuration = calendar.days.reduce((sum, day) => sum + day.durationMinutes, 0);
     const summaryLabelRow = sheet.addRow({
       date: `${calendar.weekStart} - ${calendar.weekEnd}`,
-      dayName: 'Hafta Ozeti',
-      title: `Toplam Gorev: ${totalDue} | Tamamlanan: ${totalDone} | Tamamlanmayan: ${Math.max(totalDue - totalDone, 0)}`,
+      dayName: 'Hafta Özeti',
+      title: `Toplam Görev: ${totalDue} | Tamamlanan: ${totalDone} | Tamamlanmayan: ${Math.max(totalDue - totalDone, 0)}`,
       categoryName: '',
       estimatedTime: '',
-      statusText: `Soru: ${totalQuestions} | Sure: ${totalDuration} dk`
+      statusText: `Soru: ${totalQuestions} | Süre: ${totalDuration} dk`
     });
     summaryLabelRow.font = { bold: true };
 
@@ -3062,18 +3062,18 @@ app.get(
     ]);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Ogrenci Takip';
+    workbook.creator = 'Öğrenci Takip';
     workbook.created = new Date();
 
-    const evalSheet = workbook.addWorksheet('Haftalik Odul Ceza');
+    const evalSheet = workbook.addWorksheet('Haftalık Ödül Ceza');
     evalSheet.columns = [
       { header: 'Kategori', key: 'categoryName', width: 24 },
-      { header: 'Toplam Gorev', key: 'dueCount', width: 14 },
-      { header: 'Yapilan', key: 'doneCount', width: 11 },
+      { header: 'Toplam Görev', key: 'dueCount', width: 14 },
+      { header: 'Yapılan', key: 'doneCount', width: 11 },
       { header: 'Oran', key: 'completionRate', width: 10 },
-      { header: 'Sonuc', key: 'resultText', width: 12 },
+      { header: 'Sonuç', key: 'resultText', width: 12 },
       { header: 'Puan', key: 'pointsApplied', width: 10 },
-      { header: 'Aciklama', key: 'reasonText', width: 42 },
+      { header: 'Açıklama', key: 'reasonText', width: 42 },
       { header: 'Hesaplama Tarihi', key: 'createdDate', width: 14 }
     ];
     evalSheet.getRow(1).font = { bold: true };
@@ -3085,20 +3085,20 @@ app.get(
         dueCount: Number(row.dueCount || 0),
         doneCount: Number(row.doneCount || 0),
         completionRate: `%${Number(row.completionRate || 0).toFixed(1)}`,
-        resultText: row.resultType === 'reward' ? 'Odul' : row.resultType === 'penalty' ? 'Ceza' : 'Esik',
+        resultText: row.resultType === 'reward' ? 'Ödül' : row.resultType === 'penalty' ? 'Ceza' : 'Eşik',
         pointsApplied: Number(row.pointsApplied || 0),
         reasonText: row.reasonText || '-',
         createdDate: toDateOnly(row.calculatedAt)
       });
     });
 
-    const logSheet = workbook.addWorksheet('Haftalik Puan Loglari');
+    const logSheet = workbook.addWorksheet('Haftalık Puan Logları');
     logSheet.columns = [
       { header: 'Tarih', key: 'createdDate', width: 13 },
       { header: 'Tip', key: 'typeText', width: 10 },
       { header: 'Puan', key: 'points', width: 8 },
       { header: 'Delta', key: 'delta', width: 8 },
-      { header: 'Gerekce', key: 'reason', width: 56 }
+      { header: 'Gerekçe', key: 'reason', width: 56 }
     ];
     logSheet.getRow(1).font = { bold: true };
     logSheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -3106,7 +3106,7 @@ app.get(
     logsRes.rows.forEach((row) => {
       logSheet.addRow({
         createdDate: toDateOnly(row.createdAt),
-        typeText: row.type === 'reward' ? 'Odul' : 'Ceza',
+        typeText: row.type === 'reward' ? 'Ödül' : 'Ceza',
         points: Number(row.points || 0),
         delta: Number(row.delta || 0),
         reason: row.reason
@@ -3156,25 +3156,25 @@ app.post(
     }
 
     if (!['single', 'multi_daily'].includes(planningMode)) {
-      return studentRedirect(req, res, { error: 'Plan tipi gecersiz.' });
+      return studentRedirect(req, res, { error: 'Plan tipi geçersiz.' });
     }
 
     if (planningMode === 'single' && !isDateOnly(singleDate)) {
-      return studentRedirect(req, res, { error: 'Gorev tarihi gecersiz.' });
+      return studentRedirect(req, res, { error: 'Görev tarihi geçersiz.' });
     }
 
     if (planningMode === 'multi_daily') {
       if (!isDateOnly(rangeStartDate)) {
-        return studentRedirect(req, res, { error: 'Baslangic tarihi gecersiz.' });
+        return studentRedirect(req, res, { error: 'Başlangıç tarihi geçersiz.' });
       }
       if (!Number.isInteger(rangeDayCount) || rangeDayCount < 1 || rangeDayCount > 180) {
-        return studentRedirect(req, res, { error: 'Gun sayisi 1 ile 180 arasinda olmali.' });
+        return studentRedirect(req, res, { error: 'Gün sayısı 1 ile 180 arasında olmalı.' });
       }
     }
 
     const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
     if (categoryRes.rowCount === 0) {
-      return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
+      return studentRedirect(req, res, { error: 'Kategori bulunamadı.' });
     }
 
     if (planningMode === 'single') {
@@ -3193,7 +3193,7 @@ app.post(
         [req.currentUser.id, categoryId, title, singleDate]
       );
       if (duplicateTaskRes.rowCount > 0) {
-        return studentRedirect(req, res, { error: 'Ayni gun icin ayni baslikta gorev zaten mevcut.' });
+        return studentRedirect(req, res, { error: 'Aynı gün için aynı başlıkta görev zaten mevcut.' });
       }
 
       await query(
@@ -3229,13 +3229,13 @@ app.post(
         ]
       );
 
-      return studentRedirect(req, res, { message: 'Gunluk gorev eklendi.' });
+      return studentRedirect(req, res, { message: 'Günlük görev eklendi.' });
     }
 
     const rangeEndDate = shiftDate(rangeStartDate, rangeDayCount - 1);
     const dayList = getDateRangeInclusive(rangeStartDate, rangeEndDate, 200);
     if (!dayList || !dayList.length) {
-      return studentRedirect(req, res, { error: 'Toplu plan tarih araligi gecersiz.' });
+      return studentRedirect(req, res, { error: 'Toplu plan tarih aralığı geçersiz.' });
     }
 
     const existingRes = await query(
@@ -3255,7 +3255,7 @@ app.post(
     const daysToInsert = dayList.filter((day) => !existingDays.has(day));
 
     if (!daysToInsert.length) {
-      return studentRedirect(req, res, { error: 'Secilen araliktaki gorevlerin tamami zaten mevcut.' });
+      return studentRedirect(req, res, { error: 'Seçilen aralıktaki görevlerin tamamı zaten mevcut.' });
     }
 
     const client = await pool.connect();
@@ -3305,8 +3305,8 @@ app.post(
 
     const skippedCount = dayList.length - daysToInsert.length;
     const infoText = skippedCount > 0
-      ? `${daysToInsert.length} adet gorev eklendi, ${skippedCount} adet mevcut oldugu icin atlandi.`
-      : `${daysToInsert.length} adet gorev eklendi.`;
+      ? `${daysToInsert.length} adet görev eklendi, ${skippedCount} adet mevcut olduğu için atlandı.`
+      : `${daysToInsert.length} adet görev eklendi.`;
     return studentRedirect(req, res, { message: infoText });
   })
 );
@@ -3334,7 +3334,7 @@ app.post(
     );
 
     if (taskRes.rowCount === 0) {
-      return res.status(404).json({ ok: false, error: 'Bu gorev guncellenemez.' });
+      return res.status(404).json({ ok: false, error: 'Bu görev güncellenemez.' });
     }
 
     if (field === 'title') {
@@ -3358,7 +3358,7 @@ app.post(
     if (field === 'categoryId') {
       const categoryRes = await query(`SELECT id, name FROM categories WHERE id = $1 LIMIT 1`, [value]);
       if (categoryRes.rowCount === 0) {
-        return res.status(400).json({ ok: false, error: 'Kategori gecersiz.' });
+        return res.status(400).json({ ok: false, error: 'Kategori geçersiz.' });
       }
       await query(`UPDATE tasks SET category_id = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: categoryRes.rows[0].name });
@@ -3366,7 +3366,7 @@ app.post(
 
     if (field === 'singleDate') {
       if (!isDateOnly(value)) {
-        return res.status(400).json({ ok: false, error: 'Tarih formati gecersiz.' });
+        return res.status(400).json({ ok: false, error: 'Tarih formatı geçersiz.' });
       }
       await query(`UPDATE tasks SET single_date = $1 WHERE id = $2`, [value, taskId]);
       return res.json({ ok: true, value, display: value });
@@ -3385,7 +3385,7 @@ app.post(
       });
     }
 
-    return res.status(400).json({ ok: false, error: 'Guncellenebilir alan bulunamadi.' });
+    return res.status(400).json({ ok: false, error: 'Güncellenebilir alan bulunamadı.' });
   })
 );
 
@@ -3414,7 +3414,7 @@ app.post(
     const estimatedTime = estimatedTimeValidation.value;
 
     if (!categoryId || !isDateOnly(singleDate)) {
-      return studentRedirect(req, res, { error: 'Gorev guncelleme alanlari gecersiz.' });
+      return studentRedirect(req, res, { error: 'Görev güncelleme alanları geçersiz.' });
     }
 
     const [taskRes, categoryRes] = await Promise.all([
@@ -3435,11 +3435,11 @@ app.post(
     ]);
 
     if (taskRes.rowCount === 0) {
-      return studentRedirect(req, res, { error: 'Bu gorev guncellenemez.' });
+      return studentRedirect(req, res, { error: 'Bu görev güncellenemez.' });
     }
 
     if (categoryRes.rowCount === 0) {
-      return studentRedirect(req, res, { error: 'Kategori bulunamadi.' });
+      return studentRedirect(req, res, { error: 'Kategori bulunamadı.' });
     }
 
     await query(
@@ -3451,7 +3451,7 @@ app.post(
       [title, description, categoryId, singleDate, estimatedTime, taskId]
     );
 
-    return studentRedirect(req, res, { message: 'Gorev guncellendi.' });
+    return studentRedirect(req, res, { message: 'Görev güncellendi.' });
   })
 );
 
@@ -3474,10 +3474,10 @@ app.post(
     );
 
     if (deleted.rowCount === 0) {
-      return studentRedirect(req, res, { error: 'Bu gorev silinemedi.' });
+      return studentRedirect(req, res, { error: 'Bu görev silinemedi.' });
     }
 
-    return studentRedirect(req, res, { message: 'Gorev silindi.' });
+    return studentRedirect(req, res, { message: 'Görev silindi.' });
   })
 );
 
@@ -3491,7 +3491,7 @@ app.post(
     const day = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
 
     if (!['done', 'not_done'].includes(status)) {
-      return res.redirect('/student/dashboard?error=Gecersiz%20durum.');
+      return res.redirect(`/student/dashboard?error=${encodeURIComponent('Geçersiz durum.')}`);
     }
 
     const taskRes = await query(
@@ -3500,7 +3500,7 @@ app.post(
     );
 
     if (taskRes.rowCount === 0) {
-      return res.redirect('/student/dashboard?error=Gorev%20bulunamadi.');
+      return res.redirect(`/student/dashboard?error=${encodeURIComponent('Görev bulunamadı.')}`);
     }
 
     await query(
@@ -3513,7 +3513,7 @@ app.post(
       [makeId('status'), taskId, req.currentUser.id, day, status, note]
     );
 
-    return res.redirect('/student/dashboard?message=Gorev%20durumu%20guncellendi.');
+    return res.redirect(`/student/dashboard?message=${encodeURIComponent('Görev durumu güncellendi.')}`);
   })
 );
 
@@ -3529,28 +3529,28 @@ app.post(
     const durationMinutes = Number(req.body.durationMinutes);
 
     if (!categoryId || !lessonName) {
-      return res.redirect('/student/questions?error=Kategori%20ve%20ders%20adi%20zorunlu.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Kategori ve ders adı zorunlu.')}`);
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-      return res.redirect('/student/questions?error=Tarih%20formati%20gecersiz.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Tarih formatı geçersiz.')}`);
     }
 
     if (!Number.isInteger(correctCount) || correctCount < 0) {
-      return res.redirect('/student/questions?error=Dogru%20sayisi%20gecersiz.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Doğru sayısı geçersiz.')}`);
     }
 
     if (!Number.isInteger(wrongCount) || wrongCount < 0) {
-      return res.redirect('/student/questions?error=Yanlis%20sayisi%20gecersiz.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Yanlış sayısı geçersiz.')}`);
     }
 
     if (!Number.isInteger(durationMinutes) || durationMinutes < 0) {
-      return res.redirect('/student/questions?error=Sure%20gecersiz.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Süre geçersiz.')}`);
     }
 
     const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
     if (categoryRes.rowCount === 0) {
-      return res.redirect('/student/questions?error=Kategori%20bulunamadi.');
+      return res.redirect(`/student/questions?error=${encodeURIComponent('Kategori bulunamadı.')}`);
     }
 
     await query(
@@ -3563,7 +3563,7 @@ app.post(
       [makeId('q'), req.currentUser.id, day, categoryId, lessonName, correctCount, wrongCount, durationMinutes, correctCount + wrongCount]
     );
 
-    return res.redirect('/student/questions?message=Soru%20kaydi%20kaydedildi.');
+    return res.redirect(`/student/questions?message=${encodeURIComponent('Soru kaydı kaydedildi.')}`);
   })
 );
 
@@ -3573,32 +3573,32 @@ app.get(
     await query('SELECT 1');
     return res.json({
       ok: true,
-      service: 'ogrenci-takip-app',
+      service: 'öğrenci-takip-app',
       time: new Date().toISOString()
     });
   })
 );
 
 app.use((req, res) => {
-  res.status(404).send('Sayfa bulunamadi.');
+  res.status(404).send('Sayfa bulunamadı.');
 });
 
 app.use((err, req, res, _next) => {
-  console.error('Uygulama hatasi:', err);
+  console.error('Uygulama hatası:', err);
 
   if (req.path.startsWith('/admin')) {
-    return adminRedirect(req, res, { error: 'Beklenmeyen bir hata olustu.' });
+    return adminRedirect(req, res, { error: 'Beklenmeyen bir hata oluştu.' });
   }
 
   if (req.path.startsWith('/student')) {
-    return res.redirect('/student/dashboard?error=Beklenmeyen%20bir%20hata%20olustu.');
+    return res.redirect(`/student/dashboard?error=${encodeURIComponent('Beklenmeyen bir hata oluştu.')}`);
   }
 
   if (req.path === '/login') {
-    return res.status(500).render('login', { error: 'Beklenmeyen bir hata olustu.' });
+    return res.status(500).render('login', { error: 'Beklenmeyen bir hata oluştu.' });
   }
 
-  return res.status(500).send('Sunucu hatasi.');
+  return res.status(500).send('Sunucu hatası.');
 });
 
 async function bootstrap() {
@@ -3607,11 +3607,11 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT || 3000);
   app.listen(port, () => {
-    console.log(`Sunucu calisiyor: http://localhost:${port}`);
+    console.log(`Sunucu çalışıyor: http://localhost:${port}`);
   });
 }
 
 bootstrap().catch((err) => {
-  console.error('Baslatma hatasi:', err);
+  console.error('Başlatma hatası:', err);
   process.exit(1);
 });

@@ -3,44 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Giris</title>
+    <title>Giriş</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="login-hero">
       <div class="login-shell">
       <section class="login-brand-panel">
-        <span class="hero-tag">Gorev ve Performans Takibi</span>
-        <h1 class="brand-title">Ogrenci Takip Sistemi</h1>
+        <span class="hero-tag">Görev ve Performans Takibi</span>
+        <h1 class="brand-title">Öğrenci Takip Sistemi</h1>
         <p class="muted brand-subtitle">
-          Ogrencilerin gunluk gorev, soru, sure ve puan takibini tek bir panelde
-          yonetin.
+          Öğrencilerin günlük görev, soru, süre ve puan takibini tek bir panelde
+          yönetin.
         </p>
         <ul class="login-feature-list">
-          <li>Haftalik takvim ve gorev ilerleme gorunumu</li>
-          <li>Odul-ceza puanlama ve raporlama akisi</li>
-          <li>Mobil uyumlu, hizli gorev giris deneyimi</li>
+          <li>Haftalık takvim ve görev ilerleme görünümü</li>
+          <li>Ödül-ceza puanlama ve raporlama akışı</li>
+          <li>Mobil uyumlu, hızlı görev giriş deneyimi</li>
         </ul>
       </section>
 
       <section class="login-auth-panel">
-        <h2>Hesabina Giris Yap</h2>
-        <p class="muted">Rolune gore paneline guvenli sekilde yonlendirilirsin.</p>
+        <h2>Hesabına Giriş Yap</h2>
+        <p class="muted">Rolüne göre paneline güvenli şekilde yönlendirilirsin.</p>
 
         <% if (error) { %>
         <div class="alert error"><%= error %></div>
         <% } %>
 
         <form method="post" action="/login" class="stack login-form">
-          <label>Kullanici Adi</label>
+          <label>Kullanıcı Adı</label>
           <input type="text" name="username" autocomplete="username" required />
 
-          <label>Sifre</label>
+          <label>Şifre</label>
           <input type="password" name="password" autocomplete="current-password" required />
 
-          <button type="submit">Giris Yap</button>
+          <button type="submit">Giriş Yap</button>
           <p class="muted login-footnote">
-            Guvenli oturum acilir. Cikis yaptiginda oturum sonlandirilir.
+            Güvenli oturum açılır. Çıkış yaptığında oturum sonlandırılır.
           </p>
         </form>
       </section>

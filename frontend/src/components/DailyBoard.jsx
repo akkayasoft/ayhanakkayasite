@@ -28,7 +28,7 @@ export function DailyBoard({ endpoint }) {
         setStatus('ready');
         setError('');
       } catch (err) {
-        setError(err.message || 'Veri alinamadi.');
+        setError(err.message || 'Veri alınamadı.');
         setStatus((s) => (s === 'ready' ? 'ready' : 'error'));
       }
     },
@@ -62,8 +62,8 @@ export function DailyBoard({ endpoint }) {
     <div>
       <div className="row space-between center" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
         <p className="muted" style={{ margin: 0 }}>
-          {today ? `Gun: ${today}` : ''}
-          {lastUpdated ? ` - Son guncelleme ${formatTime(lastUpdated)}` : ''}
+          {today ? `Gün: ${today}` : ''}
+          {lastUpdated ? ` - Son güncelleme ${formatTime(lastUpdated)}` : ''}
           {status === 'error' && error ? ` - ${error}` : ''}
         </p>
         <div className="row center" style={{ gap: 8 }}>
@@ -82,21 +82,21 @@ export function DailyBoard({ endpoint }) {
       </div>
 
       {status === 'loading' && rows.length === 0 ? (
-        <p className="muted">Yukleniyor...</p>
+        <p className="muted">Yükleniyor...</p>
       ) : status === 'error' && rows.length === 0 ? (
-        <p className="muted">{error || 'Veri alinamadi.'}</p>
+        <p className="muted">{error || 'Veri alınamadı.'}</p>
       ) : rows.length === 0 ? (
-        <p className="muted">Kayitli ogrenci yok.</p>
+        <p className="muted">Kayitli öğrenci yok.</p>
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Ogrenci</th>
+                <th>Öğrenci</th>
                 <th>Toplam Puan</th>
-                <th>Bugun Gorev</th>
+                <th>Bugün Görev</th>
                 <th>Tamamlanan</th>
-                <th>Gunluk Soru</th>
+                <th>Günlük Soru</th>
               </tr>
             </thead>
             <tbody>

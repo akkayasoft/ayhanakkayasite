@@ -203,15 +203,15 @@ async function seedAdmin() {
     `,
     [
       `user_${crypto.randomUUID()}`,
-      'Sistem Yonetici',
+      'Sistem Yönetici',
       username,
       bcrypt.hashSync(password, 10)
     ]
   );
 
-  console.log('Varsayilan admin olusturuldu:');
-  console.log(`Kullanici: ${username}`);
-  console.log(`Sifre: ${password}`);
+  console.log('Varsayılan admin oluşturuldu:');
+  console.log(`Kullanıcı: ${username}`);
+  console.log(`Şifre: ${password}`);
 }
 
 module.exports = {
