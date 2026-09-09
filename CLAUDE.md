@@ -312,6 +312,14 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
 - Dolu olmayan hücrede geçen haftanın konusu ipucu olarak gösterilir.
 - Sayaç paydası **tüm dolu hücreleri** sayar (nöbet dahil); yalnızca dersleri
   saysaydı hepsi dolduğunda "15 / 14" gibi bir sayaç çıkardı.
+- **Excel çıktısı**: `/admin/schedule/topics/export?from=&to=`. İki sayfa —
+  *İşlenen Konular* (tarih · gün · dönem · ders saati · saat · ders · sınıf ·
+  konu; dondurulmuş başlık + otofiltre) ve *Sınıf Özeti* (sınıf/ders bazında
+  işlenen ders saati, ilk/son kayıt).
+  - Gerçek tarih `week_start + (day_of_week - 1)` ile hesaplanır, zil saati
+    ayardan; dönem etiketi `academicCalendar`'dan gelir.
+  - Varsayılan aralık **içinde bulunulan dönem**; dönem dışındaysak (yarıyıl
+    tatili ya da öğretim yılı başlamadan) tüm öğretim yılı.
 
 ## Uyanma rutini
 
