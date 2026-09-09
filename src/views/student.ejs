@@ -20,6 +20,7 @@
           <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
           <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
+          <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
         </nav>
 
@@ -702,6 +703,164 @@
           </article>
           <% }) %>
         </section>
+        <% } %>
+
+        <% if (currentPage === 'schedule' && scheduleView) { %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Ders Programı</h2>
+            <p class="muted">
+              <% if (scheduleView.gorunum === 'konular') { %>
+              Haftalık işlenen konular. Görüntülemeliktir — kayıtlar öğretmen tarafından girilir.
+              <% } else { %>
+              Haftalık ders çizelgesi · gün <%= scheduleView.ayar.startTime %> - <%= scheduleView.bitisSaati %> arası,
+              <%= scheduleView.ayar.periodCount %> ders saati.
+              <% } %>
+            </p>
+          </div>
+          <div class="row">
+            <a class="button-link <%= scheduleView.gorunum === 'cizelge' ? 'active' : '' %>" href="/student/schedule">Çizelge</a>
+            <a class="button-link <%= scheduleView.gorunum === 'konular' ? 'active' : '' %>" href="/student/schedule?gorunum=konular">İşlenen Konular</a>
+          </div>
+        </header>
+
+        <% if (!scheduleView.varMi) { %>
+        <section class="panel narrow">
+          <h3>Program henüz girilmedi</h3>
+          <p class="muted">Ders çizelgesi tanımlandığında burada görünecek.</p>
+        </section>
+        <% } else if (scheduleView.gorunum === 'cizelge') { %>
+
+        <section class="kpi-grid">
+          <article class="kpi">
+            <p class="kpi-label">Haftalık Ders</p>
+            <p class="kpi-value"><%= scheduleView.toplamDers %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Günün Bitişi</p>
+            <p class="kpi-value"><%= scheduleView.bitisSaati %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Günlük Ders Saati</p>
+            <p class="kpi-value"><%= scheduleView.ayar.periodCount %></p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalık Çizelge</h3>
+          <div class="table-wrap">
+            <table class="schedule-grid">
+              <thead>
+                <tr>
+                  <th>Saat</th>
+                  <% [1,2,3,4,5].forEach((g) => { %>
+                  <th><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][g] %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% scheduleView.izgara.forEach((satir) => { %>
+                <tr class="<%= satir.lunchAfter ? 'lunch-row' : '' %>">
+                  <th class="period-cell">
+                    <span class="period-no"><%= satir.period %>.</span>
+                    <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
+                  </th>
+                  <% satir.hucreler.forEach((h) => { %>
+                  <td class="schedule-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %>">
+                    <% if (h.entry) { %>
+                    <p class="cell-static">
+                      <strong><%= h.entry.subject %></strong>
+                      <% if (h.entry.className) { %><span><%= h.entry.className %></span><% } %>
+                      <% if (h.entry.room) { %><span class="muted"><%= h.entry.room %></span><% } %>
+                    </p>
+                    <% } %>
+                  </td>
+                  <% }) %>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Gün Özeti</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Gün</th><th>Ders</th><th>Boş Saat</th></tr></thead>
+              <tbody>
+                <% scheduleView.gunSayilari.forEach((g) => { %>
+                <tr><td><%= g.gunAdi %></td><td><%= g.dersSayisi %></td><td><%= g.bosSaat %></td></tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <% } else if (scheduleView.topicWeek) { %>
+        <% const tw = scheduleView.topicWeek; %>
+        <header class="content-header row space-between center">
+          <div>
+            <h3><%= tw.weekStart %> - <%= tw.weekEnd %></h3>
+            <p class="muted">
+              <%= tw.academic.yearLabel %><% if (tw.academic.termLabel) { %> · <%= tw.academic.termLabel %><% } %><%
+              if (tw.academic.weekNo) { %> · <%= tw.academic.weekNo %>. Hafta<% } %>
+              &nbsp;·&nbsp; <%= tw.dolu %> / <%= tw.yazilabilir %> ders saati yazılmış
+            </p>
+          </div>
+          <div class="row">
+            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.thisWeekStart %>">Bu Hafta</a>
+            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.prevWeekStart %>">Önceki Hafta</a>
+            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.nextWeekStart %>">Sonraki Hafta</a>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="table-wrap">
+            <table class="schedule-grid topic-grid">
+              <thead>
+                <tr>
+                  <th>Saat</th>
+                  <% tw.gunler.forEach((g) => { %>
+                  <th>
+                    <%= g.gunAdi %>
+                    <span class="th-sub"><%= g.tarih.slice(5) %></span>
+                    <% if (!g.isSchoolDay) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
+                  </th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% tw.izgara.forEach((satir) => { %>
+                <tr class="<%= satir.lunchAfter ? 'lunch-row' : '' %>">
+                  <th class="period-cell">
+                    <span class="period-no"><%= satir.period %>.</span>
+                    <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
+                  </th>
+                  <% satir.hucreler.forEach((h) => { %>
+                  <td class="schedule-cell <%= h.entry && h.isSchoolDay ? 'filled' : 'empty' %>">
+                    <% if (h.entry && h.isSchoolDay) { %>
+                    <p class="topic-head">
+                      <strong><%= h.entry.subject %></strong>
+                      <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
+                    </p>
+                    <% if (h.topic) { %>
+                    <p class="topic-static"><%= h.topic %></p>
+                    <% } else { %>
+                    <p class="muted topic-off">—</p>
+                    <% } %>
+                    <% } else if (h.entry && !h.isSchoolDay) { %>
+                    <p class="muted topic-off"><%= h.dayLabel %></p>
+                    <% } %>
+                  </td>
+                  <% }) %>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'questions') { %>

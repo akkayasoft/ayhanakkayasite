@@ -1295,6 +1295,29 @@ tr.day-off td {
   border-bottom-color: var(--warning-border);
 }
 
+/* Salt okunur cizelge/defter hucresi (ogrenci tarafi) */
+.cell-static {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.cell-static strong {
+  display: block;
+  font-size: 0.8125rem;
+}
+
+.cell-static span {
+  display: block;
+  font-size: 0.6875rem;
+}
+
+.topic-static {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
 /* Toplu yapistirma kutusu: sekme hizalamasi gorunsun diye tek aralikli */
 .paste-box {
   width: 100%;
