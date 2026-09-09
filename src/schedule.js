@@ -101,8 +101,166 @@ function lessonsForDay(entries, gun, ayar = VARSAYILAN_AYAR) {
     .map((e) => ({ ...e, saat: saatByPeriod.get(e.period) || null }));
 }
 
+/* --------------------------------------------------------------------------
+   Toplu yapistirma ayristiricisi
+
+   Program elle hucre hucre girilebiliyor ama 20-30 ders icin yorucu. Burasi
+   "gun · ders saati · ders adi · sinif · derslik" satirlarini okur.
+
+   Bilerek TOLERANSLI: ayrac olarak sekme (Excel'den kopyala), noktali virgul,
+   virgul ya da bosluk kabul edilir; gun adi kisaltmalari ve Turkce karakter
+   varyantlari eslenir; "3." / "3. ders" gibi yazimlar temizlenir; "1-2" gibi
+   araliklar birden fazla satira acilir (blok ders yaygin).
+
+   Anlasilmayan satir SESSIZCE ATILMAZ — cagirana hatasiyla birlikte doner ki
+   kullanici neyin girmedigini gorsun.
+   -------------------------------------------------------------------------- */
+
+// Turkce kucuk harfe cevir + aksanlari sadelestir (eslesme icin).
+function sadelestir(metin) {
+  return String(metin)
+    .toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[.\s]/g, '');
+}
+
+const GUN_ESLEME = new Map();
+[
+  [1, ['pazartesi', 'pzt', 'pt', 'ptesi', 'pazartesı', 'mon', 'monday']],
+  [2, ['sali', 'sal', 'sl', 'tue', 'tuesday']],
+  [3, ['carsamba', 'car', 'crs', 'crsm', 'wed', 'wednesday']],
+  [4, ['persembe', 'per', 'prs', 'prsm', 'thu', 'thursday']],
+  [5, ['cuma', 'cum', 'cm', 'fri', 'friday']]
+].forEach(([no, adlar]) => adlar.forEach((ad) => GUN_ESLEME.set(ad, no)));
+
+function parseGun(deger) {
+  return GUN_ESLEME.get(sadelestir(deger)) ?? null;
+}
+
+/** "3", "3.", "3. ders", "1-2", "1/2", "1+2" -> [3] / [1,2] */
+function parseSaatler(deger) {
+  const temiz = String(deger)
+    .toLocaleLowerCase('tr')
+    .replace(/ders/g, '')
+    .replace(/saat/g, '')
+    .replace(/\./g, '')
+    .trim();
+
+  const aralik = /^(\d{1,2})\s*[-–—]\s*(\d{1,2})$/.exec(temiz);
+  if (aralik) {
+    const bas = Number(aralik[1]);
+    const son = Number(aralik[2]);
+    if (bas > son) return null;
+    const cikti = [];
+    for (let i = bas; i <= son; i += 1) cikti.push(i);
+    return cikti;
+  }
+
+  if (/[/+]/.test(temiz)) {
+    const parcalar = temiz.split(/[/+]/).map((x) => Number(x.trim()));
+    if (parcalar.every((n) => Number.isInteger(n) && n > 0)) return parcalar;
+    return null;
+  }
+
+  const tek = Number(temiz);
+  return Number.isInteger(tek) && tek > 0 ? [tek] : null;
+}
+
+/** Satiri alanlarina ayirir: sekme > noktali virgul > virgul > 2+ bosluk > bosluk */
+function alanlaraAyir(satir) {
+  for (const ayrac of [/\t+/, /\s*;\s*/, /\s*,\s*/, /\s{2,}/]) {
+    if (ayrac.test(satir)) {
+      const parcalar = satir.split(ayrac).map((x) => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1);
+      if (parcalar.length >= 3) return parcalar.map((x) => x.trim());
+    }
+  }
+  // Tek bosluk: ilk iki alan gun ve saat, gerisi ders adi sayilir.
+  const parcalar = satir.trim().split(/\s+/);
+  if (parcalar.length >= 3) {
+    return [parcalar[0], parcalar[1], parcalar.slice(2).join(' ')];
+  }
+  return parcalar;
+}
+
+/**
+ * Yapistirilan metni ayristirir.
+ * Doner: { gecerli: [{dayOfWeek, period, subject, className, room, kind}], hatali: [{satir, hata}] }
+ */
+function parseScheduleText(metin, periodCount = 16) {
+  const gecerli = [];
+  const hatali = [];
+  const gorulen = new Set();
+
+  const satirlar = String(metin || '').split(/\r?\n/);
+  for (const ham of satirlar) {
+    const satir = ham.trim();
+    if (!satir || satir.startsWith('#')) continue;
+
+    const alanlar = alanlaraAyir(satir);
+    if (alanlar.length < 3) {
+      hatali.push({ satir, hata: 'En az gün, ders saati ve ders adı gerekli.' });
+      continue;
+    }
+
+    const gun = parseGun(alanlar[0]);
+    if (!gun) {
+      hatali.push({ satir, hata: `Gün anlaşılmadı: "${alanlar[0]}"` });
+      continue;
+    }
+
+    const saatler = parseSaatler(alanlar[1]);
+    if (!saatler) {
+      hatali.push({ satir, hata: `Ders saati anlaşılmadı: "${alanlar[1]}"` });
+      continue;
+    }
+
+    const subject = (alanlar[2] || '').trim();
+    if (!subject) {
+      hatali.push({ satir, hata: 'Ders adı boş.' });
+      continue;
+    }
+
+    const kapsamDisi = saatler.filter((s) => s > periodCount);
+    if (kapsamDisi.length) {
+      hatali.push({
+        satir,
+        hata: `Ders saati kapsam dışı (1-${periodCount}): ${kapsamDisi.join(', ')}`
+      });
+      continue;
+    }
+
+    const kind = sadelestir(subject) === 'nobet' ? 'duty' : 'lesson';
+    for (const saat of saatler) {
+      const anahtar = `${gun}:${saat}`;
+      if (gorulen.has(anahtar)) {
+        hatali.push({ satir, hata: `Aynı hücre birden çok satırda: ${alanlar[0]} ${saat}. ders` });
+        continue;
+      }
+      gorulen.add(anahtar);
+      gecerli.push({
+        dayOfWeek: gun,
+        period: saat,
+        subject,
+        className: (alanlar[3] || '').trim(),
+        room: (alanlar[4] || '').trim(),
+        kind
+      });
+    }
+  }
+
+  return { gecerli, hatali };
+}
+
 module.exports = {
   GUN_ADLARI,
+  parseScheduleText,
+  parseGun,
+  parseSaatler,
   VARSAYILAN_AYAR,
   hmToMinutes,
   minutesToHm,

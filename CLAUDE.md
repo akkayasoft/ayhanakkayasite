@@ -274,6 +274,19 @@ gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 4
 
 - Dolu bir hücreye tekrar kayıt **üstüne yazar** (`ON CONFLICT DO UPDATE`);
   düzeltmek için önce silmek gerekmez.
+- **Toplu yapıştırma** (`/admin/schedule/paste`, ayrıştırıcı
+  `schedule.parseScheduleText`): `gün · ders saati · ders adı · sınıf · derslik`
+  satırları. Bilerek toleranslı — ayraç sekme/noktalı virgül/virgül/2+ boşluk,
+  gün adı kısaltmaları ve Türkçe karakter varyantları, `3. ders` yazımı,
+  `1-2` / `2/4` blok ders aralıkları (her saate ayrı satır açılır), `Nöbet`
+  ders adı `kind='duty'` olur, `#` satırları atlanır.
+  - Anlaşılmayan satır **sessizce atılmaz**: kaç tane olduğu ve ilki hatasıyla
+    birlikte mesajda bildirilir.
+  - "Önce mevcut programı temizle" kutusu işaretlenirse tüm çizelge silinip
+    yeniden yazılır; işaretsizse üstüne eklenir/yazılır.
+  - **Bilinen sınır:** tek boşlukla ayrılmış satırda sınıf/derslik ayrılamaz
+    (`Pazartesi 9 Ek Ders 11-C` → ders adı "Ek Ders 11-C"). Sınıf yazılacaksa
+    sekme, virgül ya da iki boşluk kullanılmalı; arayüzde de uyarılıyor.
 - Günlük ders saati sayısı küçültülürse kapsam dışı kalan kayıtlar silinir ve
   kaç tanesi silindiği mesajda bildirilir — yoksa öksüz satır kalırdı.
 - Çizelge **Haftalık Takvim'e** de işlenir: gün kartlarında o günün dersleri
