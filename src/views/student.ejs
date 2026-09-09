@@ -860,6 +860,23 @@
             </table>
           </div>
         </section>
+
+        <section class="panel narrow">
+          <h3>Excel Çıktısı</h3>
+          <p class="muted">
+            Seçtiğin aralıktaki tüm işlenen konular tek dosyada iner: tarih, gün,
+            ders saati, ders, sınıf ve konu. İkinci sayfada sınıf bazında özet var.
+            Varsayılan aralık <strong><%= tw.exportLabel %></strong>.
+          </p>
+          <form method="get" action="/student/schedule/topics/export" class="stack">
+            <input type="hidden" name="next" value="/student/schedule?gorunum=konular" />
+            <label>Başlangıç</label>
+            <input type="date" name="from" value="<%= tw.exportFrom %>" />
+            <label>Bitiş</label>
+            <input type="date" name="to" value="<%= tw.exportTo %>" />
+            <button type="submit">Excel İndir</button>
+          </form>
+        </section>
         <% } %>
         <% } %>
 

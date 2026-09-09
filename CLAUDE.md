@@ -261,8 +261,7 @@ Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 gösterir: çizelge ızgarası + gün özeti, ve hafta gezinmeli işlenen konular.
 Çizelge ve defter öğretmenin kaydıdır; öğrenci hiçbirini düzenleyemez —
 düzenleme/aktarma rotalarının tamamı `requireRole('admin')` arkasında
-(doğrulandı: öğrenci rolüyle beş POST rotası ve Excel export 403 döndü).
-Excel çıktısı bilerek yalnızca admin tarafındadır.
+(doğrulandı: öğrenci rolüyle beş POST rotası 403 döndü).
 
 - `school_settings` (tek satır, id `default`): başlangıç saati, ders/teneffüs
   süresi, günlük ders saati sayısı, öğle arası (hangi dersten sonra, kaç dk).
@@ -320,7 +319,13 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
 - Dolu olmayan hücrede geçen haftanın konusu ipucu olarak gösterilir.
 - Sayaç paydası **tüm dolu hücreleri** sayar (nöbet dahil); yalnızca dersleri
   saysaydı hepsi dolduğunda "15 / 14" gibi bir sayaç çıkardı.
-- **Excel çıktısı**: `/admin/schedule/topics/export?from=&to=`. İki sayfa —
+- **Excel çıktısı**: `sendLessonTopicsExcel()` iki rotaya bağlıdır —
+  `/admin/schedule/topics/export` ve `/student/schedule/topics/export`. Dosya
+  ikisinde de aynı; öğrenci veriyi zaten ekranda gördüğü için indirmesini
+  engellemek yapay sürtünme olurdu. Hata dönüşü çağırana göre değişir
+  (`adminRedirect` / `studentRedirect`), formlar `next` ile programa döner.
+  Rol ayrımı korunur: her rota kendi rolüne kapalıdır (çapraz erişim 403).
+  Parametreler `?from=&to=`. İki sayfa —
   *İşlenen Konular* (tarih · gün · dönem · ders saati · saat · ders · sınıf ·
   konu; dondurulmuş başlık + otofiltre) ve *Sınıf Özeti* (sınıf/ders bazında
   işlenen ders saati, ilk/son kayıt).

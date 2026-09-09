@@ -3118,131 +3118,145 @@ app.post(
   })
 );
 
+/**
+ * Islenen konular Excel ciktisi. Hem admin hem ogrenci tarafindan cagrilir —
+ * dosya ayni; ogrenci zaten ayni veriyi ekranda goruyor, indirmesini
+ * engellemek yapay bir surtunme olurdu. Hata halinde nereye donulecegi
+ * cagirana gore degistigi icin redirect fonksiyonu disaridan gelir.
+ */
+async function sendLessonTopicsExcel(req, res, redirect) {
+  const today = todayDateString();
+
+  // Varsayilan aralik: icinde bulunulan donem. Donem disindaysak (yariyil
+  // tatili gibi) ogretim yilinin tamami alinir.
+  const donem =
+    academicCalendar.ACADEMIC_YEAR.terms.find((t) => today >= t.start && today <= t.end) || null;
+  const varsayilanBas = donem ? donem.start : academicCalendar.ACADEMIC_YEAR.start;
+  const varsayilanSon = donem ? donem.end : academicCalendar.ACADEMIC_YEAR.end;
+
+  const fromRaw = normalizeText(req.query.from);
+  const toRaw = normalizeText(req.query.to);
+  const fromDate = isDateOnly(fromRaw) ? fromRaw : varsayilanBas;
+  const toDate = isDateOnly(toRaw) ? toRaw : varsayilanSon;
+  if (fromDate > toDate) {
+    return redirect(req, res, { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' });
+  }
+
+  // week_start haftanin pazartesisi; aralik disina tasan gunleri sonra eleriz.
+  const res_ = await query(
+    `
+      SELECT week_start AS "weekStart", day_of_week AS "dayOfWeek", period,
+             subject, class_name AS "className", topic, updated_at AS "updatedAt"
+      FROM lesson_topics
+      WHERE week_start BETWEEN $1 AND $2
+      ORDER BY week_start ASC, day_of_week ASC, period ASC
+    `,
+    [shiftDate(startOfWeek(fromDate), 0), toDate]
+  );
+
+  const ayar = await getScheduleSettings();
+  const saatByPeriod = new Map(schedule.buildPeriods(ayar).map((s) => [s.period, s]));
+
+  const satirlar = res_.rows
+    .map((row) => {
+      const haftaBasi = toDateOnly(row.weekStart);
+      const tarih = shiftDate(haftaBasi, Number(row.dayOfWeek) - 1);
+      const saat = saatByPeriod.get(Number(row.period)) || null;
+      const bilgi = academicCalendar.getDayInfo(tarih);
+      return {
+        tarih,
+        gunAdi: getDayName(tarih),
+        hafta: haftaBasi,
+        period: Number(row.period),
+        saatAraligi: saat ? `${saat.start} - ${saat.end}` : '',
+        subject: row.subject || '',
+        className: row.className || '',
+        topic: row.topic || '',
+        donem: bilgi.term ? bilgi.term.label : ''
+      };
+    })
+    .filter((r) => r.tarih >= fromDate && r.tarih <= toDate)
+    .sort((a, b) => (a.tarih === b.tarih ? a.period - b.period : a.tarih < b.tarih ? -1 : 1));
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Öğrenci Takip';
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet('İşlenen Konular');
+  sheet.columns = [
+    { header: 'Tarih', key: 'tarih', width: 12 },
+    { header: 'Gün', key: 'gunAdi', width: 11 },
+    { header: 'Dönem', key: 'donem', width: 10 },
+    { header: 'Ders Saati', key: 'period', width: 10 },
+    { header: 'Saat', key: 'saatAraligi', width: 15 },
+    { header: 'Ders', key: 'subject', width: 30 },
+    { header: 'Sınıf', key: 'className', width: 10 },
+    { header: 'İşlenen Konu', key: 'topic', width: 60 }
+  ];
+  sheet.getRow(1).font = { bold: true };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.autoFilter = { from: 'A1', to: 'H1' };
+
+  satirlar.forEach((r) => sheet.addRow(r));
+  sheet.eachRow((row, i) => {
+    row.alignment = { vertical: 'top', wrapText: i > 1 };
+  });
+
+  // Sinif ozeti: zumre/idare raporunda "hangi sinifta kac saat islendi".
+  const ozetSheet = workbook.addWorksheet('Sınıf Özeti');
+  ozetSheet.columns = [
+    { header: 'Sınıf', key: 'className', width: 14 },
+    { header: 'Ders', key: 'subject', width: 30 },
+    { header: 'İşlenen Ders Saati', key: 'adet', width: 18 },
+    { header: 'İlk Kayıt', key: 'ilk', width: 12 },
+    { header: 'Son Kayıt', key: 'son', width: 12 }
+  ];
+  ozetSheet.getRow(1).font = { bold: true };
+  ozetSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  const ozet = new Map();
+  for (const r of satirlar) {
+    const anahtar = `${r.className}|${r.subject}`;
+    const mevcut = ozet.get(anahtar);
+    if (!mevcut) {
+      ozet.set(anahtar, {
+        className: r.className || '-',
+        subject: r.subject,
+        adet: 1,
+        ilk: r.tarih,
+        son: r.tarih
+      });
+      continue;
+    }
+    mevcut.adet += 1;
+    if (r.tarih < mevcut.ilk) mevcut.ilk = r.tarih;
+    if (r.tarih > mevcut.son) mevcut.son = r.tarih;
+  }
+  Array.from(ozet.values())
+    .sort((a, b) => a.className.localeCompare(b.className, 'tr') || a.subject.localeCompare(b.subject, 'tr'))
+    .forEach((o) => ozetSheet.addRow(o));
+
+  const fileName = `islenen-konular-${fromDate}_${toDate}.xlsx`;
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+  await workbook.xlsx.write(res);
+  return res.end();
+}
+
 app.get(
   '/admin/schedule/topics/export',
   requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const today = todayDateString();
+  asyncHandler((req, res) => sendLessonTopicsExcel(req, res, adminRedirect))
+);
 
-    // Varsayilan aralik: icinde bulunulan donem. Donem disindaysak (yariyil
-    // tatili gibi) ogretim yilinin tamami alinir.
-    const donem =
-      academicCalendar.ACADEMIC_YEAR.terms.find((t) => today >= t.start && today <= t.end) || null;
-    const varsayilanBas = donem ? donem.start : academicCalendar.ACADEMIC_YEAR.start;
-    const varsayilanSon = donem ? donem.end : academicCalendar.ACADEMIC_YEAR.end;
-
-    const fromRaw = normalizeText(req.query.from);
-    const toRaw = normalizeText(req.query.to);
-    const fromDate = isDateOnly(fromRaw) ? fromRaw : varsayilanBas;
-    const toDate = isDateOnly(toRaw) ? toRaw : varsayilanSon;
-    if (fromDate > toDate) {
-      return adminRedirect(req, res, { error: 'Başlangıç tarihi bitiş tarihinden büyük olamaz.' });
-    }
-
-    // week_start haftanin pazartesisi; aralik disina tasan gunleri sonra eleriz.
-    const res_ = await query(
-      `
-        SELECT week_start AS "weekStart", day_of_week AS "dayOfWeek", period,
-               subject, class_name AS "className", topic, updated_at AS "updatedAt"
-        FROM lesson_topics
-        WHERE week_start BETWEEN $1 AND $2
-        ORDER BY week_start ASC, day_of_week ASC, period ASC
-      `,
-      [shiftDate(startOfWeek(fromDate), 0), toDate]
-    );
-
-    const ayar = await getScheduleSettings();
-    const saatByPeriod = new Map(schedule.buildPeriods(ayar).map((s) => [s.period, s]));
-
-    const satirlar = res_.rows
-      .map((row) => {
-        const haftaBasi = toDateOnly(row.weekStart);
-        const tarih = shiftDate(haftaBasi, Number(row.dayOfWeek) - 1);
-        const saat = saatByPeriod.get(Number(row.period)) || null;
-        const bilgi = academicCalendar.getDayInfo(tarih);
-        return {
-          tarih,
-          gunAdi: getDayName(tarih),
-          hafta: haftaBasi,
-          period: Number(row.period),
-          saatAraligi: saat ? `${saat.start} - ${saat.end}` : '',
-          subject: row.subject || '',
-          className: row.className || '',
-          topic: row.topic || '',
-          donem: bilgi.term ? bilgi.term.label : ''
-        };
-      })
-      .filter((r) => r.tarih >= fromDate && r.tarih <= toDate)
-      .sort((a, b) => (a.tarih === b.tarih ? a.period - b.period : a.tarih < b.tarih ? -1 : 1));
-
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Öğrenci Takip';
-    workbook.created = new Date();
-
-    const sheet = workbook.addWorksheet('İşlenen Konular');
-    sheet.columns = [
-      { header: 'Tarih', key: 'tarih', width: 12 },
-      { header: 'Gün', key: 'gunAdi', width: 11 },
-      { header: 'Dönem', key: 'donem', width: 10 },
-      { header: 'Ders Saati', key: 'period', width: 10 },
-      { header: 'Saat', key: 'saatAraligi', width: 15 },
-      { header: 'Ders', key: 'subject', width: 30 },
-      { header: 'Sınıf', key: 'className', width: 10 },
-      { header: 'İşlenen Konu', key: 'topic', width: 60 }
-    ];
-    sheet.getRow(1).font = { bold: true };
-    sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    sheet.autoFilter = { from: 'A1', to: 'H1' };
-
-    satirlar.forEach((r) => sheet.addRow(r));
-    sheet.eachRow((row, i) => {
-      row.alignment = { vertical: 'top', wrapText: i > 1 };
-    });
-
-    // Sinif ozeti: zumre/idare raporunda "hangi sinifta kac saat islendi".
-    const ozetSheet = workbook.addWorksheet('Sınıf Özeti');
-    ozetSheet.columns = [
-      { header: 'Sınıf', key: 'className', width: 14 },
-      { header: 'Ders', key: 'subject', width: 30 },
-      { header: 'İşlenen Ders Saati', key: 'adet', width: 18 },
-      { header: 'İlk Kayıt', key: 'ilk', width: 12 },
-      { header: 'Son Kayıt', key: 'son', width: 12 }
-    ];
-    ozetSheet.getRow(1).font = { bold: true };
-    ozetSheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    const ozet = new Map();
-    for (const r of satirlar) {
-      const anahtar = `${r.className}|${r.subject}`;
-      const mevcut = ozet.get(anahtar);
-      if (!mevcut) {
-        ozet.set(anahtar, {
-          className: r.className || '-',
-          subject: r.subject,
-          adet: 1,
-          ilk: r.tarih,
-          son: r.tarih
-        });
-        continue;
-      }
-      mevcut.adet += 1;
-      if (r.tarih < mevcut.ilk) mevcut.ilk = r.tarih;
-      if (r.tarih > mevcut.son) mevcut.son = r.tarih;
-    }
-    Array.from(ozet.values())
-      .sort((a, b) => a.className.localeCompare(b.className, 'tr') || a.subject.localeCompare(b.subject, 'tr'))
-      .forEach((o) => ozetSheet.addRow(o));
-
-    const fileName = `islenen-konular-${fromDate}_${toDate}.xlsx`;
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    await workbook.xlsx.write(res);
-    return res.end();
-  })
+app.get(
+  '/student/schedule/topics/export',
+  requireRole('student'),
+  asyncHandler((req, res) => sendLessonTopicsExcel(req, res, studentRedirect))
 );
 
 app.post(
