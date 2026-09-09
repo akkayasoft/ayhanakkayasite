@@ -334,6 +334,30 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
   - Varsayılan aralık **içinde bulunulan dönem**; dönem dışındaysak (yarıyıl
     tatili ya da öğretim yılı başlamadan) tüm öğretim yılı.
 
+### Defter görevleri (işlenen konular → görevler)
+
+`/admin/schedule` → **Defter Görevleri** paneli → "Görevlere Aktar". Her okul
+haftası için **tek** görev açılır: *"Ders defterini doldur"*. Haftanın
+çizelgede dolu olan tüm hücrelerine konu yazılınca görev **otomatik `done`**
+işaretlenir.
+
+- `source_key` = `defter:<haftaBaşı>`; YZ/YDS aktarımlarıyla aynı desen —
+  idempotent, tekrar basılabilir. Yeni haftalar eklenir, **işaretlenmemiş ve
+  günü gelmemiş** görevlerin başlığı/tarihi tazelenir, programda kalmayan
+  bayat görevler (yine yalnızca işaretlenmemiş + gelecek) silinir.
+- Kategori: `Ders Defteri`. Görev yalnızca `yazilabilir > 0` olan haftalar
+  için açılır (çizelgede o hafta hiç dolu hücre yoksa görev de yok).
+- **Son tarih hafta sonu (Pazar)**, cuma değil: defteri cumartesi doldurmak
+  hâlâ zamanında sayılsın diye. Cuma verilseydi otomatik kilit hafta biter
+  bitmez `not_done` mühürlerdi.
+- `completeLessonLogTasks()` `runSealSafely` içinde (açılışta + 5 dakikada
+  bir) **`sealOverdueTaskStatuses`'tan önce** çalışır. Sıra önemli: aynı turda
+  hem defter tamamlanıp hem süre dolmuşsa görev "yapıldı" olmalı, "yapılmadı"
+  değil. (Doğrulandı: geçmiş tarihli görev + dolu defter → `done`; geçmiş
+  tarihli görev + eksik defter → `not_done`.)
+- Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
+  dahil).
+
 ## Uyanma rutini
 
 Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.
