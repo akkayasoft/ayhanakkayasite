@@ -186,6 +186,27 @@ async function initDb() {
     )
   `);
 
+  // Haftalik islenen konular (ders defteri).
+  //
+  // Kayit class_schedule satirina DEGIL, (hafta, gun, ders saati) uclusune
+  // baglanir; ayrica o andaki ders/sinif adi kaydin icine kopyalanir. Boylece
+  // cizelge sonradan degisse bile gecmis defter okunabilir kalir — bir donem
+  // sonra "11-A Mobil Uygulamalar" satirinin ne oldugu kaybolmaz.
+  await query(`
+    CREATE TABLE IF NOT EXISTS lesson_topics (
+      id TEXT PRIMARY KEY,
+      week_start DATE NOT NULL,
+      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),
+      period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
+      subject TEXT NOT NULL DEFAULT '',
+      class_name TEXT NOT NULL DEFAULT '',
+      topic TEXT NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (week_start, day_of_week, period)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS lesson_topics_week_idx ON lesson_topics (week_start DESC)`);
+
   // --- YDS / YOKDIL takibi -----------------------------------------------
   //
   // yds.obs uygulamasinin ilerlemesi bu tablolara YANSITILIR. Kaynak dosya
