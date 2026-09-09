@@ -1794,6 +1794,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             Varsayılan aralık <strong><%= tw.exportLabel %></strong>.
           </p>
           <form method="get" action="/admin/schedule/topics/export" class="stack">
+            <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
             <label>Başlangıç</label>
             <input type="date" name="from" value="<%= tw.exportFrom %>" />
             <label>Bitiş</label>
