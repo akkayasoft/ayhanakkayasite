@@ -2251,6 +2251,7 @@ async function buildStudentScheduleView(req) {
 
   return {
     gorunum,
+    canEditTopics: req.currentUser.isTeacher === true,
     ayar,
     saatler: schedule.buildPeriods(ayar),
     izgara: schedule.buildGrid(kayitlar, ayar),
@@ -2290,6 +2291,11 @@ async function buildScheduleView(req) {
     bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length
   }));
 
+  // Ogretmen isareti tasiyan ogrenci defteri kendi panelinden yazabilir.
+  const ogrenciler = await query(
+    `SELECT id, name, is_teacher AS "isTeacher" FROM users WHERE role = 'student' ORDER BY name`
+  );
+
   return {
     gorunum,
     topicWeek,
@@ -2298,6 +2304,7 @@ async function buildScheduleView(req) {
     izgara,
     kayitlar,
     gunSayilari,
+    ogrenciler: ogrenciler.rows,
     bitisSaati: schedule.endOfDay(ayar),
     toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
     toplamNobet: kayitlar.filter((k) => k.kind === 'duty').length,
@@ -2355,6 +2362,7 @@ function mapUser(row) {
     name: row.name,
     username: row.username,
     role: row.role,
+    isTeacher: row.isTeacher === true,
     createdAt: row.createdAt
   };
 }
@@ -2383,12 +2391,14 @@ function mapTask(row) {
 async function getCurrentUserById(userId, withPassword = false) {
   const sql = withPassword
     ? `
-      SELECT id, name, username, role, created_at AS "createdAt", password_hash AS "passwordHash"
+      SELECT id, name, username, role, is_teacher AS "isTeacher",
+             created_at AS "createdAt", password_hash AS "passwordHash"
       FROM users
       WHERE id = $1
     `
     : `
-      SELECT id, name, username, role, created_at AS "createdAt"
+      SELECT id, name, username, role, is_teacher AS "isTeacher",
+             created_at AS "createdAt"
       FROM users
       WHERE id = $1
     `;
@@ -3547,89 +3557,142 @@ app.get(
   asyncHandler((req, res) => sendLessonTopicsExcel(req, res, studentRedirect))
 );
 
+/**
+ * Bir haftanin islenen konularini yazar. Admin ve (ogretmen isaretli) ogrenci
+ * rotalari ayni govdeyi kullanir; yetki kontrolu cagirana aittir.
+ * Doner: { ok: false, error } ya da { ok: true, message }.
+ */
+async function saveLessonTopics(body) {
+  const weekStart = normalizeWeekStart(normalizeText(body.weekStart));
+  if (!weekStart) {
+    return { ok: false, error: 'Hafta seçilmedi.' };
+  }
+
+  const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+  const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
+
+  // Form tum haftayi tek seferde gonderir: alan adlari "konu[gun-saat]".
+  // Yalnizca CIZELGEDE DERSI OLAN ve o gun okul gunu olan hucreler yazilir;
+  // boylece formdan gelen beklenmedik anahtarlar kayit acamaz.
+  const girdiler = [];
+  for (const [alan, deger] of Object.entries(body || {})) {
+    const eslesme = /^konu\[(\d+)-(\d+)\]$/.exec(alan);
+    if (!eslesme) continue;
+    const gun = Number(eslesme[1]);
+    const saat = Number(eslesme[2]);
+    if (!(gun >= 1 && gun <= 5) || !(saat >= 1 && saat <= ayar.periodCount)) continue;
+
+    const ders = kayitByKey.get(`${gun}:${saat}`);
+    if (!ders) continue;
+
+    const gunTarihi = shiftDate(weekStart, gun - 1);
+    if (!academicCalendar.getDayInfo(gunTarihi).isSchoolDay) continue;
+
+    girdiler.push({
+      gun,
+      saat,
+      konu: normalizeText(deger).slice(0, 500),
+      subject: ders.subject,
+      className: ders.className
+    });
+  }
+
+  if (!girdiler.length) {
+    return { ok: false, error: 'Yazılacak ders saati bulunamadı.' };
+  }
+
+  const client = await pool.connect();
+  let yazilan = 0;
+  let silinen = 0;
+  try {
+    await client.query('BEGIN');
+    for (const g of girdiler) {
+      if (!g.konu) {
+        // Bosaltilan hucre kaydi silinir; bos satir birakmak yerine temiz kalir.
+        const silme = await client.query(
+          `DELETE FROM lesson_topics WHERE week_start = $1 AND day_of_week = $2 AND period = $3`,
+          [weekStart, g.gun, g.saat]
+        );
+        silinen += silme.rowCount || 0;
+        continue;
+      }
+      await client.query(
+        `
+          INSERT INTO lesson_topics (id, week_start, day_of_week, period, subject, class_name, topic, updated_at)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+          ON CONFLICT (week_start, day_of_week, period) DO UPDATE SET
+            subject = EXCLUDED.subject,
+            class_name = EXCLUDED.class_name,
+            topic = EXCLUDED.topic,
+            updated_at = NOW()
+        `,
+        [makeId('top'), weekStart, g.gun, g.saat, g.subject, g.className, g.konu]
+      );
+      yazilan += 1;
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  const silmeNotu = silinen ? ` ${silinen} boş bırakılan kayıt silindi.` : '';
+  return {
+  ok: true,
+  message: `${weekStart} haftası kaydedildi: ${yazilan} ders saati.${silmeNotu}`
+  };
+}
+
+// Ogretmen isareti: bir ogrenci hesabinin ders defterini KENDI panelinden
+// yazabilmesini acar. Rol degismez; yalnizca defter yazma yetkisi verilir.
+app.post(
+  '/admin/schedule/teacher',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const isTeacher = normalizeText(req.body.isTeacher) === '1';
+
+    const studentRes = await query(
+      `SELECT id, name FROM users WHERE id = $1 AND role = 'student'`,
+      [studentId]
+    );
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    await query(`UPDATE users SET is_teacher = $1 WHERE id = $2`, [isTeacher, studentId]);
+    const ad = studentRes.rows[0].name;
+    return adminRedirect(req, res, {
+      message: isTeacher
+        ? `${ad} artık ders defterini kendi panelinden yazabilir.`
+        : `${ad} için defter yazma yetkisi kaldırıldı.`
+    });
+  })
+);
+
 app.post(
   '/admin/schedule/topics',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart));
-    if (!weekStart) {
-      return adminRedirect(req, res, { error: 'Hafta seçilmedi.' });
+    const sonuc = await saveLessonTopics(req.body || {});
+    return adminRedirect(req, res, sonuc.ok ? { message: sonuc.message } : { error: sonuc.error });
+  })
+);
+
+// Ders defterini ogrenci panelinden yalnizca OGRETMEN ISARETLI hesap yazabilir.
+// Bayrak yoksa 403: defter uygulama genelinde tek kayittir, siradan bir
+// ogrencinin ogretmenin defterini duzenlemesi dogru olmaz.
+app.post(
+  '/student/schedule/topics',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    if (!req.currentUser.isTeacher) {
+      return res.status(403).send('Yetkisiz erişim.');
     }
-
-    const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
-    const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
-
-    // Form tum haftayi tek seferde gonderir: alan adlari "konu[gun-saat]".
-    // Yalnizca CIZELGEDE DERSI OLAN ve o gun okul gunu olan hucreler yazilir;
-    // boylece formdan gelen beklenmedik anahtarlar kayit acamaz.
-    const girdiler = [];
-    for (const [alan, deger] of Object.entries(req.body || {})) {
-      const eslesme = /^konu\[(\d+)-(\d+)\]$/.exec(alan);
-      if (!eslesme) continue;
-      const gun = Number(eslesme[1]);
-      const saat = Number(eslesme[2]);
-      if (!(gun >= 1 && gun <= 5) || !(saat >= 1 && saat <= ayar.periodCount)) continue;
-
-      const ders = kayitByKey.get(`${gun}:${saat}`);
-      if (!ders) continue;
-
-      const gunTarihi = shiftDate(weekStart, gun - 1);
-      if (!academicCalendar.getDayInfo(gunTarihi).isSchoolDay) continue;
-
-      girdiler.push({
-        gun,
-        saat,
-        konu: normalizeText(deger).slice(0, 500),
-        subject: ders.subject,
-        className: ders.className
-      });
-    }
-
-    if (!girdiler.length) {
-      return adminRedirect(req, res, { error: 'Yazılacak ders saati bulunamadı.' });
-    }
-
-    const client = await pool.connect();
-    let yazilan = 0;
-    let silinen = 0;
-    try {
-      await client.query('BEGIN');
-      for (const g of girdiler) {
-        if (!g.konu) {
-          // Bosaltilan hucre kaydi silinir; bos satir birakmak yerine temiz kalir.
-          const silme = await client.query(
-            `DELETE FROM lesson_topics WHERE week_start = $1 AND day_of_week = $2 AND period = $3`,
-            [weekStart, g.gun, g.saat]
-          );
-          silinen += silme.rowCount || 0;
-          continue;
-        }
-        await client.query(
-          `
-            INSERT INTO lesson_topics (id, week_start, day_of_week, period, subject, class_name, topic, updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-            ON CONFLICT (week_start, day_of_week, period) DO UPDATE SET
-              subject = EXCLUDED.subject,
-              class_name = EXCLUDED.class_name,
-              topic = EXCLUDED.topic,
-              updated_at = NOW()
-          `,
-          [makeId('top'), weekStart, g.gun, g.saat, g.subject, g.className, g.konu]
-        );
-        yazilan += 1;
-      }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-
-    const silmeNotu = silinen ? ` ${silinen} boş bırakılan kayıt silindi.` : '';
-    return adminRedirect(req, res, {
-      message: `${weekStart} haftası kaydedildi: ${yazilan} ders saati.${silmeNotu}`
-    });
+    const sonuc = await saveLessonTopics(req.body || {});
+    return studentRedirect(req, res, sonuc.ok ? { message: sonuc.message } : { error: sonuc.error });
   })
 );
 
