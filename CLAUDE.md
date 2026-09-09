@@ -160,8 +160,7 @@ takip.obs sonucu *okur*.
 - **Yansıtma:** `syncYdsProgress()` — `runSealSafely` içinde (açılışta + 5
   dakikada bir) ve `/admin/yds` sayfasındaki "Şimdi Çek" düğmesiyle. Idempotent.
 - `yds_days` — günlük kırılım (okuma/kelime/gramer/test sayıları, çözülen soru,
-  hedef tuttu mu). Kaynak dosya uygulamadan **sıfırlanabildiği** için veri burada
-  saklanır; canlı ayna olsaydı sıfırlama geçmiş denetim kaydını da silerdi.
+  hedef tuttu mu).
 - `daily_questions` — çözülen sorular `source_key = 'yds:<tarih>'` ile yazılır
   (partial unique index; elle girilen satırlarda `source_key` NULL kalır).
   Böylece Soru Takibi ve **Haftalık Analiz** ek kod olmadan dolar.
@@ -173,6 +172,28 @@ takip.obs sonucu *okur*.
 > Sonuç: puansız test çözülen bir gün Haftalık Analiz'de "0 soru" görünür.
 > Kalıcı çözüm yukarı akışta — YDS deposunda dilbilgisi testlerine cevap
 > anahtarı eşlenmesi (README'de bilinen iş olarak duruyor).
+
+### Sıfırlama yayılımı
+
+YDS uygulamasındaki **"İlerlemeyi sıfırla"** sunucu durumunu boşaltır ve bir
+`resetAt` damgası bırakır; diğer cihazlar bu damgayı görüp kendilerini temizler.
+takip.obs aynası da bir "cihaz" gibi davranır:
+
+- `yds_sync.source_reset_at` en son uygulanan damgayı tutar. Dosyadaki `resetAt`
+  bundan **büyükse** o öğrencinin `yds_days` satırları ve `source_key LIKE 'yds:%'`
+  olan `daily_questions` satırları silinir, sonra yeni durum yazılır.
+- Silme **yalnızca damga ilerlediğinde** olur, her senkronda değil (idempotent).
+- **Dokunulmayanlar**: elle girilen soru kayıtları (`source_key` NULL), YDS
+  çalışma programı görevleri (`ydsp:`) ve öğrencinin takip.obs'ta kendi
+  işaretlediği görev durumları. Bunlar YDS ilerlemesi değil, bu uygulamanın
+  kendi kaydıdır.
+- Uygulanan sıfırlamanın zamanı `yds_sync.reset_applied_at`'e yazılır ve
+  `/admin/yds` sayfasında gösterilir.
+
+> Bu davranış bilinçli bir tercih değişikliğidir: başlangıçta veri "sıfırlama
+> geçmişi silmesin" diye saklanıyordu. Ancak sıfırlama yayılmadığında ayna
+> kalıcı olarak yanlış kalıyordu — kaynak boşalınca döngü hiçbir şey yazmaz,
+> eski satırlar sonsuza kadar dururdu.
 
 Hata durumları uygulamayı durdurmaz: dosya yoksa/bozuksa senkron sessizce geçer,
 son hata `yds_sync.last_error`'a yazılır ve `/admin/yds` sayfasında gösterilir;

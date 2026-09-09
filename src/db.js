@@ -186,6 +186,10 @@ async function initDb() {
       last_error TEXT NOT NULL DEFAULT ''
     )
   `);
+  // YDS uygulamasindaki "Ilerlemeyi sifirla" damgasi. Kaynaktaki resetAt bu
+  // degerden buyukse aynadaki gecmis temizlenir (bkz. syncYdsProgress).
+  await query(`ALTER TABLE yds_sync ADD COLUMN IF NOT EXISTS source_reset_at BIGINT NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE yds_sync ADD COLUMN IF NOT EXISTS reset_applied_at TIMESTAMPTZ NULL`);
 
   // --- Uyanma rutini -----------------------------------------------------
   //
