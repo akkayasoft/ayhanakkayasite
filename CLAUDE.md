@@ -281,6 +281,25 @@ gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 4
   okul gününde gösterilir — hafta sonu, ara tatil, yarıyıl ve bayramda
   `academicCalendar` devreye girer ve çizelge işlemez.
 
+### İşlenen konular (ders defteri)
+
+Aynı sayfada ikinci görünüm: `/admin/schedule?gorunum=konular&hafta=YYYY-MM-DD`.
+Çizelgeyle **aynı ızgara**, ama seçili haftada dersi olan her saate o hafta
+işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
+
+- `lesson_topics`: `UNIQUE (week_start, day_of_week, period)`.
+- Kayıt `class_schedule` satırına **bağlanmaz**; `(hafta, gün, saat)` üçlüsüne
+  bağlanır ve o andaki ders/sınıf adı kaydın içine **kopyalanır**. Böylece
+  çizelge sonradan değişse bile geçmiş defter okunabilir kalır — doğrulandı:
+  bir ders silinip diğeri başka derse çevrildikten sonra defter satırları
+  olduğu gibi durdu.
+- Sunucu tarafı yalnızca **çizelgede dersi olan** ve o gün **okul günü olan**
+  hücreleri yazar; formdan gelen beklenmedik anahtar kayıt açamaz.
+- Boş bırakılan alanın kaydı silinir (boş satır birikmez).
+- Dolu olmayan hücrede geçen haftanın konusu ipucu olarak gösterilir.
+- Sayaç paydası **tüm dolu hücreleri** sayar (nöbet dahil); yalnızca dersleri
+  saysaydı hepsi dolduğunda "15 / 14" gibi bir sayaç çıkardı.
+
 ## Uyanma rutini
 
 Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.

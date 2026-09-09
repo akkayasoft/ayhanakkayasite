@@ -1897,11 +1897,98 @@ async function getScheduleEntries() {
   return res.rows.map(mapScheduleEntry);
 }
 
+/** Bir haftanin islenen konu kayitlari. */
+async function getLessonTopics(weekStart) {
+  const res = await query(
+    `
+      SELECT day_of_week AS "dayOfWeek", period, subject, class_name AS "className", topic
+      FROM lesson_topics
+      WHERE week_start = $1
+    `,
+    [weekStart]
+  );
+  return new Map(res.rows.map((r) => [`${r.dayOfWeek}:${r.period}`, r]));
+}
+
+/**
+ * "İşlenen Konular" gorunumu: cizelgeyle AYNI izgara, ama secili haftada her
+ * dolu ders saatine konu yazilir. Tatil/bayrama denk gelen gunlerde giris
+ * alani acilmaz — o gun ders islenmedi.
+ */
+async function buildTopicWeekView(req, ayar, kayitlar) {
+  const today = todayDateString();
+  const weekStart = normalizeWeekStart(normalizeText(req.query.hafta), today) || startOfWeek(today);
+  const weekEnd = shiftDate(weekStart, 6);
+
+  const [konular, oncekiKonular] = await Promise.all([
+    getLessonTopics(weekStart),
+    getLessonTopics(shiftDate(weekStart, -7))
+  ]);
+
+  const saatler = schedule.buildPeriods(ayar);
+  const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
+
+  // Gun basliklari: haftanin gercek tarihleri + takvim durumu.
+  const gunler = [1, 2, 3, 4, 5].map((gun) => {
+    const tarih = shiftDate(weekStart, gun - 1);
+    const bilgi = academicCalendar.getDayInfo(tarih);
+    return {
+      dayOfWeek: gun,
+      gunAdi: schedule.GUN_ADLARI[gun],
+      tarih,
+      isSchoolDay: bilgi.isSchoolDay,
+      dayLabel: bilgi.label
+    };
+  });
+
+  const izgara = saatler.map((saat) => ({
+    ...saat,
+    hucreler: gunler.map((g) => {
+      const anahtar = `${g.dayOfWeek}:${saat.period}`;
+      const ders = kayitByKey.get(anahtar) || null;
+      const kayit = konular.get(anahtar) || null;
+      const onceki = oncekiKonular.get(anahtar) || null;
+      return {
+        ...g,
+        entry: ders,
+        topic: kayit ? kayit.topic : '',
+        oncekiTopic: onceki && onceki.topic ? onceki.topic : ''
+      };
+    })
+  }));
+
+  // Nobet saatine de konu yazilabildigi icin payda TUM dolu hucreleri sayar;
+  // yalnizca dersleri saysaydi hepsi doldugunda "15 / 14" gibi bir sayac cikardi.
+  const yazilabilir = izgara.reduce(
+    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.isSchoolDay).length,
+    0
+  );
+  const dolu = izgara.reduce(
+    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.isSchoolDay && h.topic).length,
+    0
+  );
+
+  return {
+    weekStart,
+    weekEnd,
+    prevWeekStart: shiftDate(weekStart, -7),
+    nextWeekStart: shiftDate(weekStart, 7),
+    thisWeekStart: startOfWeek(today),
+    academic: academicCalendar.describeWeek(weekStart, weekEnd),
+    gunler,
+    izgara,
+    yazilabilir,
+    dolu
+  };
+}
+
 /** Admin "Ders Programı" sayfasinin goruntusu. */
 async function buildScheduleView(req) {
   const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
   const saatler = schedule.buildPeriods(ayar);
   const izgara = schedule.buildGrid(kayitlar, ayar);
+  const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
+  const topicWeek = gorunum === 'konular' ? await buildTopicWeekView(req, ayar, kayitlar) : null;
 
   // Form on dolgusu: bos hucreye basilinca gun/saat secili gelsin.
   const formDay = Number(normalizeText(req.query.gun)) || '';
@@ -1919,6 +2006,8 @@ async function buildScheduleView(req) {
   }));
 
   return {
+    gorunum,
+    topicWeek,
     ayar,
     saatler,
     izgara,
@@ -2989,6 +3078,92 @@ app.post(
     }
     return adminRedirect(req, res, {
       message: `${sonuc.student.name} için ${sonuc.days} gün yansıtıldı, ${sonuc.questionRows} güne soru kaydı yazıldı.`
+    });
+  })
+);
+
+app.post(
+  '/admin/schedule/topics',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const weekStart = normalizeWeekStart(normalizeText(req.body.weekStart));
+    if (!weekStart) {
+      return adminRedirect(req, res, { error: 'Hafta seçilmedi.' });
+    }
+
+    const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+    const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
+
+    // Form tum haftayi tek seferde gonderir: alan adlari "konu[gun-saat]".
+    // Yalnizca CIZELGEDE DERSI OLAN ve o gun okul gunu olan hucreler yazilir;
+    // boylece formdan gelen beklenmedik anahtarlar kayit acamaz.
+    const girdiler = [];
+    for (const [alan, deger] of Object.entries(req.body || {})) {
+      const eslesme = /^konu\[(\d+)-(\d+)\]$/.exec(alan);
+      if (!eslesme) continue;
+      const gun = Number(eslesme[1]);
+      const saat = Number(eslesme[2]);
+      if (!(gun >= 1 && gun <= 5) || !(saat >= 1 && saat <= ayar.periodCount)) continue;
+
+      const ders = kayitByKey.get(`${gun}:${saat}`);
+      if (!ders) continue;
+
+      const gunTarihi = shiftDate(weekStart, gun - 1);
+      if (!academicCalendar.getDayInfo(gunTarihi).isSchoolDay) continue;
+
+      girdiler.push({
+        gun,
+        saat,
+        konu: normalizeText(deger).slice(0, 500),
+        subject: ders.subject,
+        className: ders.className
+      });
+    }
+
+    if (!girdiler.length) {
+      return adminRedirect(req, res, { error: 'Yazılacak ders saati bulunamadı.' });
+    }
+
+    const client = await pool.connect();
+    let yazilan = 0;
+    let silinen = 0;
+    try {
+      await client.query('BEGIN');
+      for (const g of girdiler) {
+        if (!g.konu) {
+          // Bosaltilan hucre kaydi silinir; bos satir birakmak yerine temiz kalir.
+          const silme = await client.query(
+            `DELETE FROM lesson_topics WHERE week_start = $1 AND day_of_week = $2 AND period = $3`,
+            [weekStart, g.gun, g.saat]
+          );
+          silinen += silme.rowCount || 0;
+          continue;
+        }
+        await client.query(
+          `
+            INSERT INTO lesson_topics (id, week_start, day_of_week, period, subject, class_name, topic, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+            ON CONFLICT (week_start, day_of_week, period) DO UPDATE SET
+              subject = EXCLUDED.subject,
+              class_name = EXCLUDED.class_name,
+              topic = EXCLUDED.topic,
+              updated_at = NOW()
+          `,
+          [makeId('top'), weekStart, g.gun, g.saat, g.subject, g.className, g.konu]
+        );
+        yazilan += 1;
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const silmeNotu = silinen ? ` ${silinen} boş bırakılan kayıt silindi.` : '';
+    return adminRedirect(req, res, {
+      message: `${weekStart} haftası kaydedildi: ${yazilan} ders saati.${silmeNotu}`
     });
   })
 );
