@@ -1357,14 +1357,47 @@ async function syncYdsProgress() {
   try {
     await client.query('BEGIN');
 
+    // --- Sifirlama yayilimi ---------------------------------------------
+    //
+    // YDS uygulamasindaki "Ilerlemeyi sifirla" sunucu durumunu bosaltir ve
+    // resetAt damgasi birakir; diger cihazlar bu damgayi gorup kendilerini
+    // temizler. takip.obs aynasi da bir "cihaz" gibi davranmali: damga
+    // ilerlediyse buradaki gecmis de silinir. Aksi halde sifirlama hic
+    // yansimazdi — gunler bosalinca dongu hicbir sey yazmaz, eski satirlar
+    // sonsuza kadar kalirdi.
+    //
+    // Silme YALNIZCA damga ilerlediginde olur (idempotent); her senkronda
+    // degil. Programdan gelen gorevler (source_key 'ydsp:') ve ogrencinin
+    // takip.obs'ta kendi isaretledigi durumlar bundan etkilenmez — onlar
+    // YDS ilerlemesi degil, bu uygulamanin kendi kaydi.
+    const oncekiRes = await client.query(
+      `SELECT source_reset_at AS "sourceResetAt" FROM yds_sync WHERE student_id = $1`,
+      [student.id]
+    );
+    const oncekiReset = oncekiRes.rowCount > 0 ? Number(oncekiRes.rows[0].sourceResetAt) || 0 : 0;
+    const sifirlandi = state.resetAt > oncekiReset;
+
+    let removedDays = 0;
+    let removedQuestionRows = 0;
+    if (sifirlandi) {
+      const gunSilme = await client.query(`DELETE FROM yds_days WHERE student_id = $1`, [student.id]);
+      removedDays = gunSilme.rowCount || 0;
+      const soruSilme = await client.query(
+        `DELETE FROM daily_questions WHERE student_id = $1 AND source_key LIKE $2`,
+        [student.id, `${ydsSync.SOURCE_PREFIX}:%`]
+      );
+      removedQuestionRows = soruSilme.rowCount || 0;
+    }
+
     await client.query(
       `
         INSERT INTO yds_sync (
           student_id, goal_okuma, goal_kelime, goal_gramer, goal_test,
           streak_count, streak_max, streak_last_day, plan_start, learned_cards,
-          synced_at, last_error
+          synced_at, last_error, source_reset_at, reset_applied_at
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'')
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'',$11,
+                CASE WHEN $12::boolean THEN NOW() ELSE NULL END)
         ON CONFLICT (student_id) DO UPDATE SET
           goal_okuma = EXCLUDED.goal_okuma,
           goal_kelime = EXCLUDED.goal_kelime,
@@ -1376,7 +1409,9 @@ async function syncYdsProgress() {
           plan_start = EXCLUDED.plan_start,
           learned_cards = EXCLUDED.learned_cards,
           synced_at = NOW(),
-          last_error = ''
+          last_error = '',
+          source_reset_at = EXCLUDED.source_reset_at,
+          reset_applied_at = COALESCE(EXCLUDED.reset_applied_at, yds_sync.reset_applied_at)
       `,
       [
         student.id,
@@ -1388,7 +1423,9 @@ async function syncYdsProgress() {
         state.streak.max,
         state.streak.lastDay,
         state.planStart,
-        state.learnedCards
+        state.learnedCards,
+        state.resetAt,
+        sifirlandi
       ]
     );
 
@@ -1472,7 +1509,16 @@ async function syncYdsProgress() {
     }
 
     await client.query('COMMIT');
-    return { ok: true, student, days: gunler, questionRows: soruSatiri, filePath: state.filePath };
+    return {
+      ok: true,
+      student,
+      days: gunler,
+      questionRows: soruSatiri,
+      filePath: state.filePath,
+      reset: sifirlandi,
+      removedDays,
+      removedQuestionRows
+    };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -1668,7 +1714,8 @@ async function buildYdsView(gunSayisi = 30) {
         SELECT goal_okuma AS "okuma", goal_kelime AS "kelime", goal_gramer AS "gramer",
                goal_test AS "test", streak_count AS "streakCount", streak_max AS "streakMax",
                streak_last_day AS "streakLastDay", plan_start AS "planStart",
-               learned_cards AS "learnedCards", synced_at AS "syncedAt", last_error AS "lastError"
+               learned_cards AS "learnedCards", synced_at AS "syncedAt", last_error AS "lastError",
+               reset_applied_at AS "resetAppliedAt"
         FROM yds_sync WHERE student_id = $1
       `,
       [student.id]
@@ -1753,6 +1800,7 @@ async function buildYdsView(gunSayisi = 30) {
           planStart: toDateOnly(sync.planStart),
           learnedCards: sync.learnedCards,
           syncedAt: sync.syncedAt,
+          resetAppliedAt: sync.resetAppliedAt,
           lastError: sync.lastError || ''
         }
       : null,
@@ -2793,6 +2841,13 @@ app.post(
     const sonuc = await syncYdsProgress();
     if (!sonuc.ok) {
       return adminRedirect(req, res, { error: `YDS verisi çekilemedi: ${sonuc.reason}` });
+    }
+    if (sonuc.reset) {
+      return adminRedirect(req, res, {
+        message:
+          `Sıfırlama yansıtıldı: ${sonuc.removedDays} gün ve ${sonuc.removedQuestionRows} soru kaydı silindi. ` +
+          `Ardından ${sonuc.days} gün yansıtıldı, ${sonuc.questionRows} güne soru kaydı yazıldı.`
+      });
     }
     return adminRedirect(req, res, {
       message: `${sonuc.student.name} için ${sonuc.days} gün yansıtıldı, ${sonuc.questionRows} güne soru kaydı yazıldı.`
@@ -4321,6 +4376,11 @@ async function runSealSafely() {
   // kirletmez; gercek bir hata olursa yds_sync.last_error'a da yazilir.
   try {
     const sonuc = await syncYdsProgress();
+    if (sonuc.ok && sonuc.reset) {
+      console.log(
+        `YDS sıfırlaması yansıtıldı: ${sonuc.removedDays} gün, ${sonuc.removedQuestionRows} soru kaydı silindi.`
+      );
+    }
     if (sonuc.ok && sonuc.days > 0) {
       console.log(`YDS ilerlemesi yansıtıldı: ${sonuc.days} gün.`);
     }

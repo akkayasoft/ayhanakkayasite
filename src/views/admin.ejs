@@ -1286,6 +1286,9 @@
             <li>En uzun seri: <%= ydsView.sync.streakMax %> gün<% if (ydsView.sync.streakLastDay) { %> · son: <%= ydsView.sync.streakLastDay %><% } %></li>
             <% if (ydsView.sync.planStart) { %><li>Plan başlangıcı: <%= ydsView.sync.planStart %></li><% } %>
             <li>Son senkron: <%= ydsView.sync.syncedAt ? new Date(ydsView.sync.syncedAt).toLocaleString('tr-TR') : 'hiç' %></li>
+            <% if (ydsView.sync.resetAppliedAt) { %>
+            <li>Son sıfırlama yansıtıldı: <%= new Date(ydsView.sync.resetAppliedAt).toLocaleString('tr-TR') %></li>
+            <% } %>
             <% } else { %>
             <li class="muted">Henüz senkron yapılmadı.</li>
             <% } %>
