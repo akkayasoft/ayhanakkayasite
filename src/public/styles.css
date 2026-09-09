@@ -1295,6 +1295,30 @@ tr.day-off td {
   border-bottom-color: var(--warning-border);
 }
 
+/* Toplu yapistirma kutusu: sekme hizalamasi gorunsun diye tek aralikli */
+.paste-box {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  tab-size: 8;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.paste-hints {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.paste-hints code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  font-size: 0.75rem;
+}
+
 /* Islenen konular izgarasi: ayni cizelge, hucrelerde konu alani */
 .topic-grid .schedule-cell {
   min-width: 190px;

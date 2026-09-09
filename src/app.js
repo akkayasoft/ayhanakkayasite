@@ -3243,6 +3243,69 @@ app.post(
 );
 
 app.post(
+  '/admin/schedule/paste',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const metin = String(req.body.metin || '');
+    if (!metin.trim()) {
+      return adminRedirect(req, res, { error: 'Yapıştırılacak metin boş.' });
+    }
+
+    const ayar = await getScheduleSettings();
+    const { gecerli, hatali } = schedule.parseScheduleText(metin, ayar.periodCount);
+
+    if (!gecerli.length) {
+      const ilk = hatali.length ? ` İlk sorun: ${hatali[0].hata}` : '';
+      return adminRedirect(req, res, {
+        error: `Hiçbir satır anlaşılamadı (${hatali.length} sorunlu satır).${ilk}`
+      });
+    }
+
+    const temizle = normalizeText(req.body.temizle) === 'on';
+    const client = await pool.connect();
+    let silinen = 0;
+    try {
+      await client.query('BEGIN');
+      if (temizle) {
+        const silme = await client.query(`DELETE FROM class_schedule`);
+        silinen = silme.rowCount || 0;
+      }
+      for (const g of gecerli) {
+        await client.query(
+          `
+            INSERT INTO class_schedule (id, term, day_of_week, period, subject, class_name, room, kind)
+            VALUES ($1,0,$2,$3,$4,$5,$6,$7)
+            ON CONFLICT (term, day_of_week, period) DO UPDATE SET
+              subject = EXCLUDED.subject,
+              class_name = EXCLUDED.class_name,
+              room = EXCLUDED.room,
+              kind = EXCLUDED.kind
+          `,
+          [makeId('sch'), g.dayOfWeek, g.period, g.subject, g.className, g.room, g.kind]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const notlar = [];
+    if (silinen) notlar.push(`${silinen} eski kayıt temizlendi.`);
+    if (hatali.length) {
+      // Anlasilmayan satirlar sessizce kaybolmasin: kullaniciya geri gosterilir.
+      notlar.push(`${hatali.length} satır anlaşılamadı — ilki: "${hatali[0].satir}" (${hatali[0].hata})`);
+    }
+
+    return adminRedirect(req, res, {
+      message: `${gecerli.length} ders saati kaydedildi.${notlar.length ? ' ' + notlar.join(' ') : ''}`
+    });
+  })
+);
+
+app.post(
   '/admin/schedule/entry',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
