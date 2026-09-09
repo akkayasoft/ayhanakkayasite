@@ -629,6 +629,7 @@
                   <th>Tamamlanan</th>
                   <th>Soru</th>
                   <th>Süre (dk)</th>
+                  <th>Okul</th>
                 </tr>
               </thead>
               <tbody>
@@ -647,6 +648,13 @@
                   <td><%= d.doneCount %></td>
                   <td><%= d.questionTotal %></td>
                   <td><%= d.durationMinutes %></td>
+                  <td>
+                    <% if (!calendar.hasSchedule || !d.isSchoolDay) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <%= d.lessonCount %> ders<% if (d.freePeriods !== null) { %> <span class="muted">/ <%= d.freePeriods %> boş</span><% } %>
+                    <% } %>
+                  </td>
                 </tr>
                 <% }) %>
               </tbody>
@@ -663,6 +671,19 @@
               <span class="day-badge off"><%= d.dayLabel %></span>
               <% } %>
             </h3>
+            <% if (d.lessons && d.lessons.length) { %>
+            <ul class="clean-list lesson-list">
+              <% d.lessons.forEach((l) => { %>
+              <li class="row space-between center">
+                <span>
+                  <span class="lesson-period"><%= l.period %>.</span>
+                  <%= l.subject %><% if (l.className) { %> <span class="muted"><%= l.className %></span><% } %>
+                </span>
+                <span class="muted"><%= l.saat ? l.saat.start + ' - ' + l.saat.end : '' %></span>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
             <% if (!d.tasks.length) { %>
             <p class="muted"><%= d.isSchoolDay ? 'Görev yok.' : d.dayLabel + ' — görev yok.' %></p>
             <% } %>

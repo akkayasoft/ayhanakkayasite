@@ -250,6 +250,37 @@ Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 > günü gelmemiş olanları. **İşaretli bir görev eski gününde kalır**; o gün iki
 > programın çakıştığı tek yer olabilir.
 
+## Okul ders programı
+
+`/admin/schedule` — uygulama sahibinin (öğretmen) haftalık ders çizelgesi.
+Öğrenci başına değil, **uygulama genelinde tek programdır**; bu kurulumda tek
+öğretmen var. Çoklu öğretmen gerekirse tabloya sahip alanı eklenmeli.
+
+- `school_settings` (tek satır, id `default`): başlangıç saati, ders/teneffüs
+  süresi, günlük ders saati sayısı, öğle arası (hangi dersten sonra, kaç dk).
+- `class_schedule`: `term` (0 = yıl boyu, 1/2 = dönem), `day_of_week` (1-5),
+  `period`, `subject`, `class_name`, `room`, `kind` (`lesson` | `duty`).
+  `UNIQUE (term, day_of_week, period)` — aynı hücre iki kez dolamaz.
+
+> `term` NULL değil **0** varsayılanlı: Postgres'te NULL'lar birbirinden farklı
+> sayıldığı için NULL'lu bir UNIQUE kısıtı aynı hücrenin iki kez girilmesini
+> engellemezdi.
+
+**Zil saatleri saklanmaz, hesaplanır** (`src/schedule.js`): ayardan her ders
+saatinin başlangıç-bitişi türetilir. Böylece "8. ders kaçta" sorusunun tek doğru
+cevabı olur ve saatler elle girilirken kaymaz. Sayfada günün bitiş saati
+gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 40 dk
++ 10 dk teneffüs + 6. dersten sonra 40 dk öğle = 16:40).
+
+- Dolu bir hücreye tekrar kayıt **üstüne yazar** (`ON CONFLICT DO UPDATE`);
+  düzeltmek için önce silmek gerekmez.
+- Günlük ders saati sayısı küçültülürse kapsam dışı kalan kayıtlar silinir ve
+  kaç tanesi silindiği mesajda bildirilir — yoksa öksüz satır kalırdı.
+- Çizelge **Haftalık Takvim'e** de işlenir: gün kartlarında o günün dersleri
+  saatleriyle, özet tablosunda "N ders / M boş" sütunu. Ders yalnızca gerçek
+  okul gününde gösterilir — hafta sonu, ara tatil, yarıyıl ve bayramda
+  `academicCalendar` devreye girer ve çizelge işlemez.
+
 ## Uyanma rutini
 
 Öğrenci her sabah **tek dokunuşla** işaretler; basılan saat kaydedilir.

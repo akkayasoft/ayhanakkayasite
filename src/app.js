@@ -15,6 +15,7 @@ const academicCalendar = require('./academicCalendar');
 const yzProgram = require('./yzProgram');
 const ydsSync = require('./ydsSync');
 const ydsProgram = require('./ydsProgram');
+const schedule = require('./schedule');
 
 const app = express();
 
@@ -513,6 +514,15 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
     calendarStatusesRes.rows.map((row) => [`${row.taskId}:${toDateOnly(row.day)}`, row.status])
   );
   const tasks = allTasks || studentTasksRes.rows.map(mapTask);
+
+  // Okul ders programi: gunun derslerini takvimde gorevlerin yaninda goster ki
+  // hangi saatin bos oldugu anlasilsin. Program uygulama genelinde tektir
+  // (tek ogretmen varsayimi); tanimli degilse bu kisim sessizce bos gecer.
+  const [scheduleSettings, scheduleEntries] = await Promise.all([
+    getScheduleSettings(),
+    getScheduleEntries()
+  ]);
+
   const days = getWeekDates(weekStart).map((day) => {
     const dayDateObj = new Date(`${day}T00:00:00`);
     const dueTasks = tasks.filter((task) => isTaskDueOnDate(task, dayDateObj, day));
@@ -523,12 +533,25 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
 
     const dayInfo = academicCalendar.getDayInfo(day);
 
+    // Ders yalnizca gercek okul gununde gosterilir: hafta sonu, ara tatil,
+    // yariyil ve bayramda cizelge islemez.
+    const haftaninGunu = schedule.dayOfWeek(day);
+    const dersler =
+      dayInfo.isSchoolDay && haftaninGunu
+        ? schedule.lessonsForDay(scheduleEntries, haftaninGunu, scheduleSettings)
+        : [];
+
     return {
       date: day,
       dayName: getDayName(day),
       dayType: dayInfo.type,
       dayLabel: dayInfo.label,
       isSchoolDay: dayInfo.isSchoolDay,
+      lessons: dersler,
+      lessonCount: dersler.filter((d) => d.kind === 'lesson').length,
+      freePeriods: dayInfo.isSchoolDay && haftaninGunu
+        ? Math.max(0, scheduleSettings.periodCount - dersler.length)
+        : null,
       dueCount: dueTasks.length,
       doneCount,
       questionTotal: dayQuestion ? Number(dayQuestion.totalQuestions || 0) : 0,
@@ -549,6 +572,8 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
     prevWeekStart: shiftDate(weekStart, -7),
     nextWeekStart: shiftDate(weekStart, 7),
     academic: academicCalendar.describeWeek(weekStart, weekEnd),
+    scheduleSettings,
+    hasSchedule: scheduleEntries.length > 0,
     days
   };
 }
@@ -1815,10 +1840,121 @@ async function buildYdsView(gunSayisi = 30) {
   };
 }
 
+// --- Okul ders programi ----------------------------------------------------
+//
+// Uygulama sahibinin (ogretmen) haftalik cizelgesi; ogrenci basina degil,
+// uygulama genelinde tek programdir. Zil saatleri saklanmaz, ayardan
+// hesaplanir (bkz. schedule.js).
+
+const SCHEDULE_SETTINGS_ID = 'default';
+
+function mapScheduleEntry(row) {
+  return {
+    id: row.id,
+    term: Number(row.term) || 0,
+    dayOfWeek: Number(row.dayOfWeek),
+    period: Number(row.period),
+    subject: row.subject,
+    className: row.className || '',
+    room: row.room || '',
+    kind: row.kind || 'lesson'
+  };
+}
+
+/** Zil ayarlarini okur; kayit yoksa varsayilani doner (yazmaz). */
+async function getScheduleSettings() {
+  const res = await query(
+    `
+      SELECT start_time AS "startTime", lesson_minutes AS "lessonMinutes",
+             break_minutes AS "breakMinutes", period_count AS "periodCount",
+             lunch_after_period AS "lunchAfterPeriod", lunch_minutes AS "lunchMinutes"
+      FROM school_settings WHERE id = $1
+    `,
+    [SCHEDULE_SETTINGS_ID]
+  );
+  if (res.rowCount === 0) return { ...schedule.VARSAYILAN_AYAR, isDefault: true };
+  const row = res.rows[0];
+  return {
+    startTime: normalizeEstimatedTimeForDisplay(row.startTime) || schedule.VARSAYILAN_AYAR.startTime,
+    lessonMinutes: Number(row.lessonMinutes),
+    breakMinutes: Number(row.breakMinutes),
+    periodCount: Number(row.periodCount),
+    lunchAfterPeriod: row.lunchAfterPeriod === null ? null : Number(row.lunchAfterPeriod),
+    lunchMinutes: Number(row.lunchMinutes),
+    isDefault: false
+  };
+}
+
+async function getScheduleEntries() {
+  const res = await query(
+    `
+      SELECT id, term, day_of_week AS "dayOfWeek", period, subject,
+             class_name AS "className", room, kind
+      FROM class_schedule
+      ORDER BY day_of_week ASC, period ASC
+    `
+  );
+  return res.rows.map(mapScheduleEntry);
+}
+
+/** Admin "Ders Programı" sayfasinin goruntusu. */
+async function buildScheduleView(req) {
+  const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+  const saatler = schedule.buildPeriods(ayar);
+  const izgara = schedule.buildGrid(kayitlar, ayar);
+
+  // Form on dolgusu: bos hucreye basilinca gun/saat secili gelsin.
+  const formDay = Number(normalizeText(req.query.gun)) || '';
+  const formPeriod = Number(normalizeText(req.query.saat)) || '';
+  const duzenlenen = normalizeText(req.query.duzenle)
+    ? kayitlar.find((k) => k.id === normalizeText(req.query.duzenle)) || null
+    : null;
+
+  const gunSayilari = [1, 2, 3, 4, 5].map((gun) => ({
+    dayOfWeek: gun,
+    gunAdi: schedule.GUN_ADLARI[gun],
+    dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
+    nobet: kayitlar.some((k) => k.dayOfWeek === gun && k.kind === 'duty'),
+    bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length
+  }));
+
+  return {
+    ayar,
+    saatler,
+    izgara,
+    kayitlar,
+    gunSayilari,
+    bitisSaati: schedule.endOfDay(ayar),
+    toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
+    toplamNobet: kayitlar.filter((k) => k.kind === 'duty').length,
+    form: duzenlenen
+      ? {
+          isEdit: true,
+          id: duzenlenen.id,
+          dayOfWeek: duzenlenen.dayOfWeek,
+          period: duzenlenen.period,
+          subject: duzenlenen.subject,
+          className: duzenlenen.className,
+          room: duzenlenen.room,
+          kind: duzenlenen.kind
+        }
+      : {
+          isEdit: false,
+          id: '',
+          dayOfWeek: formDay,
+          period: formPeriod,
+          subject: '',
+          className: '',
+          room: '',
+          kind: 'lesson'
+        }
+  };
+}
+
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|schedule|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -2035,6 +2171,7 @@ async function getAdminViewModel(req, currentPage) {
 
   const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
 
+  const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
   const ydsView = currentPage === 'yds' ? await buildYdsView(30) : null;
   const ydsProgramView =
     currentPage === 'yds' ? await buildYdsProgramSummary(ydsView && ydsView.student ? ydsView.student.id : null) : null;
@@ -2247,6 +2384,7 @@ async function getAdminViewModel(req, currentPage) {
     yzProgramView,
     ydsView,
     ydsProgramView,
+    scheduleView,
     wakeAdmin,
     dailyBoard,
     report,
@@ -2415,7 +2553,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds', 'schedule']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -2851,6 +2989,148 @@ app.post(
     }
     return adminRedirect(req, res, {
       message: `${sonuc.student.name} için ${sonuc.days} gün yansıtıldı, ${sonuc.questionRows} güne soru kaydı yazıldı.`
+    });
+  })
+);
+
+app.post(
+  '/admin/schedule/settings',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const startValidation = normalizeEstimatedTimeForStorage(normalizeText(req.body.startTime));
+    if (!startValidation.ok || !startValidation.value) {
+      return adminRedirect(req, res, { error: 'Başlangıç saati geçersiz (ör. 08:00).' });
+    }
+
+    const sayiAl = (deger, min, max) => {
+      const n = Number(normalizeText(deger));
+      return Number.isInteger(n) && n >= min && n <= max ? n : null;
+    };
+
+    const lessonMinutes = sayiAl(req.body.lessonMinutes, 10, 120);
+    const breakMinutes = sayiAl(req.body.breakMinutes, 0, 60);
+    const periodCount = sayiAl(req.body.periodCount, 1, 16);
+    const lunchMinutes = sayiAl(req.body.lunchMinutes, 0, 180);
+    if (lessonMinutes === null || breakMinutes === null || periodCount === null || lunchMinutes === null) {
+      return adminRedirect(req, res, { error: 'Süre alanları geçersiz.' });
+    }
+
+    const lunchRaw = normalizeText(req.body.lunchAfterPeriod);
+    const lunchAfterPeriod = lunchRaw === '' ? null : sayiAl(lunchRaw, 1, periodCount);
+    if (lunchRaw !== '' && lunchAfterPeriod === null) {
+      return adminRedirect(req, res, {
+        error: `Öğle arası ders saati 1 ile ${periodCount} arasında olmalı.`
+      });
+    }
+
+    // Ders saati sayisi kisaltilirsa disarida kalan kayitlar oksuz kalmasin.
+    const artan = await query(`DELETE FROM class_schedule WHERE period > $1`, [periodCount]);
+
+    await query(
+      `
+        INSERT INTO school_settings (
+          id, start_time, lesson_minutes, break_minutes, period_count, lunch_after_period, lunch_minutes, updated_at
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          start_time = EXCLUDED.start_time,
+          lesson_minutes = EXCLUDED.lesson_minutes,
+          break_minutes = EXCLUDED.break_minutes,
+          period_count = EXCLUDED.period_count,
+          lunch_after_period = EXCLUDED.lunch_after_period,
+          lunch_minutes = EXCLUDED.lunch_minutes,
+          updated_at = NOW()
+      `,
+      [
+        SCHEDULE_SETTINGS_ID,
+        startValidation.value,
+        lessonMinutes,
+        breakMinutes,
+        periodCount,
+        lunchAfterPeriod,
+        lunchMinutes
+      ]
+    );
+
+    const bitis = schedule.endOfDay({
+      startTime: startValidation.value,
+      lessonMinutes,
+      breakMinutes,
+      periodCount,
+      lunchAfterPeriod,
+      lunchMinutes
+    });
+    const silmeNotu = artan.rowCount ? ` ${artan.rowCount} ders kaydı kapsam dışı kaldığı için silindi.` : '';
+    return adminRedirect(req, res, {
+      message: `Zil çizelgesi kaydedildi. Gün ${startValidation.value} - ${bitis} arası.${silmeNotu}`
+    });
+  })
+);
+
+app.post(
+  '/admin/schedule/entry',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const ayar = await getScheduleSettings();
+    const dayOfWeek = Number(normalizeText(req.body.dayOfWeek));
+    const period = Number(normalizeText(req.body.period));
+    const subject = normalizeText(req.body.subject);
+    const className = normalizeText(req.body.className);
+    const room = normalizeText(req.body.room);
+    const kind = normalizeText(req.body.kind) === 'duty' ? 'duty' : 'lesson';
+
+    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 5) {
+      return adminRedirect(req, res, { error: 'Gün seçilmedi.' });
+    }
+    if (!Number.isInteger(period) || period < 1 || period > ayar.periodCount) {
+      return adminRedirect(req, res, {
+        error: `Ders saati 1 ile ${ayar.periodCount} arasında olmalı.`
+      });
+    }
+    if (!subject) {
+      return adminRedirect(req, res, { error: 'Ders adı zorunlu.' });
+    }
+
+    // Ayni hucre ikinci kez girilirse ustune yazilir; boylece duzeltmek icin
+    // once silmek gerekmez.
+    await query(
+      `
+        INSERT INTO class_schedule (id, term, day_of_week, period, subject, class_name, room, kind)
+        VALUES ($1,0,$2,$3,$4,$5,$6,$7)
+        ON CONFLICT (term, day_of_week, period) DO UPDATE SET
+          subject = EXCLUDED.subject,
+          class_name = EXCLUDED.class_name,
+          room = EXCLUDED.room,
+          kind = EXCLUDED.kind
+      `,
+      [makeId('sch'), dayOfWeek, period, subject, className, room, kind]
+    );
+
+    return adminRedirect(req, res, {
+      message: `${schedule.GUN_ADLARI[dayOfWeek]} ${period}. ders kaydedildi.`
+    });
+  })
+);
+
+app.post(
+  '/admin/schedule/entry/:id/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const silindi = await query(`DELETE FROM class_schedule WHERE id = $1`, [req.params.id]);
+    if (silindi.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Kayıt bulunamadı.' });
+    }
+    return adminRedirect(req, res, { message: 'Ders kaydı silindi.' });
+  })
+);
+
+app.post(
+  '/admin/schedule/clear',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const silindi = await query(`DELETE FROM class_schedule`);
+    return adminRedirect(req, res, {
+      message: `${silindi.rowCount} ders kaydı silindi; program boşaltıldı.`
     });
   })
 );

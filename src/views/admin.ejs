@@ -25,6 +25,7 @@
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
           <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
           <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>">YDS Takibi</a>
+          <a href="/admin/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
         </nav>
 
@@ -1467,6 +1468,184 @@
           <% } %>
         </section>
         <% } %>
+        <% } %>
+
+        <% if (currentPage === 'schedule' && scheduleView) { %>
+        <header class="content-header">
+          <h2>Ders Programı</h2>
+          <p class="muted">
+            Haftalık ders çizelgen. Zil saatleri elle girilmez — başlangıç saati ve
+            süreler verilir, her ders saatinin saati bunlardan hesaplanır.
+            Program Haftalık Takvim'de de görünür; tatil ve bayram günlerinde işlemez.
+          </p>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi">
+            <p class="kpi-label">Haftalık Ders</p>
+            <p class="kpi-value"><%= scheduleView.toplamDers %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Günün Bitişi</p>
+            <p class="kpi-value"><%= scheduleView.bitisSaati %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Günlük Ders Saati</p>
+            <p class="kpi-value"><%= scheduleView.ayar.periodCount %></p>
+          </article>
+          <% if (scheduleView.toplamNobet) { %>
+          <article class="kpi">
+            <p class="kpi-label">Nöbet</p>
+            <p class="kpi-value"><%= scheduleView.toplamNobet %></p>
+          </article>
+          <% } %>
+        </section>
+
+        <section class="grid two">
+          <article class="panel">
+            <h3><%= scheduleView.form.isEdit ? 'Dersi Düzenle' : 'Ders Ekle' %></h3>
+            <form method="post" action="/admin/schedule/entry" class="stack">
+              <input type="hidden" name="next" value="/admin/schedule" />
+              <label>Gün</label>
+              <select name="dayOfWeek" required>
+                <option value="">Seçin</option>
+                <% [1,2,3,4,5].forEach((g) => { %>
+                <option value="<%= g %>" <%= String(scheduleView.form.dayOfWeek) === String(g) ? 'selected' : '' %>><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][g] %></option>
+                <% }) %>
+              </select>
+
+              <label>Ders Saati</label>
+              <select name="period" required>
+                <option value="">Seçin</option>
+                <% scheduleView.saatler.forEach((s) => { %>
+                <option value="<%= s.period %>" <%= String(scheduleView.form.period) === String(s.period) ? 'selected' : '' %>><%= s.period %>. ders (<%= s.start %> - <%= s.end %>)</option>
+                <% }) %>
+              </select>
+
+              <label>Ders Adı</label>
+              <input type="text" name="subject" required value="<%= scheduleView.form.subject %>" placeholder="Mobil Uygulamalar" />
+
+              <label>Sınıf / Şube</label>
+              <input type="text" name="className" value="<%= scheduleView.form.className %>" placeholder="11-A" />
+
+              <label>Derslik</label>
+              <input type="text" name="room" value="<%= scheduleView.form.room %>" placeholder="Lab 2" />
+
+              <label>Tür</label>
+              <select name="kind">
+                <option value="lesson" <%= scheduleView.form.kind === 'lesson' ? 'selected' : '' %>>Ders</option>
+                <option value="duty" <%= scheduleView.form.kind === 'duty' ? 'selected' : '' %>>Nöbet</option>
+              </select>
+
+              <button type="submit">Kaydet</button>
+              <p class="muted">
+                Dolu bir saate tekrar kaydedersen üstüne yazılır; önce silmene gerek yok.
+              </p>
+            </form>
+          </article>
+
+          <article class="panel">
+            <h3>Zil Çizelgesi</h3>
+            <form method="post" action="/admin/schedule/settings" class="stack">
+              <input type="hidden" name="next" value="/admin/schedule" />
+              <label>İlk Ders Başlangıcı</label>
+              <input type="time" name="startTime" required value="<%= scheduleView.ayar.startTime %>" />
+
+              <label>Ders Süresi (dk)</label>
+              <input type="number" name="lessonMinutes" min="10" max="120" required value="<%= scheduleView.ayar.lessonMinutes %>" />
+
+              <label>Teneffüs (dk)</label>
+              <input type="number" name="breakMinutes" min="0" max="60" required value="<%= scheduleView.ayar.breakMinutes %>" />
+
+              <label>Günlük Ders Saati Sayısı</label>
+              <input type="number" name="periodCount" min="1" max="16" required value="<%= scheduleView.ayar.periodCount %>" />
+
+              <label>Öğle Arası Hangi Dersten Sonra</label>
+              <input type="number" name="lunchAfterPeriod" min="1" max="16" value="<%= scheduleView.ayar.lunchAfterPeriod === null ? '' : scheduleView.ayar.lunchAfterPeriod %>" placeholder="boş = öğle arası yok" />
+
+              <label>Öğle Arası (dk)</label>
+              <input type="number" name="lunchMinutes" min="0" max="180" required value="<%= scheduleView.ayar.lunchMinutes %>" />
+
+              <button type="submit">Zil Çizelgesini Kaydet</button>
+              <p class="muted">
+                Şu anki ayarla gün <strong><%= scheduleView.ayar.startTime %> - <%= scheduleView.bitisSaati %></strong>
+                arası. Bitiş saati tutmuyorsa süreleri değiştir.
+                <% if (scheduleView.ayar.isDefault) { %><br />Henüz kaydedilmedi, varsayılan gösteriliyor.<% } %>
+              </p>
+            </form>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Haftalık Çizelge</h3>
+          <p class="muted">Boş hücredeki <strong>+</strong> ile o gün/saate ders eklersin; dolu hücreye tıklayınca düzenlersin.</p>
+          <div class="table-wrap">
+            <table class="schedule-grid">
+              <thead>
+                <tr>
+                  <th>Saat</th>
+                  <% [1,2,3,4,5].forEach((g) => { %>
+                  <th><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][g] %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% scheduleView.izgara.forEach((satir) => { %>
+                <tr class="<%= satir.lunchAfter ? 'lunch-row' : '' %>">
+                  <th class="period-cell">
+                    <span class="period-no"><%= satir.period %>.</span>
+                    <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
+                  </th>
+                  <% satir.hucreler.forEach((h) => { %>
+                  <td class="schedule-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %>">
+                    <% if (h.entry) { %>
+                    <a class="cell-link" href="/admin/schedule?duzenle=<%= h.entry.id %>">
+                      <strong><%= h.entry.subject %></strong>
+                      <% if (h.entry.className) { %><span><%= h.entry.className %></span><% } %>
+                      <% if (h.entry.room) { %><span class="muted"><%= h.entry.room %></span><% } %>
+                    </a>
+                    <form method="post" action="/admin/schedule/entry/<%= h.entry.id %>/delete" onsubmit="return confirm('Bu ders kaydı silinsin mi?')">
+                      <input type="hidden" name="next" value="/admin/schedule" />
+                      <button type="submit" class="danger cell-delete" title="Sil">×</button>
+                    </form>
+                    <% } else { %>
+                    <a class="cell-add" href="/admin/schedule?gun=<%= h.dayOfWeek %>&saat=<%= satir.period %>" title="<%= h.gunAdi %> <%= satir.period %>. ders">+</a>
+                    <% } %>
+                  </td>
+                  <% }) %>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Gün Özeti</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Gün</th><th>Ders</th><th>Boş Saat</th><th>Nöbet</th></tr>
+              </thead>
+              <tbody>
+                <% scheduleView.gunSayilari.forEach((g) => { %>
+                <tr>
+                  <td><%= g.gunAdi %></td>
+                  <td><%= g.dersSayisi %></td>
+                  <td><%= g.bosSaat %></td>
+                  <td><% if (g.nobet) { %><span class="day-badge off">Var</span><% } else { %>-<% } %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% if (scheduleView.kayitlar.length) { %>
+          <form method="post" action="/admin/schedule/clear" class="stack" onsubmit="return confirm('Tüm ders programı silinsin mi? Zil çizelgesi ayarları kalır.')">
+            <input type="hidden" name="next" value="/admin/schedule" />
+            <button type="submit" class="danger">Programı Boşalt</button>
+          </form>
+          <% } %>
+        </section>
         <% } %>
 
         <% if (currentPage === 'reports') { %>

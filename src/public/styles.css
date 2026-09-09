@@ -1187,6 +1187,136 @@ tr.day-off td {
 }
 
 /* --------------------------------------------------------------------------
+   Ders programi izgarasi
+
+   Satir = ders saati, sutun = gun. Hucreler dokunma hedefi olacak kadar genis;
+   bos hucredeki + dogrudan o gun/saat icin formu on doldurur.
+   -------------------------------------------------------------------------- */
+.schedule-grid {
+  table-layout: fixed;
+}
+
+.schedule-grid th.period-cell {
+  width: 88px;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+  background: var(--surface-sunken);
+}
+
+.period-no {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.period-time {
+  display: block;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule-cell {
+  position: relative;
+  padding: 6px;
+  vertical-align: top;
+  min-width: 128px;
+}
+
+.schedule-cell.filled {
+  background: var(--primary-soft);
+}
+
+.schedule-cell.duty {
+  background: var(--warning-soft);
+}
+
+.cell-link {
+  display: block;
+  padding-right: 18px;
+  text-decoration: none;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.cell-link strong {
+  display: block;
+  font-size: 0.8125rem;
+}
+
+.cell-link span {
+  display: block;
+  font-size: 0.6875rem;
+}
+
+.cell-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  padding: 0 6px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.cell-delete:hover {
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.cell-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+  font-size: 1.125rem;
+  text-decoration: none;
+}
+
+.cell-add:hover {
+  border-color: var(--primary);
+  border-style: solid;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* Ogle arasinin nereye denk geldigi izgarada gorunsun */
+.schedule-grid tr.lunch-row td,
+.schedule-grid tr.lunch-row th {
+  border-bottom-width: 3px;
+  border-bottom-color: var(--warning-border);
+}
+
+/* Ogrenci takviminde gunun dersleri */
+.lesson-list {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lesson-period {
+  display: inline-block;
+  min-width: 20px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .schedule-cell {
+    min-width: 108px;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Uyanma rutini
 
    Sabah ilk isin tek dokunusla isaretlemek oldugu icin buton her iki yerde de
