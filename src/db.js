@@ -146,6 +146,46 @@ async function initDb() {
     WHERE source_key IS NOT NULL
   `);
 
+  // --- Okul ders programi -------------------------------------------------
+  //
+  // Uygulama sahibinin (ogretmen) haftalik ders cizelgesi. Ogrenci basina
+  // degil uygulama genelinde tek programdir — bu kurulumda tek ogretmen var.
+  //
+  // Zil saatleri hesaplanir, elle girilmez: baslangic + ders/teneffus/ogle
+  // sureleri verilir, her ders saatinin baslangic-bitisi bunlardan turetilir.
+  // Boylece "8. ders kacta" sorusunun tek bir dogru cevabi olur.
+  await query(`
+    CREATE TABLE IF NOT EXISTS school_settings (
+      id TEXT PRIMARY KEY,
+      start_time TIME NOT NULL DEFAULT '08:00',
+      lesson_minutes INTEGER NOT NULL DEFAULT 40 CHECK (lesson_minutes BETWEEN 10 AND 120),
+      break_minutes INTEGER NOT NULL DEFAULT 10 CHECK (break_minutes BETWEEN 0 AND 60),
+      period_count INTEGER NOT NULL DEFAULT 10 CHECK (period_count BETWEEN 1 AND 16),
+      lunch_after_period INTEGER NULL CHECK (lunch_after_period IS NULL OR lunch_after_period >= 1),
+      lunch_minutes INTEGER NOT NULL DEFAULT 40 CHECK (lunch_minutes BETWEEN 0 AND 180),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // term: 0 = yil boyu, 1 = 1. donem, 2 = 2. donem.
+  // NULL yerine 0 kullanildi ki UNIQUE kisiti calissin (Postgres'te NULL'lar
+  // birbirinden farkli sayilir, NULL'lu bir kisit ayni hucreyi iki kez
+  // girmeyi engellemezdi).
+  await query(`
+    CREATE TABLE IF NOT EXISTS class_schedule (
+      id TEXT PRIMARY KEY,
+      term INTEGER NOT NULL DEFAULT 0 CHECK (term IN (0, 1, 2)),
+      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),
+      period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
+      subject TEXT NOT NULL,
+      class_name TEXT NOT NULL DEFAULT '',
+      room TEXT NOT NULL DEFAULT '',
+      kind TEXT NOT NULL DEFAULT 'lesson' CHECK (kind IN ('lesson', 'duty')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (term, day_of_week, period)
+    )
+  `);
+
   // --- YDS / YOKDIL takibi -----------------------------------------------
   //
   // yds.obs uygulamasinin ilerlemesi bu tablolara YANSITILIR. Kaynak dosya
