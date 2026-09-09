@@ -32,7 +32,8 @@ scripts/      deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
 
 Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle —
-form), `calendar`, `questions`, `wake` (Uyanma Rutini). Görev ekleme formu ile aktif görev listesi
+form), `calendar`, `questions`, `wake` (Uyanma Rutini), `schedule` (Ders
+Programı — **salt okunur**). Görev ekleme formu ile aktif görev listesi
 **ayrı sayfalardadır**; form gönderimi `next=/student/dashboard` ile listeye
 döner. Yeni bir öğrenci sayfası eklerken `/student/:page` içindeki
 `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi birlikte
@@ -255,6 +256,13 @@ Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 `/admin/schedule` — uygulama sahibinin (öğretmen) haftalık ders çizelgesi.
 Öğrenci başına değil, **uygulama genelinde tek programdır**; bu kurulumda tek
 öğretmen var. Çoklu öğretmen gerekirse tabloya sahip alanı eklenmeli.
+
+**Öğrenci tarafı** (`/student/schedule`) aynı iki görünümü **salt okunur**
+gösterir: çizelge ızgarası + gün özeti, ve hafta gezinmeli işlenen konular.
+Çizelge ve defter öğretmenin kaydıdır; öğrenci hiçbirini düzenleyemez —
+düzenleme/aktarma rotalarının tamamı `requireRole('admin')` arkasında
+(doğrulandı: öğrenci rolüyle beş POST rotası ve Excel export 403 döndü).
+Excel çıktısı bilerek yalnızca admin tarafındadır.
 
 - `school_settings` (tek satır, id `default`): başlangıç saati, ders/teneffüs
   süresi, günlük ders saati sayısı, öğle arası (hangi dersten sonra, kaç dk).

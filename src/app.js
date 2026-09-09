@@ -1989,6 +1989,35 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
   };
 }
 
+/**
+ * Ogrenci tarafi ders programi: AYNI izgara, SALT OKUNUR.
+ *
+ * Cizelge ve ders defteri ogretmenin (admin) kaydidir; ogrenci gorur ama
+ * duzenleyemez. Ileride baska ogrenciler eklendiginde de bu ayrim gecerli
+ * kalir — program uygulama genelinde tektir, herkes ayni cizelgeyi gorur.
+ */
+async function buildStudentScheduleView(req) {
+  const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+  const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
+
+  return {
+    gorunum,
+    ayar,
+    saatler: schedule.buildPeriods(ayar),
+    izgara: schedule.buildGrid(kayitlar, ayar),
+    bitisSaati: schedule.endOfDay(ayar),
+    toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
+    varMi: kayitlar.length > 0,
+    gunSayilari: [1, 2, 3, 4, 5].map((gun) => ({
+      dayOfWeek: gun,
+      gunAdi: schedule.GUN_ADLARI[gun],
+      dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
+      bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length
+    })),
+    topicWeek: gorunum === 'konular' ? await buildTopicWeekView(req, ayar, kayitlar) : null
+  };
+}
+
 /** Admin "Ders Programı" sayfasinin goruntusu. */
 async function buildScheduleView(req) {
   const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
@@ -2062,7 +2091,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -4302,6 +4331,8 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildWakeView(req.currentUser.id, currentPage === 'wake' ? 14 : 7)
       : null;
 
+  const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
+
   return {
     user: req.currentUser,
     currentPage,
@@ -4313,6 +4344,7 @@ async function getStudentViewModel(req, currentPage) {
     questionHistory,
     calendar,
     wake,
+    scheduleView,
     message: req.query.message || null,
     error: req.query.error || null
   };
@@ -4324,7 +4356,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
