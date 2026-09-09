@@ -41,6 +41,10 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  // Ogretmen isareti: uygulama sahibi ayni zamanda ogrenci hesabiyla
+  // giriyorsa ders defterini kendi panelinden yazabilsin. Rol degil bir
+  // yetki bayragi; ogrenci rolu ve tum diger kisitlar aynen durur.
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_teacher BOOLEAN NOT NULL DEFAULT FALSE`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS categories (

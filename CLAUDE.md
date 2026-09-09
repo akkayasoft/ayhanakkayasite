@@ -257,11 +257,11 @@ Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 Öğrenci başına değil, **uygulama genelinde tek programdır**; bu kurulumda tek
 öğretmen var. Çoklu öğretmen gerekirse tabloya sahip alanı eklenmeli.
 
-**Öğrenci tarafı** (`/student/schedule`) aynı iki görünümü **salt okunur**
-gösterir: çizelge ızgarası + gün özeti, ve hafta gezinmeli işlenen konular.
-Çizelge ve defter öğretmenin kaydıdır; öğrenci hiçbirini düzenleyemez —
-düzenleme/aktarma rotalarının tamamı `requireRole('admin')` arkasında
-(doğrulandı: öğrenci rolüyle beş POST rotası 403 döndü).
+**Öğrenci tarafı** (`/student/schedule`) aynı iki görünümü gösterir: çizelge
+ızgarası + gün özeti, ve hafta gezinmeli işlenen konular. **Çizelge her zaman
+salt okunurdur**; düzenleme/aktarma rotalarının tamamı `requireRole('admin')`
+arkasında (doğrulandı: öğrenci rolüyle beş POST rotası ve `/admin/schedule`
+403 döndü). Defterin tek istisnası aşağıdaki öğretmen işaretidir.
 
 - `school_settings` (tek satır, id `default`): başlangıç saati, ders/teneffüs
   süresi, günlük ders saati sayısı, öğle arası (hangi dersten sonra, kaç dk).
@@ -357,6 +357,29 @@ işaretlenir.
   tarihli görev + eksik defter → `not_done`.)
 - Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
   dahil).
+
+### Öğretmen işareti (`users.is_teacher`)
+
+Ders defteri **uygulama genelinde tek kayıttır** ve öğretmenin defteridir; bu
+yüzden yazma varsayılan olarak admine kapalıdır. Ama uygulama sahibi aynı
+zamanda kendi öğrenci hesabıyla giriyor — defteri doldurmak için hesap
+değiştirmek zorunda kalmasın diye bir yetki bayrağı var.
+
+- `users.is_teacher BOOLEAN NOT NULL DEFAULT FALSE`. **Rol değil bayrak**:
+  hesap `student` olarak kalır, diğer bütün kısıtlar aynen sürer.
+- Yönetimi: `/admin/schedule?gorunum=konular` → **Defteri Kim Yazabilir**
+  paneli (`POST /admin/schedule/teacher`).
+- İşaretli öğrencinin `/student/schedule?gorunum=konular` sayfası düzenlenebilir
+  ızgaraya döner ve `POST /student/schedule/topics` açılır; işaretsiz öğrenci
+  için ızgara salt okunur ve aynı rota **403**.
+- Yazma gövdesi `saveLessonTopics(body)` yardımcısında; admin ve öğrenci
+  rotaları **aynı** kodu çağırır, yetki kontrolü çağırana ait. Böylece
+  "yalnızca çizelgede dersi olan + okul günü olan hücre yazılır" kuralı iki
+  yolda da tek yerden gelir.
+- Bayrak her istekte veritabanından okunur (`getCurrentUserById`), oturumda
+  önbelleklenmez — yetki kaldırıldığı anda **açık oturumda da** kapanır
+  (doğrulandı: kaldırma sonrası aynı çerezle POST 403, ızgara salt okunur).
+- Çizelgeyi (ders/saat/sınıf) bu bayrak **açmaz**; o hâlâ yalnızca adminde.
 
 ## Uyanma rutini
 

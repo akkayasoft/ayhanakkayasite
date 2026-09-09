@@ -710,7 +710,9 @@
           <div>
             <h2>Ders Programı</h2>
             <p class="muted">
-              <% if (scheduleView.gorunum === 'konular') { %>
+              <% if (scheduleView.gorunum === 'konular' && scheduleView.canEditTopics) { %>
+              Haftalık işlenen konular. Dersi olan her saate o hafta işlediğin konuyu yazarsın.
+              <% } else if (scheduleView.gorunum === 'konular') { %>
               Haftalık işlenen konular. Görüntülemeliktir — kayıtlar öğretmen tarafından girilir.
               <% } else { %>
               Haftalık ders çizelgesi · gün <%= scheduleView.ayar.startTime %> - <%= scheduleView.bitisSaati %> arası,
@@ -815,6 +817,12 @@
           </div>
         </header>
 
+        <% if (scheduleView.canEditTopics) { %>
+        <form method="post" action="/student/schedule/topics">
+          <input type="hidden" name="next" value="/student/schedule?gorunum=konular&hafta=<%= tw.weekStart %>" />
+          <input type="hidden" name="weekStart" value="<%= tw.weekStart %>" />
+        <% } %>
+
         <section class="panel">
           <div class="table-wrap">
             <table class="schedule-grid topic-grid">
@@ -844,7 +852,16 @@
                       <strong><%= h.entry.subject %></strong>
                       <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
                     </p>
-                    <% if (h.topic) { %>
+                    <% if (scheduleView.canEditTopics) { %>
+                    <textarea
+                      name="konu[<%= h.dayOfWeek %>-<%= satir.period %>]"
+                      rows="2"
+                      placeholder="İşlenen konu"
+                    ><%= h.topic %></textarea>
+                    <% if (!h.topic && h.oncekiTopic) { %>
+                    <p class="topic-prev muted">geçen hafta: <%= h.oncekiTopic %></p>
+                    <% } %>
+                    <% } else if (h.topic) { %>
                     <p class="topic-static"><%= h.topic %></p>
                     <% } else { %>
                     <p class="muted topic-off">—</p>
@@ -859,7 +876,20 @@
               </tbody>
             </table>
           </div>
+
+          <% if (scheduleView.canEditTopics) { %>
+          <div class="row space-between center topic-actions">
+            <p class="muted">
+              Boş bıraktığın alanın kaydı silinir. Nöbet saatleri de yazılabilir.
+            </p>
+            <button type="submit">Haftayı Kaydet</button>
+          </div>
+          <% } %>
         </section>
+
+        <% if (scheduleView.canEditTopics) { %>
+        </form>
+        <% } %>
 
         <section class="panel narrow">
           <h3>Excel Çıktısı</h3>

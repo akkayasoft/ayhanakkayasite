@@ -1828,6 +1828,39 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         </section>
 
         <section class="panel narrow">
+          <h3>Defteri Kim Yazabilir</h3>
+          <p class="muted">
+            Ders defteri uygulama genelinde <strong>tek kayıttır</strong> ve
+            öğretmenin defteridir; öğrenciler onu normalde yalnızca okur.
+            Aşağıda işaretlediğin öğrenci hesabı defteri <strong>kendi
+            panelinden</strong> de yazabilir — sen hem admin hem öğrenci olarak
+            giriyorsan hesap değiştirmek zorunda kalmazsın.
+          </p>
+          <% if (!scheduleView.ogrenciler.length) { %>
+          <p class="muted">Henüz öğrenci yok.</p>
+          <% } else { %>
+          <ul class="teacher-list">
+            <% scheduleView.ogrenciler.forEach((st) => { %>
+            <li>
+              <span>
+                <strong><%= st.name %></strong>
+                <% if (st.isTeacher) { %><span class="day-badge ok">Defteri yazabilir</span><% } %>
+              </span>
+              <form method="post" action="/admin/schedule/teacher">
+                <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+                <input type="hidden" name="studentId" value="<%= st.id %>" />
+                <input type="hidden" name="isTeacher" value="<%= st.isTeacher ? '0' : '1' %>" />
+                <button type="submit" class="ghost">
+                  <%= st.isTeacher ? 'Yetkiyi kaldır' : 'Yetki ver' %>
+                </button>
+              </form>
+            </li>
+            <% }) %>
+          </ul>
+          <% } %>
+        </section>
+
+        <section class="panel narrow">
           <h3>Excel Çıktısı</h3>
           <p class="muted">
             Seçtiğin aralıktaki tüm işlenen konular tek dosyada iner: tarih, gün,
