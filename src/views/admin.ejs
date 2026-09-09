@@ -1787,6 +1787,47 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         </form>
 
         <section class="panel narrow">
+          <h3>Defter Görevleri</h3>
+          <p class="muted">
+            Her okul haftası için tek görev: <strong>"Ders defterini doldur"</strong>.
+            O haftanın tüm ders saatlerine konu girilince görev <strong>otomatik
+            "yapıldı"</strong> işaretlenir. Görev haftanın son gününe (pazar)
+            tarihlenir — cumartesi doldurmak da sayılsın diye.
+          </p>
+          <% if (tw.logTask) { %>
+          <p class="muted">
+            Bu haftanın görevi <strong><%= tw.logTask.studentName %></strong> için açık ·
+            <% if (tw.logTask.status === 'done') { %>
+            <span class="day-badge ok">Yapıldı</span>
+            <% } else if (tw.logTask.status === 'not_done') { %>
+            <span class="day-badge miss">Yapılmadı</span>
+            <% } else { %>
+            <span class="day-badge off">Bekliyor</span> — <%= tw.dolu %> / <%= tw.yazilabilir %> yazıldı
+            <% } %>
+          </p>
+          <% } %>
+          <% if (!students.length) { %>
+          <p class="muted">Önce bir öğrenci ekleyin.</p>
+          <% } else { %>
+          <form method="post" action="/admin/schedule/log-tasks" class="stack">
+            <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+            <label>Öğrenci</label>
+            <select name="studentId" required>
+              <% students.forEach((st) => { %>
+              <option value="<%= st.id %>" <%= tw.logTask && tw.logTask.studentName === st.name ? 'selected' : '' %>><%= st.name %></option>
+              <% }) %>
+            </select>
+            <button type="submit">Defter Görevlerini Oluştur</button>
+            <p class="muted">
+              Öğretim yılındaki tüm okul haftaları için açılır; tekrar basmak
+              yalnızca eksikleri tamamlar. Çizelge değişirse başlıklar tazelenir —
+              ama işaretlenmiş ve günü geçmiş görevler asla oynatılmaz.
+            </p>
+          </form>
+          <% } %>
+        </section>
+
+        <section class="panel narrow">
           <h3>Excel Çıktısı</h3>
           <p class="muted">
             Seçtiğin aralıktaki tüm işlenen konular tek dosyada iner: tarih, gün,

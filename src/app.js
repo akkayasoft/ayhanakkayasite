@@ -1972,12 +1972,30 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
   const donem =
     academicCalendar.ACADEMIC_YEAR.terms.find((t) => today >= t.start && today <= t.end) || null;
 
+  // Bu haftanin defter gorevi hangi durumda?
+  const buHaftaGorev = await query(
+    `
+      SELECT t.id, u.name AS "studentName",
+             (SELECT st.status FROM task_statuses st WHERE st.task_id = t.id LIMIT 1) AS status
+      FROM tasks t JOIN users u ON u.id = t.student_id
+      WHERE t.source_key = $1
+      LIMIT 1
+    `,
+    [lessonLogSourceKey(weekStart)]
+  );
+
   return {
     weekStart,
     weekEnd,
     prevWeekStart: shiftDate(weekStart, -7),
     nextWeekStart: shiftDate(weekStart, 7),
     thisWeekStart: startOfWeek(today),
+    logTask: buHaftaGorev.rowCount
+      ? {
+          studentName: buHaftaGorev.rows[0].studentName,
+          status: buHaftaGorev.rows[0].status || 'not_set'
+        }
+      : null,
     exportFrom: donem ? donem.start : academicCalendar.ACADEMIC_YEAR.start,
     exportTo: donem ? donem.end : academicCalendar.ACADEMIC_YEAR.end,
     exportLabel: donem ? donem.label : 'Öğretim yılı',
@@ -1987,6 +2005,237 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
     yazilabilir,
     dolu
   };
+}
+
+// --- Ders defteri gorevleri ------------------------------------------------
+//
+// Her okul haftasi icin tek gorev: "Ders defterini doldur". O haftanin TUM
+// yazilabilir ders saatlerine konu girilince gorev otomatik "yapildi"
+// isaretlenir. Ders basina ayri gorev acmak haftada 15 gorev demekti; YZ ve
+// YDS gorevlerinin ustune binmesin diye haftalik tek denetim tercih edildi.
+//
+// Gorev haftanin SON GUNUNE (pazar) tarihlenir: defter haftalik bir kayittir,
+// dogal son tarihi haftanin bitisidir. Cuma'ya tarihlenseydi cumartesi
+// doldurmak otomatik kilide takilip kalici "yapilmadi" olurdu.
+
+const LESSON_LOG_PREFIX = 'defter';
+const LESSON_LOG_CATEGORY = 'Ders Defteri';
+// Otomatik tamamlamada geriye kac hafta taranir.
+const LESSON_LOG_LOOKBACK_WEEKS = 10;
+
+function lessonLogSourceKey(weekStart) {
+  return `${LESSON_LOG_PREFIX}:${weekStart}`;
+}
+
+/**
+ * Ogretim yilindaki okul haftalari: her biri icin o hafta kac ders saatine
+ * konu yazilabilecegini hesaplar. Yazilacak sey yoksa (tamamen tatil hafta
+ * ya da o gunlerde ders yoksa) hafta listeye girmez — bos gorev acilmaz.
+ */
+function buildLessonLogWeeks(entries, ayar) {
+  const { start, end } = academicCalendar.ACADEMIC_YEAR;
+  const haftalar = [];
+
+  let weekStart = startOfWeek(start);
+  while (weekStart <= end) {
+    let yazilabilir = 0;
+    for (let gun = 1; gun <= 5; gun += 1) {
+      const tarih = shiftDate(weekStart, gun - 1);
+      if (tarih < start || tarih > end) continue;
+      if (!academicCalendar.getDayInfo(tarih).isSchoolDay) continue;
+      yazilabilir += entries.filter((e) => e.dayOfWeek === gun).length;
+    }
+
+    if (yazilabilir > 0) {
+      const weekEnd = shiftDate(weekStart, 6);
+      haftalar.push({
+        weekStart,
+        weekEnd,
+        dueDate: weekEnd, // pazar
+        yazilabilir,
+        academic: academicCalendar.describeWeek(weekStart, weekEnd)
+      });
+    }
+    weekStart = shiftDate(weekStart, 7);
+  }
+
+  return haftalar;
+}
+
+function lessonLogTitle(hafta) {
+  const no = hafta.academic && hafta.academic.weekNo ? ` (${hafta.academic.weekNo}. hafta)` : '';
+  return `Ders defterini doldur${no}`;
+}
+
+function lessonLogDescription(hafta) {
+  const donem = hafta.academic && hafta.academic.termLabel ? `${hafta.academic.termLabel} · ` : '';
+  return `${donem}${hafta.weekStart} - ${hafta.weekEnd} · ${hafta.yazilabilir} ders saati`;
+}
+
+/**
+ * Defter gorevlerini olusturur/tazeler. YZ ve YDS aktarimlariyla ayni desen:
+ * yeni haftalari ekler, degisen basligi yalnizca ISARETLENMEMIS ve GUNU
+ * GELMEMIS gorevlerde tazeler, artik gecerli olmayan haftalarin (yine yalnizca
+ * isaretlenmemis + gelecek) gorevlerini siler.
+ */
+async function importLessonLogTasks(studentId, createdBy) {
+  const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+  const haftalar = buildLessonLogWeeks(kayitlar, ayar);
+  if (!haftalar.length) {
+    return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0, weeks: 0 };
+  }
+
+  const today = todayDateString();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let createdCategories = 0;
+    const mevcut = await client.query(`SELECT id FROM categories WHERE name = $1`, [
+      LESSON_LOG_CATEGORY
+    ]);
+    let categoryId;
+    if (mevcut.rowCount > 0) {
+      categoryId = mevcut.rows[0].id;
+    } else {
+      categoryId = makeId('cat');
+      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [
+        categoryId,
+        LESSON_LOG_CATEGORY
+      ]);
+      createdCategories = 1;
+    }
+
+    let inserted = 0;
+    let updated = 0;
+    for (const hafta of haftalar) {
+      const sourceKey = lessonLogSourceKey(hafta.weekStart);
+      const baslik = lessonLogTitle(hafta);
+      const aciklama = lessonLogDescription(hafta);
+
+      const ekleme = await client.query(
+        `
+          INSERT INTO tasks (
+            id, title, description, category_id, student_id, repeat_type,
+            single_date, weekly_day, monthly_day, custom_dates,
+            start_date, end_date, estimated_time, is_archived, created_by, source_key
+          )
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
+          ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
+        `,
+        [makeId('task'), baslik, aciklama, categoryId, studentId, hafta.dueDate, createdBy, sourceKey]
+      );
+
+      if (ekleme.rowCount > 0) {
+        inserted += 1;
+        continue;
+      }
+
+      const guncelleme = await client.query(
+        `
+          UPDATE tasks t
+          SET title = $1, description = $2, category_id = $3, single_date = $4
+          WHERE t.student_id = $5
+            AND t.source_key = $6
+            AND t.single_date >= $7::date
+            AND (t.title IS DISTINCT FROM $1 OR t.description IS DISTINCT FROM $2
+                 OR t.single_date IS DISTINCT FROM $4::date)
+            AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+        `,
+        [baslik, aciklama, categoryId, hafta.dueDate, studentId, sourceKey, today]
+      );
+      updated += guncelleme.rowCount || 0;
+    }
+
+    const gecerli = haftalar.map((h) => lessonLogSourceKey(h.weekStart));
+    const silme = await client.query(
+      `
+        DELETE FROM tasks t
+        WHERE t.student_id = $1
+          AND t.source_key LIKE $2
+          AND NOT (t.source_key = ANY($3::text[]))
+          AND t.single_date >= $4::date
+          AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+      `,
+      [studentId, `${LESSON_LOG_PREFIX}:%`, gecerli, today]
+    );
+
+    await client.query('COMMIT');
+    return {
+      inserted,
+      updated,
+      removed: silme.rowCount || 0,
+      skipped: haftalar.length - inserted,
+      categories: createdCategories,
+      weeks: haftalar.length
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Defteri tamamlanan haftalarin gorevini otomatik "yapildi" isaretler.
+ *
+ * Otomatik kilitten ONCE calismali (bkz. runSealSafely): kilit once calissa
+ * pazar gunu tamamlanan bir defter "yapilmadi" muhurlenmis olurdu.
+ * Idempotenttir; zaten isaretli gorev ON CONFLICT ile atlanir.
+ */
+async function completeLessonLogTasks() {
+  const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
+  if (!kayitlar.length) return { completed: 0 };
+
+  const today = todayDateString();
+  const enEski = startOfWeek(shiftDate(today, -7 * LESSON_LOG_LOOKBACK_WEEKS));
+
+  const gorevler = await query(
+    `
+      SELECT t.id, t.student_id AS "studentId", t.source_key AS "sourceKey", t.single_date AS "singleDate"
+      FROM tasks t
+      WHERE t.source_key LIKE $1
+        AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+    `,
+    [`${LESSON_LOG_PREFIX}:%`]
+  );
+  if (gorevler.rowCount === 0) return { completed: 0 };
+
+  const haftaByKey = new Map(
+    buildLessonLogWeeks(kayitlar, ayar).map((h) => [lessonLogSourceKey(h.weekStart), h])
+  );
+
+  let completed = 0;
+  for (const gorev of gorevler.rows) {
+    const hafta = haftaByKey.get(gorev.sourceKey);
+    if (!hafta || hafta.weekStart < enEski) continue;
+
+    const konular = await getLessonTopics(hafta.weekStart);
+    let dolu = 0;
+    for (const [anahtar, kayit] of konular) {
+      if (!kayit.topic) continue;
+      const [gun, saat] = anahtar.split(':').map(Number);
+      const tarih = shiftDate(hafta.weekStart, gun - 1);
+      if (!academicCalendar.getDayInfo(tarih).isSchoolDay) continue;
+      if (!kayitlar.some((k) => k.dayOfWeek === gun && k.period === saat)) continue;
+      dolu += 1;
+    }
+
+    if (dolu < hafta.yazilabilir) continue;
+
+    const yazma = await query(
+      `
+        INSERT INTO task_statuses (id, task_id, student_id, day, status, note)
+        VALUES ($1,$2,$3,$4,'done','Defter tamamlandığı için otomatik işaretlendi.')
+        ON CONFLICT (task_id, student_id, day) DO NOTHING
+      `,
+      [makeId('status'), gorev.id, gorev.studentId, toDateOnly(gorev.singleDate)]
+    );
+    completed += yazma.rowCount || 0;
+  }
+
+  return { completed };
 }
 
 /**
@@ -3246,6 +3495,45 @@ async function sendLessonTopicsExcel(req, res, redirect) {
   await workbook.xlsx.write(res);
   return res.end();
 }
+
+app.post(
+  '/admin/schedule/log-tasks',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    if (!studentId) {
+      return adminRedirect(req, res, { error: 'Defter görevlerinin açılacağı öğrenciyi seçin.' });
+    }
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const kayitlar = await getScheduleEntries();
+    if (!kayitlar.length) {
+      return adminRedirect(req, res, {
+        error: 'Önce Çizelge sekmesinden ders programını girin; defter görevleri ona göre açılır.'
+      });
+    }
+
+    const sonuc = await importLessonLogTasks(studentId, req.currentUser.id);
+    const notlar = [];
+    if (sonuc.categories) notlar.push('"Ders Defteri" kategorisi oluşturuldu.');
+    if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
+    if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
+
+    if (sonuc.inserted === 0 && !notlar.length) {
+      return adminRedirect(req, res, {
+        message: `${studentRes.rows[0].name} için yeni hafta yok; ${sonuc.skipped} defter görevi zaten var.`
+      });
+    }
+    return adminRedirect(req, res, {
+      message: `${sonuc.inserted} defter görevi eklendi (${sonuc.weeks} okul haftası).${notlar.length ? ' ' + notlar.join(' ') : ''}`
+    });
+  })
+);
 
 app.get(
   '/admin/schedule/topics/export',
@@ -5052,6 +5340,17 @@ app.use((err, req, res, _next) => {
 const AUTO_LOCK_INTERVAL_MS = 5 * 60 * 1000;
 
 async function runSealSafely() {
+  // Defter tamamlamasi otomatik kilitten ONCE calisir: kilit once calissa
+  // pazar gunu tamamlanan bir defter "yapilmadi" muhurlenmis olurdu.
+  try {
+    const { completed } = await completeLessonLogTasks();
+    if (completed > 0) {
+      console.log(`${completed} haftanın ders defteri tamamlandı, görev işaretlendi.`);
+    }
+  } catch (err) {
+    console.error('Ders defteri tamamlama hatası:', err);
+  }
+
   try {
     const { inserted } = await sealOverdueTaskStatuses();
     if (inserted > 0) {
