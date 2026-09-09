@@ -357,6 +357,13 @@ işaretlenir.
   tarihli görev + eksik defter → `not_done`.)
 - Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
   dahil).
+- **Öğrenci listesinde yalnızca içinde bulunulan haftanın defter görevi
+  görünür.** Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
+  dursaydı günlük görevleri (YZ, YDS, kişisel) boğardı — doğrulandı: liste
+  42 görevin 37'si defterken 6'ya indi. Filtre yalnızca **liste görünümüne**
+  aittir: görevler silinmez, haftalık takvimde kendi gününde, haftalık
+  analizde ve raporlarda aynen sayılır. Admin "Görevler" sayfası da hepsini
+  gösterir (yönetim görünümü).
 
 ### Öğretmen işareti (`users.is_teacher`)
 
