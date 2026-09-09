@@ -2027,6 +2027,10 @@ function lessonLogSourceKey(weekStart) {
   return `${LESSON_LOG_PREFIX}:${weekStart}`;
 }
 
+function isLessonLogTask(sourceKey) {
+  return typeof sourceKey === 'string' && sourceKey.startsWith(`${LESSON_LOG_PREFIX}:`);
+}
+
 /**
  * Ogretim yilindaki okul haftalari: her biri icin o hafta kac ders saatine
  * konu yazilabilecegini hesaplar. Yazilacak sey yoksa (tamamen tatil hafta
@@ -2384,6 +2388,7 @@ function mapTask(row) {
     estimatedTime: normalizeEstimatedTimeForDisplay(row.estimatedTime),
     isArchived: row.isArchived,
     createdBy: row.createdBy,
+    sourceKey: row.sourceKey || null,
     createdAt: row.createdAt
   };
 }
@@ -4571,6 +4576,7 @@ async function getStudentViewModel(req, currentPage) {
           estimated_time AS "estimatedTime",
           is_archived AS "isArchived",
           created_by AS "createdBy",
+          source_key AS "sourceKey",
           created_at AS "createdAt"
         FROM tasks
         WHERE student_id = $1
@@ -4648,8 +4654,17 @@ async function getStudentViewModel(req, currentPage) {
   const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
   const allTasks = tasksRes.rows.map(mapTask);
 
+  // Defter gorevi ogretim yilindaki HER hafta icin acilir (37 tane). Hepsi
+  // listede dursaydi gunluk gorevleri boğardi; listede yalnizca icinde
+  // bulunulan haftanınki kalir. Digerleri silinmez - takvimde kendi gununde,
+  // haftalik analizde ve raporlarda aynen gorunur.
+  const buHaftaninDefterKeyi = lessonLogSourceKey(startOfWeek(today));
   const activeTasks = allTasks
     .filter((task) => !task.isArchived)
+    .filter(
+      (task) =>
+        !isLessonLogTask(task.sourceKey) || task.sourceKey === buHaftaninDefterKeyi
+    )
     .sort(compareTasksBySchedule)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
