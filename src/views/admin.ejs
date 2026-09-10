@@ -25,6 +25,7 @@
           <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
           <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
+          <a href="/admin/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>">Spor Rutini</a>
           <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>">YDS Takibi</a>
           <a href="/admin/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
           <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
@@ -1026,6 +1027,10 @@
               <p class="kpi-label">Zamanında Uyanma</p>
               <p class="kpi-value"><%= gv.facts.wakeOnTime %> / <%= gv.facts.wakeTracked %></p>
             </article>
+            <article class="kpi">
+              <p class="kpi-label">Zamanında Spor</p>
+              <p class="kpi-value"><%= gv.facts.sportOnTime %> / <%= gv.facts.sportTracked %></p>
+            </article>
           </div>
         </section>
 
@@ -1232,6 +1237,151 @@
           </div>
           <% } %>
         </section>
+        <% } %>
+
+        <% if (currentPage === 'sport' && sportAdmin) { %>
+        <% const sa = sportAdmin; %>
+        <header class="content-header">
+          <h2>Spor Rutini</h2>
+          <p class="muted">
+            Uyanma rutininin kardeşi: öğrenci her gün tek dokunuşla işaretler,
+            basılan saat kaydedilir. Hedef tek saat değil bir <strong>aralıktır</strong>
+            (varsayılan <%= sa.defaults.startTime %> - <%= sa.defaults.endTime %>).
+            Aralık bitişine kadar basmak <strong>zamanında</strong>, sonrası
+            <strong>geç</strong> (saatiyle) sayılır; hiç basılmayan gün ertesi gün
+            otomatik <strong>yapılmadı</strong> mühürlenir. Erken yapmak geç kalmak
+            değildir — gecikme aralık <em>başlangıcına</em> göre ölçülür.
+          </p>
+        </header>
+
+        <section class="panel narrow">
+          <h3>Rutin Ayarla</h3>
+          <% if (!students.length) { %>
+          <p class="muted">Önce bir öğrenci ekleyin.</p>
+          <% } else { %>
+          <form method="post" action="/admin/sport" class="stack">
+            <input type="hidden" name="next" value="/admin/sport" />
+            <label>Öğrenci</label>
+            <select name="studentId" required>
+              <% students.forEach((st) => { %>
+              <option value="<%= st.id %>" <%= sa.selected && sa.selected.id === st.id ? 'selected' : '' %>><%= st.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Başlangıç Saati</label>
+            <input type="time" name="startTime" required
+                   value="<%= sa.detail && sa.detail.routine ? sa.detail.routine.startTime : sa.defaults.startTime %>" />
+
+            <label>Bitiş Saati</label>
+            <input type="time" name="endTime" required
+                   value="<%= sa.detail && sa.detail.routine ? sa.detail.routine.endTime : sa.defaults.endTime %>" />
+            <p class="muted">Bitiş, başlangıçtan sonra olmalı. Bitişten sonra basmak "geç" sayılır.</p>
+
+            <label class="row center">
+              <input type="checkbox" name="isActive" value="on"
+                     <%= !sa.detail || !sa.detail.routine || sa.detail.routine.isActive ? 'checked' : '' %> />
+              <span>Rutin aktif</span>
+            </label>
+
+            <button type="submit">Kaydet</button>
+          </form>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Öğrenci Rutinleri</h3>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr>
+                  <th>Öğrenci</th>
+                  <th>Aralık</th>
+                  <th>Durum</th>
+                  <th>İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sa.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.student.name %></td>
+                  <td><%= r.routine ? r.routine.startTime + ' - ' + r.routine.endTime : '-' %></td>
+                  <td>
+                    <% if (!r.routine) { %>
+                    <span class="day-badge off">Yok</span>
+                    <% } else if (r.routine.isActive) { %>
+                    <span class="day-badge ok">Aktif</span>
+                    <% } else { %>
+                    <span class="day-badge miss">Pasif</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="task-table-actions">
+                      <a class="button-link" href="/admin/sport?sportStudentId=<%= r.student.id %>">İncele</a>
+                      <% if (r.routine) { %>
+                      <form method="post" action="/admin/sport/delete" onsubmit="return confirm('Rutin kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
+                        <input type="hidden" name="next" value="/admin/sport" />
+                        <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                        <button type="submit" class="danger">Kaldır</button>
+                      </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <% if (sa.detail && sa.detail.routine) { %>
+        <section class="panel">
+          <h3><%= sa.selected.name %> — Son <%= sa.detail.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Zamanında <%= sa.detail.summary.onTime %> · Geç <%= sa.detail.summary.late %> ·
+            Yapılmadı <%= sa.detail.summary.missed %> ·
+            Seri <%= sa.detail.streak %> gün ·
+            Ortalama saat <%= sa.detail.summary.averageTime || '-' %>
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Aralık</th>
+                  <th>Yapıldı</th>
+                  <th>Gecikme</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sa.detail.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.day %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.startTime %> - <%= r.endTime %></td>
+                  <td><%= r.doneAt || '-' %></td>
+                  <td><%= r.delayMinutes ? r.delayMinutes + ' dk' : '-' %></td>
+                  <td>
+                    <% if (r.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (r.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else if (r.status === 'missed') { %>
+                    <span class="day-badge miss">Yapılmadı</span>
+                    <% } else if (r.status === 'pending') { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'wake' && wakeAdmin) { %>

@@ -18,6 +18,7 @@
         <nav class="menu">
           <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevlerim</a>
           <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
+          <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>">Spor Rutini</a>
           <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
@@ -203,6 +204,29 @@
           </form>
           <% } else { %>
           <a class="button-link" href="/student/wake">Rutini Gör</a>
+          <% } %>
+        </section>
+        <% } %>
+
+        <% if (sport && sport.routine && sport.routine.isActive) { %>
+        <section class="wake-strip <%= sport.todayLog ? 'done' : '' %>">
+          <div class="wake-strip-info">
+            <p class="wake-strip-label">Spor Rutini · <%= sport.routine.startTime %> - <%= sport.routine.endTime %></p>
+            <% if (sport.todayLog) { %>
+            <p class="wake-strip-value">
+              <%= sport.todayLog.doneAt %> · <%= sport.todayLog.statusText %><% if (sport.todayLog.delayMinutes) { %> (<%= sport.todayLog.delayMinutes %> dk geç)<% } %>
+            </p>
+            <% } else { %>
+            <p class="wake-strip-value">Bugün henüz işaretlemedin · şu an <%= sport.nowHm %></p>
+            <% } %>
+          </div>
+          <% if (!sport.todayLog) { %>
+          <form method="post" action="/student/sport">
+            <input type="hidden" name="next" value="/student/dashboard" />
+            <button type="submit" class="wake-button">Spor Yaptım</button>
+          </form>
+          <% } else { %>
+          <a class="button-link" href="/student/sport">Rutini Gör</a>
           <% } %>
         </section>
         <% } %>
@@ -595,6 +619,102 @@
         <% } %>
         <% } %>
 
+        <% if (currentPage === 'sport' && sport) { %>
+        <header class="content-header">
+          <h2>Spor Rutini</h2>
+          <p class="muted"><%= today %> · şu an <%= sport.nowHm %></p>
+        </header>
+
+        <% if (!sport.routine || !sport.routine.isActive) { %>
+        <section class="panel narrow">
+          <h3>Rutin tanımlı değil</h3>
+          <p class="muted">
+            Spor rutini yönetici tarafından ayarlanır. Saat aralığı belirlendiğinde
+            burada her gün tek dokunuşla işaretleyebilirsin.
+          </p>
+        </section>
+        <% } else { %>
+
+        <section class="wake-hero <%= sport.todayLog ? sport.todayLog.status : 'pending' %>">
+          <p class="wake-hero-target">
+            Aralık <strong><%= sport.routine.startTime %> - <%= sport.routine.endTime %></strong>
+          </p>
+          <% if (sport.todayLog) { %>
+          <p class="wake-hero-value"><%= sport.todayLog.doneAt %></p>
+          <p class="wake-hero-status"><%= sport.todayLog.statusText %><% if (sport.todayLog.delayMinutes) { %> · başlangıçtan <%= sport.todayLog.delayMinutes %> dk sonra<% } %></p>
+          <p class="muted">Bugünün kaydı alındı, değiştirilemez.</p>
+          <% } else { %>
+          <p class="wake-hero-value"><%= sport.nowHm %></p>
+          <form method="post" action="/student/sport">
+            <input type="hidden" name="next" value="/student/sport" />
+            <button type="submit" class="wake-button large">Spor Yaptım</button>
+          </form>
+          <p class="muted">Bastığın saat kaydedilir. Günde bir kez, geri alınamaz.</p>
+          <% } %>
+        </section>
+
+        <section class="kpi-grid">
+          <article class="kpi <%= sport.streak > 0 ? 'ok' : '' %>">
+            <p class="kpi-label">Zamanında Serisi</p>
+            <p class="kpi-value"><%= sport.streak %> gün</p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Son <%= sport.summary.gunSayisi %> Gün Zamanında</p>
+            <p class="kpi-value"><%= sport.summary.onTimeRate === null ? '-' : sport.summary.onTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <p class="kpi-label">Ortalama Saat</p>
+            <p class="kpi-value"><%= sport.summary.averageTime || '-' %></p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Son <%= sport.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Zamanında <%= sport.summary.onTime %> · Geç <%= sport.summary.late %> · Yapılmadı <%= sport.summary.missed %>
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Gün</th>
+                  <th>Aralık</th>
+                  <th>Yapıldı</th>
+                  <th>Gecikme</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sport.rows.forEach((r) => { %>
+                <tr>
+                  <td><%= r.day %></td>
+                  <td><%= r.gunAdi %></td>
+                  <td><%= r.startTime %> - <%= r.endTime %></td>
+                  <td><%= r.doneAt || '-' %></td>
+                  <td><%= r.delayMinutes ? r.delayMinutes + ' dk' : '-' %></td>
+                  <td>
+                    <% if (r.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (r.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else if (r.status === 'missed') { %>
+                    <span class="day-badge miss">Yapılmadı</span>
+                    <% } else if (r.status === 'pending') { %>
+                    <span class="day-badge off">Bekliyor</span>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+        <% } %>
+
         <% if (currentPage === 'calendar' && calendar) { %>
         <header class="content-header row space-between center">
           <div>
@@ -751,6 +871,10 @@
             <article class="kpi">
               <p class="kpi-label">Zamanında Uyanma</p>
               <p class="kpi-value"><%= gv.facts.wakeOnTime %> / <%= gv.facts.wakeTracked %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Zamanında Spor</p>
+              <p class="kpi-value"><%= gv.facts.sportOnTime %> / <%= gv.facts.sportTracked %></p>
             </article>
           </div>
         </section>
