@@ -77,6 +77,38 @@ endpoint'inden beslenir (ileride mobil için de kullanılabilir).
   Bir island'ı değiştirdiğinde tekrar build edip dist'i commit'le.
 - Mevcut island'lar: `daily-board` (admin panosu "Bugünlük Öğrenci Durumu", `/api/admin/daily-board`).
 
+## Tablolar ve sığma
+
+Tablolar **kapsayıcılarına sığar**; yatay kaydırma yalnızca gerçekten iki
+boyutlu olan iki ızgarada kalır.
+
+- `table` üzerindeki genel `min-width: 640px` **kaldırıldı**. 390px'lik bir
+  telefonda bu kural, sığabilecek tabloları bile 318px taşırıyordu. Geniş
+  olması gereken tablolar kendi `min-width`'ini tanımlar
+  (`.analysis-table` 720px, `.schedule-grid` 520px).
+- `td` metni sarar (`overflow-wrap: anywhere`). `.single-line-cell` de artık
+  sarar; `nowrap` yalnızca kısa/sabit biçimli alanlarda (saat, kategori).
+- `.student-task-table` masaüstünde `table-layout: fixed`. Önce başlık ve
+  açıklama sütunları içeriğe göre büyüyüp tabloyu **1440px ekranda bile 505px**
+  dışarı itiyordu.
+- **Mobil (≤640px): `.stack-mobile` taşıyan tablolar karta döner.** Her satır
+  "etiket: değer" çiftlerinden oluşan bir blok olur. Etiketler her `<td>`'ye
+  elle yazılmaz — sayfa sonundaki küçük betik `thead th` metinlerinden
+  `data-label` üretir. Betik çalışmazsa tablo eskisi gibi kaydırılır, içerik
+  kaybolmaz.
+- Kart hücresi `grid` değil **`flex`**: bir hücrede birden fazla öğe olabiliyor
+  (rozet + trend gibi). Grid'de ikinci öğe bir sonraki satırın *etiket*
+  sütununa düşüyordu.
+- **Dışarıda bırakılanlar:** `.schedule-grid` ve `.topic-grid`. Bunlar
+  satır × sütun kesişimi anlam taşıyan çizelgeler; düzleştirmek okunmaz kılar.
+  Telefonda ızgara içinde yatay kaydırılır (min-width 520px).
+
+> Ölçüm notu: sayfa taşmasını Playwright ile ölçerken `waitUntil` **`load`**
+> olmalı. `domcontentloaded` ile CSS henüz uygulanmadan ölçülüyor ve uydurma
+> taşma değerleri çıkıyor. Ayrıca `styles.css` bir Google Fonts `@import`'u
+> içerdiği için `load` bu ortamda proxy'de takılır; ölçüm betiğinde dış
+> istekleri `page.route` ile kesmek gerekir.
+
 ## Eğitim öğretim yılı takvimi
 
 `src/academicCalendar.js` — **2026-2027 MEB çalışma takvimi** tek bir

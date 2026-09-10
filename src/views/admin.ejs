@@ -134,7 +134,7 @@
         <section class="panel">
           <h3>Mevcut Kullanıcılar</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Ad Soyad</th>
@@ -435,7 +435,7 @@
           <% } %>
 
           <div class="table-wrap">
-            <table class="task-table <%= isUpdatePage ? 'has-bulk-select' : '' %>" id="adminTasksTable">
+            <table class="task-table stack-mobile <%= isUpdatePage ? 'has-bulk-select' : '' %>" id="adminTasksTable">
               <thead>
                 <tr>
                   <% if (isUpdatePage) { %>
@@ -748,7 +748,7 @@
           <p class="muted">Kayıtlı öğrenci yok.</p>
           <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="analysis-table stack-mobile">
               <thead>
                 <tr>
                   <th>Öğrenci</th>
@@ -825,7 +825,7 @@
           <p class="muted">Bu hafta için kayıt yok.</p>
           <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Kategori</th>
@@ -866,7 +866,7 @@
         <section class="panel">
           <h3><%= weeklyAnalysis.detail.student.name %> — Gün Kırılımı</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Gün</th>
@@ -1006,7 +1006,7 @@
         <section class="panel">
           <h3>Kurs Bazında Dağılım</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Kurs</th>
@@ -1037,7 +1037,7 @@
           <p class="muted">Bugünden sonraya planlanmış ders kalmadı.</p>
           <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1120,7 +1120,7 @@
         <section class="panel">
           <h3>Öğrenci Rutinleri</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Öğrenci</th>
@@ -1189,7 +1189,7 @@
 
         <section class="panel">
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1340,7 +1340,7 @@
           </section>
 
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Kategori</th>
@@ -1383,7 +1383,7 @@
           <p class="muted">Bugünden sonraya planlanmış görev kalmadı.</p>
           <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1429,7 +1429,7 @@
           <p class="muted">Bu aralıkta kayıt yok.</p>
           <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1678,7 +1678,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <section class="panel">
           <h3>Gün Özeti</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr><th>Gün</th><th>Ders</th><th>Boş Saat</th><th>Nöbet</th></tr>
               </thead>
@@ -1926,7 +1926,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           </p>
 
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1954,5 +1954,28 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <% } %>
       </section>
     </main>
+    <script>
+      // Mobilde tablolar karta doner (bkz. .stack-mobile). Kartta sutun basligi
+      // gorunmedigi icin her hucreye etiketi buradan yaziyoruz - her <td>'ye
+      // elle data-label yazmak yerine basliktan turetiyoruz. Betik calismazsa
+      // tablo eskisi gibi yatay kaydirilir, icerik kaybolmaz.
+      (() => {
+        for (const tablo of document.querySelectorAll('table.stack-mobile')) {
+          const basliklar = [...tablo.querySelectorAll('thead th')].map((th) =>
+            th.textContent.trim()
+          );
+          if (!basliklar.length) continue;
+          for (const satir of tablo.querySelectorAll('tbody tr')) {
+            [...satir.children].forEach((hucre, i) => {
+              const etiket = basliklar[i];
+              if (etiket && !hucre.hasAttribute('data-label')) {
+                hucre.setAttribute('data-label', etiket);
+              }
+            });
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
+

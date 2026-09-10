@@ -249,7 +249,7 @@
 
           <% if (activeTasks.length) { %>
           <div class="table-wrap">
-            <table class="task-table student-task-table">
+            <table class="task-table student-task-table stack-mobile">
               <thead>
                 <tr>
                   <th>Durum</th>
@@ -553,7 +553,7 @@
             Zamanında <%= wake.summary.onTime %> · Geç <%= wake.summary.late %> · Kaçırılan <%= wake.summary.missed %>
           </p>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -620,7 +620,7 @@
 
         <section class="panel">
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Gün</th>
@@ -788,7 +788,7 @@
         <section class="panel">
           <h3>Gün Özeti</h3>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead><tr><th>Gün</th><th>Ders</th><th>Boş Saat</th></tr></thead>
               <tbody>
                 <% scheduleView.gunSayilari.forEach((g) => { %>
@@ -956,7 +956,7 @@
           <% } %>
           <% if (questionHistory.length) { %>
           <div class="table-wrap">
-            <table>
+            <table class="stack-mobile">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -989,5 +989,28 @@
 
       </section>
     </main>
+    <script>
+      // Mobilde tablolar karta doner (bkz. .stack-mobile). Kartta sutun basligi
+      // gorunmedigi icin her hucreye etiketi buradan yaziyoruz - her <td>'ye
+      // elle data-label yazmak yerine basliktan turetiyoruz. Betik calismazsa
+      // tablo eskisi gibi yatay kaydirilir, icerik kaybolmaz.
+      (() => {
+        for (const tablo of document.querySelectorAll('table.stack-mobile')) {
+          const basliklar = [...tablo.querySelectorAll('thead th')].map((th) =>
+            th.textContent.trim()
+          );
+          if (!basliklar.length) continue;
+          for (const satir of tablo.querySelectorAll('tbody tr')) {
+            [...satir.children].forEach((hucre, i) => {
+              const etiket = basliklar[i];
+              if (etiket && !hucre.hasAttribute('data-label')) {
+                hucre.setAttribute('data-label', etiket);
+              }
+            });
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
+

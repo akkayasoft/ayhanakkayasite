@@ -645,9 +645,12 @@ button.ghost:hover {
   background: var(--surface);
 }
 
+/* Tablolar kapsayicilarina SIGAR. Onceden her tabloda min-width: 640px vardi;
+   390px'lik bir telefonda bu, sigabilecek tablolari bile 318px tasiriyordu.
+   Genis olmasi gereken tablolar (ders cizelgesi, haftalik analiz) kendi
+   min-width'ini asagida ayrica tanimlar. */
 table {
   width: 100%;
-  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -668,6 +671,8 @@ td {
   border-bottom: 1px solid var(--border-strong);
   color: var(--text-secondary);
   vertical-align: middle;
+  /* Uzun baslik/aciklama sutunu genisletip tabloyu disari itmesin: sarsin. */
+  overflow-wrap: anywhere;
 }
 
 /* Dikey ayiricilar: hucrelerin tum kenarlari gorunur olsun */
@@ -1013,7 +1018,17 @@ td, th {
   font-size: 0.875rem;
 }
 
+/* Bu hucreler duzenlenebilir oldugu icin tek satirdi; ama baslik ve aciklama
+   uzun olunca sabit genislikli sutundan tasip tabloyu disari itiyordu
+   (1440px ekranda 140px). Artik sariyor: icerik kirpilmadan sigar. */
 .single-line-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Kisa, sabit bicimli hucreler tek satir kalabilir. */
+.single-line-cell[data-field='estimatedTime'],
+.single-line-cell[data-field='categoryId'] {
   white-space: nowrap;
 }
 
@@ -1861,4 +1876,132 @@ tr.day-off td {
 
 .teacher-list form {
   margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Tablolarin sigmasi
+
+   Genel kural yukarida: tablo kapsayicisina sigar, metin sarar. Burada iki
+   istisna var - gercekten genis olmasi gereken tablolar - ve bir de mobilde
+   satirlarin karta donustugu gorev listesi.
+   -------------------------------------------------------------------------- */
+
+/* Haftalik analiz karsilastirmasi 11 sutun; daraltmak okunmaz kilar. */
+.analysis-table {
+  min-width: 720px;
+}
+
+/* Ders cizelgesi 5 gun x N saatlik bir izgara; hucre basina en az bir ders
+   adi sigmali. 640 yerine 520: telefonda kaydirma mesafesi yariya iner. */
+.schedule-grid {
+  min-width: 520px;
+}
+
+/* Ogrenci gorev listesi: masaustunde sabit duzen. Onceden baslik ve aciklama
+   sutunlari icerige gore buyuyup tabloyu 1440px ekranda bile 505px disari
+   itiyordu; sabit duzende ikisi de sarar. */
+.student-task-table {
+  table-layout: fixed;
+}
+
+.student-task-table th:nth-child(1),
+.student-task-table td:nth-child(1) { width: 116px; }
+.student-task-table th:nth-child(3),
+.student-task-table td:nth-child(3) { width: 132px; }
+.student-task-table th:nth-child(4),
+.student-task-table td:nth-child(4) { width: 124px; }
+.student-task-table th:nth-child(5),
+.student-task-table td:nth-child(5) { width: 72px; }
+.student-task-table th:nth-child(7),
+.student-task-table td:nth-child(7) { width: 128px; }
+
+/* Sabit duzende baslik satiri da sarmali, yoksa "Kategori" kirpilir. */
+.student-task-table th {
+  white-space: normal;
+}
+
+/* Mobil: veri tablolari karta doner. Bir tabloda 5-11 sutun, telefonda
+   322px genislik var; yatay kaydirmak yerine her satir "etiket: deger"
+   ciftlerinden olusan bir kart olur. Etiketler basliklardan turetilir
+   (asagidaki kucuk betik), boylece her hucreye elle data-label yazmak
+   gerekmez. Betik calismazsa tablo eskisi gibi kaydirilir - bozulmaz.
+   Ders cizelgesi ve islenen konular izgaralari disaridadir: onlar 2 boyutlu,
+   satirla sutunun kesisimi anlam tasiyor; duzlestirmek okunmaz kilardi. */
+@media (max-width: 640px) {
+  .stack-mobile,
+  .stack-mobile thead,
+  .stack-mobile tbody,
+  .stack-mobile tr,
+  .stack-mobile td {
+    display: block;
+    width: auto;
+  }
+
+  .stack-mobile {
+    table-layout: auto;
+    min-width: 0;
+  }
+
+  .stack-mobile thead {
+    display: none;
+  }
+
+  .stack-mobile tbody tr {
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border-strong);
+  }
+
+  .stack-mobile tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  /* Grid degil flex: bir hucrede birden fazla oge olabiliyor (rozet + trend
+     gibi). Grid'de ikinci ogeyi bir sonraki satirin ETIKET sutununa dusuyordu;
+     flex'te hepsi etiketin yanina dizilir, sigmayinca alt satira gecer. */
+  .stack-mobile td {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px var(--sp-3);
+    align-items: baseline;
+    padding: 4px 0;
+    border: none;
+  }
+
+  .stack-mobile td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 96px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .stack-mobile td > * {
+    min-width: 0;
+  }
+
+  /* Bos hucre kart icinde yer kaplamasin. */
+  .stack-mobile td:empty {
+    display: none;
+  }
+
+  /* Masaustu sabit sutun genislikleri kart duzeninde gecerli olmamali;
+     yoksa hucre kutusu daralir ve "2026-08-24" tarihi tek tek karakterlere
+     bolunur. */
+  .student-task-table th:nth-child(1),
+  .student-task-table td:nth-child(1),
+  .student-task-table th:nth-child(3),
+  .student-task-table td:nth-child(3),
+  .student-task-table th:nth-child(4),
+  .student-task-table td:nth-child(4),
+  .student-task-table th:nth-child(5),
+  .student-task-table td:nth-child(5),
+  .student-task-table th:nth-child(7),
+  .student-task-table td:nth-child(7) {
+    width: auto;
+  }
+
+  /* Kart duzeninde tablo zaten sigar; kaydirma cercevesi gereksiz. */
+  .table-wrap:has(> .stack-mobile) {
+    overflow-x: visible;
+  }
 }
