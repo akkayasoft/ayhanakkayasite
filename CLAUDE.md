@@ -123,8 +123,11 @@ yayılıp görev olarak aktarılır.
   müfredat sığıyorsa Pzt-Per (4 ders/hafta), sığmıyorsa Cuma da açılır
   (5 ders/hafta). `--gunler 1,2,3` ile elle zorlanabilir.
 - **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
-  Kurs adları kategori olarak otomatik açılır; her ders `tasks.source_key`
-  (`yz:<dersId>`) ile işaretlenir.
+  Her ders `tasks.source_key` (`yz:<dersId>`) ile işaretlenir.
+- **Tek kategori: `Yapay Zeka`.** Önce her kurs ayrı kategoriydi (24 tane) ve
+  kategori listesi YZ kurslarıyla doluyordu. Kurs adı kaybolmaz — görev
+  açıklamasının ilk parçası hâlâ kurs adıdır (`describeLesson`), YZ Programı
+  sayfasındaki "Kurs Bazında Dağılım" tablosu da aynen durur.
 - **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
   Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
   bas — yalnızca yeni dersler eklenir.
@@ -142,6 +145,18 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
    hizalanır — ama yalnızca **işaretlenmemiş ve günü gelmemiş** görevler
    taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
    sabit kaldığı mesajda bildirilir.
+
+> Not: 2. madde artık kategori **birleştirmesi** olarak çalışır. Kurs başına
+> kategori döneminden kalan görevler tek kategoriye taşınır, boşalan eski
+> kategoriler silinir. Hangi kategorilerin "YZ kategorisi" olduğu **ada göre
+> tahmin edilmez** — hâlâ `yz:` görevi tutan kategorilerin kimliğine bakılır;
+> elle açılmış bir kategori yanlışlıkla toplanmasın diye. Silme de koşulludur:
+> kategoriye bağlı başka bir görev ya da **soru kaydı** varsa silinmez
+> (`daily_questions.category_id` ON DELETE SET NULL — silmek o kaydın
+> kategorisini kaybettirirdi), kaç tanesinin durduğu mesajda bildirilir.
+> Doğrulandı: 24 kategori → 1; 23 silindi, soru kaydı bağlı olan 1 tanesi
+> korundu, işaretli görev durumları bozulmadı, ikinci basışta hiçbir şey
+> değişmedi.
 
 ## YDS / YÖKDİL takibi (yds.obs → takip.obs)
 

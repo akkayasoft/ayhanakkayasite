@@ -942,6 +942,11 @@
             platforma yeni ders eklenip program yeniden üretilince, aynı düğme yalnızca
             yeni dersleri ekler.
           </p>
+          <p class="muted">
+            Tüm eğitimler <strong>Yapay Zeka</strong> kategorisinde toplanır; kurs adı
+            görevin açıklamasında durur. Daha önce kurs başına kategori açıldıysa
+            aktarım onları bu kategoriye taşır ve boşalanları siler.
+          </p>
         </header>
 
         <section class="kpi-grid">
@@ -958,7 +963,7 @@
             <p class="kpi-value"><%= yzProgramView.pending %></p>
           </article>
           <article class="kpi">
-            <p class="kpi-label">Kategori</p>
+            <p class="kpi-label">Kurs</p>
             <p class="kpi-value"><%= yzProgramView.kurslar.length %></p>
           </article>
         </section>
