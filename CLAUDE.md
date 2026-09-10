@@ -211,10 +211,9 @@ yayılıp görev olarak aktarılır.
   (5 ders/hafta). `--gunler 1,2,3` ile elle zorlanabilir.
 - **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
   Her ders `tasks.source_key` (`yz:<dersId>`) ile işaretlenir.
-- **Tek kategori: `Yapay Zeka`.** Önce her kurs ayrı kategoriydi (24 tane) ve
-  kategori listesi YZ kurslarıyla doluyordu. Kurs adı kaybolmaz — görev
-  açıklamasının ilk parçası hâlâ kurs adıdır (`describeLesson`), YZ Programı
-  sayfasındaki "Kurs Bazında Dağılım" tablosu da aynen durur.
+- **Her kurs kendi kategorisi.** Kategori adı = kurs adı (Python Temelleri,
+  NumPy Temelleri, ...), 24 kategori. (Bir ara hepsi tek `Yapay Zeka`
+  kategorisinde toplanmıştı; **geri alındı**.)
 - **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
   Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
   bas — yalnızca yeni dersler eklenir.
@@ -233,17 +232,25 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
    taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
    sabit kaldığı mesajda bildirilir.
 
-> Not: 2. madde artık kategori **birleştirmesi** olarak çalışır. Kurs başına
-> kategori döneminden kalan görevler tek kategoriye taşınır, boşalan eski
-> kategoriler silinir. Hangi kategorilerin "YZ kategorisi" olduğu **ada göre
-> tahmin edilmez** — hâlâ `yz:` görevi tutan kategorilerin kimliğine bakılır;
-> elle açılmış bir kategori yanlışlıkla toplanmasın diye. Silme de koşulludur:
-> kategoriye bağlı başka bir görev ya da **soru kaydı** varsa silinmez
-> (`daily_questions.category_id` ON DELETE SET NULL — silmek o kaydın
-> kategorisini kaybettirirdi), kaç tanesinin durduğu mesajda bildirilir.
-> Doğrulandı: 24 kategori → 1; 23 silindi, soru kaydı bağlı olan 1 tanesi
-> korundu, işaretli görev durumları bozulmadı, ikinci basışta hiçbir şey
-> değişmedi.
+Aktarım ayrıca **görevleri kendi kurs kategorisine dağıtır**. Tek kategoride
+toplanmış bir kurulumda asıl iş budur: 149 görev 24 kategoriye geri yayılır.
+Boşalan kategori silinir — ama yalnızca gerçekten boşsa; bağlı başka bir görev
+ya da **soru kaydı** varsa durur (`daily_questions.category_id` ON DELETE SET
+NULL — silmek o kaydın kategorisini kaybettirirdi) ve mesajda bildirilir.
+
+> ⚠️ **"Bu kategori yalnızca bu kursa mı ait?" sorusu dağıtımdan ÖNCEKİ duruma
+> göre cevaplanır.** Döngü içinde bakılırsa son kursa gelindiğinde diğer
+> kurslar çoktan taşınmış olur; paylaşılan kategori (hepsini toplayan
+> `Yapay Zeka`) tek kursa aitmiş gibi görünüp **yeniden adlandırılır** ve ona
+> bağlı soru kayıtlarının etiketi de değişir. Bu hata geliştirme sırasında
+> gerçekten oluştu: soru kaydı "Yapay Zeka" iken "Uçtan Uca Üretken YZ
+> Uygulaması" olmuştu. Bu yüzden kategori→kurs dağılımı ve YZ dışı görev tutan
+> kategoriler döngüden önce anlık görüntü olarak alınır.
+>
+> Doğrulandı: tek kategoriden 24 kategoriye geri dağıtım; soru kaydı bağlıyken
+> `Yapay Zeka` **silinmedi ve etiketi kaymadı**; bağ kaldırılınca silindi;
+> işaretli görev durumları bozulmadı; ikinci basışta hiçbir şey değişmedi;
+> sıfırdan kurulumda 24 kategori.
 
 ## YDS / YÖKDİL takibi (yds.obs → takip.obs)
 
