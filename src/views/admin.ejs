@@ -392,6 +392,17 @@
                 <% }) %>
               </select>
 
+              <label>Yeni Saat (opsiyonel)</label>
+              <input type="time" name="estimatedTime" />
+              <p class="muted form-helper">
+                Aktarılan görevler (YZ, YDS, defter) saatsiz gelir; son teslim gün
+                sonu (23:59) sayılır. Buradan seçilen görevlere toplu saat yazabilirsin.
+              </p>
+              <label class="row center">
+                <input type="checkbox" name="clearTime" value="1" />
+                <span>Saati temizle (gün sonuna dön)</span>
+              </label>
+
               <label>Arşiv İşlemi</label>
               <select name="archiveAction">
                 <option value="keep">Değiştirme</option>

@@ -4372,6 +4372,8 @@ app.post(
     const customDates = normalizeText(req.body.customDates);
     const startDate = normalizeText(req.body.startDate);
     const endDate = normalizeText(req.body.endDate);
+    const estimatedTime = normalizeText(req.body.estimatedTime);
+    const clearTime = normalizeText(req.body.clearTime) === '1';
     const archiveAction = normalizeText(req.body.archiveAction) || 'keep';
 
     if (!taskIds.length) {
@@ -4399,8 +4401,27 @@ app.post(
       }
     }
 
+    if (estimatedTime && clearTime) {
+      return adminRedirect(req, res, {
+        error: 'Aynı anda hem saat girilip hem "saati temizle" seçilemez.'
+      });
+    }
+
     const setClauses = [];
     const values = [];
+
+    // Aktarilan gorevler (YZ, YDS, defter) saatsiz geliyor; 149 gorevi tek tek
+    // girmek yerine secilenlere toplu saat yazilabilir.
+    if (clearTime) {
+      setClauses.push(`estimated_time = NULL`);
+    } else if (estimatedTime) {
+      const saatDogrulama = normalizeEstimatedTimeForStorage(estimatedTime);
+      if (!saatDogrulama.ok) {
+        return adminRedirect(req, res, { error: saatDogrulama.error });
+      }
+      values.push(saatDogrulama.value);
+      setClauses.push(`estimated_time = $${values.length}`);
+    }
 
     if (categoryId) {
       values.push(categoryId);
@@ -4679,6 +4700,8 @@ async function getStudentViewModel(req, currentPage) {
           task.createdBy === req.currentUser.id &&
           task.repeatType === 'once' &&
           !isTaskLockedNow(task, today, nowHm),
+        // Saat, aktarilan gorevlerde de girilebilir; tek kosul kilitli olmamasi.
+        canEditTime: !isTaskLockedNow(task, today, nowHm),
         isLocked: isTaskLockedNow(task, today, nowHm)
       };
     });
@@ -5087,8 +5110,24 @@ app.post(
     const field = normalizeText(req.body.field);
     const value = normalizeText(req.body.value);
 
+    // Saat, kendi actigi gorevlerle sinirli DEGIL: aktarilan gorevler (YZ, YDS,
+    // defter) saatsiz geliyor ve son saatleri gun sonu (23:59) sayiliyor.
+    // Ogrenci kendi gorevine saat girebilmeli. Bu yetki gevsetmesi degil
+    // siki: saat girmek son teslimi one ceker, erteleyemez - ustsinir zaten
+    // gun sonudur. Diger alanlar (baslik, aciklama, kategori, tarih) eskisi
+    // gibi yalnizca ogrencinin kendi actigi tek seferlik gorevlerde acik.
+    const saatAlani = field === 'estimatedTime';
     const taskRes = await query(
+      saatAlani
+        ? `
+        SELECT id
+        FROM tasks
+        WHERE id = $1
+          AND student_id = $2
+          AND is_archived = false
+        LIMIT 1
       `
+        : `
         SELECT id
         FROM tasks
         WHERE id = $1

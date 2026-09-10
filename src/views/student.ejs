@@ -273,7 +273,7 @@
                   <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
                   <td data-label="Konu" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
-                  <td data-label="Saat" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
+                  <td data-label="Saat" class="single-line-cell <%= task.canEditTime ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
                   <td data-label="Açıklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td data-label="Durum" class="status-cell">
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
