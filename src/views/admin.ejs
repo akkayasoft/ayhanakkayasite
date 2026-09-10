@@ -792,6 +792,8 @@
                   <th>Süre (dk)</th>
                   <th>Uyanma</th>
                   <th>Ort. Kalkış</th>
+                  <th>Spor</th>
+                  <th>Ort. Spor</th>
                   <th>Detay</th>
                 </tr>
               </thead>
@@ -837,6 +839,21 @@
                     <%= r.current.averageWake || '-' %><% if (r.current.averageDelay) { %>
                     <span class="muted">(+<%= r.current.averageDelay %> dk)</span><% } %>
                   </td>
+                  <td>
+                    <% if (r.current.sportTracked === 0) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="status-pill <%= r.current.sportOnTimeRate >= 80 ? 'ok' : r.current.sportOnTimeRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= r.current.sportOnTime %>/<%= r.current.sportTracked %> · <%= r.current.sportOnTimeRate %>%
+                    </span>
+                    <% if (r.delta.sportOnTimeRate !== null && r.delta.sportOnTimeRate !== 0) { %>
+                    <span class="trend <%= r.delta.sportOnTimeRate > 0 ? 'up' : 'down' %>">
+                      <%= r.delta.sportOnTimeRate > 0 ? '▲' : '▼' %> <%= Math.abs(r.delta.sportOnTimeRate) %>
+                    </span>
+                    <% } %>
+                    <% } %>
+                  </td>
+                  <td><%= r.current.averageSport || '-' %></td>
                   <td>
                     <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
                        href="/admin/analysis?weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
@@ -897,7 +914,7 @@
         <section class="panel">
           <h3><%= weeklyAnalysis.detail.student.name %> — Gün Kırılımı</h3>
           <div class="table-wrap">
-            <table class="stack-mobile">
+            <table class="analysis-day-table stack-mobile">
               <thead>
                 <tr>
                   <th>Gün</th>
@@ -911,6 +928,8 @@
                   <th>Süre (dk)</th>
                   <th>Kalkış</th>
                   <th>Uyanma</th>
+                  <th>Spor Saati</th>
+                  <th>Spor</th>
                 </tr>
               </thead>
               <tbody>
@@ -944,6 +963,21 @@
                     <span class="day-badge late">Geç</span>
                     <% } else { %>
                     <span class="day-badge miss">Kaçırıldı</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <%= d.sport && d.sport.doneAt ? d.sport.doneAt : '-' %><% if (d.sport && d.sport.delayMinutes) { %>
+                    <span class="muted">(+<%= d.sport.delayMinutes %> dk)</span><% } %>
+                  </td>
+                  <td>
+                    <% if (!d.sport) { %>
+                    <span class="muted">-</span>
+                    <% } else if (d.sport.status === 'on_time') { %>
+                    <span class="day-badge ok">Zamanında</span>
+                    <% } else if (d.sport.status === 'late') { %>
+                    <span class="day-badge late">Geç</span>
+                    <% } else { %>
+                    <span class="day-badge miss">Yapılmadı</span>
                     <% } %>
                   </td>
                 </tr>
