@@ -1144,9 +1144,10 @@
             yeni dersleri ekler.
           </p>
           <p class="muted">
-            Tüm eğitimler <strong>Yapay Zeka</strong> kategorisinde toplanır; kurs adı
-            görevin açıklamasında durur. Daha önce kurs başına kategori açıldıysa
-            aktarım onları bu kategoriye taşır ve boşalanları siler.
+            <strong>Her kurs kendi kategorisi olur</strong> — kategori adı kurs adıdır
+            (Python Temelleri, NumPy Temelleri, ...). Görevler tek bir kategoride
+            toplanmışsa aktarım onları kendi kurs kategorilerine geri dağıtır ve
+            boşalan kategoriyi siler.
           </p>
         </header>
 
@@ -1164,7 +1165,7 @@
             <p class="kpi-value"><%= yzProgramView.pending %></p>
           </article>
           <article class="kpi">
-            <p class="kpi-label">Kurs</p>
+            <p class="kpi-label">Kurs / Kategori</p>
             <p class="kpi-value"><%= yzProgramView.kurslar.length %></p>
           </article>
         </section>
