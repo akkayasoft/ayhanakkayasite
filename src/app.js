@@ -2263,6 +2263,170 @@ async function buildStudentScheduleView(req) {
   };
 }
 
+// --- Aylik hedefler --------------------------------------------------------
+//
+// Serbest metin hedef + ELLE kanit. Uygulama hedefi kendi olcemez (olculebilir
+// hedef secilmedi), bu yuzden "kanit" su iki sekilde saglanir:
+//   1. "Basarildi" isaretlemek icin kanit metni ZORUNLU - rota bos kaniti
+//      reddeder. Boylece kayit kuru bir "yaptim" beyani olmaz.
+//   2. Hedefin yanina o AYIN gercek verisi konur (tamamlanan gorev, cozulen
+//      soru, dogruluk, calisma suresi, zamaninda uyanma). Kanit metni bu
+//      sayilarla karsilastirilabilir olur.
+
+const GOAL_STATUS_LABELS = {
+  pending: 'Bekliyor',
+  achieved: 'Başarıldı',
+  missed: 'Başarılamadı'
+};
+
+/** 'YYYY-MM' ya da 'YYYY-MM-DD' girdisini ayin ilk gunune indirger. */
+function normalizeMonthStart(value, fallbackToday) {
+  const metin = normalizeText(value);
+  const eslesme = /^(\d{4})-(\d{2})/.exec(metin);
+  if (eslesme) {
+    const ay = Number(eslesme[2]);
+    if (ay >= 1 && ay <= 12) return `${eslesme[1]}-${eslesme[2]}-01`;
+  }
+  if (!fallbackToday) return null;
+  return `${fallbackToday.slice(0, 7)}-01`;
+}
+
+function shiftMonth(monthStart, delta) {
+  const [yil, ay] = monthStart.split('-').map(Number);
+  const toplam = yil * 12 + (ay - 1) + delta;
+  const yeniYil = Math.floor(toplam / 12);
+  const yeniAy = (toplam % 12) + 1;
+  return `${yeniYil}-${String(yeniAy).padStart(2, '0')}-01`;
+}
+
+const AY_ADLARI = [
+  '',
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık'
+];
+
+function monthLabel(monthStart) {
+  const [yil, ay] = monthStart.split('-').map(Number);
+  return `${AY_ADLARI[ay]} ${yil}`;
+}
+
+/**
+ * Bir ogrencinin bir aydaki gercek kaydi. Hedefin kaniti elle yazilir ama
+ * yaninda bu sayilar durur; beyan bunlarla karsilastirilabilir olsun diye.
+ */
+async function buildMonthFacts(studentId, monthStart) {
+  const monthEnd = shiftDate(shiftMonth(monthStart, 1), -1);
+
+  const [statusRes, questionRes, wakeRes] = await Promise.all([
+    query(
+      `
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'done')::int AS "done",
+          COUNT(*)::int AS "total"
+        FROM task_statuses
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+      `,
+      [studentId, monthStart, monthEnd]
+    ),
+    query(
+      `
+        SELECT
+          COALESCE(SUM(count), 0)::int AS "solved",
+          COALESCE(SUM(correct_count), 0)::int AS "correct",
+          COALESCE(SUM(wrong_count), 0)::int AS "wrong",
+          COALESCE(SUM(duration_minutes), 0)::int AS "duration"
+        FROM daily_questions
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+      `,
+      [studentId, monthStart, monthEnd]
+    ),
+    query(
+      `
+        SELECT
+          COUNT(*)::int AS "tracked",
+          COUNT(*) FILTER (WHERE status = 'on_time')::int AS "onTime"
+        FROM wake_logs
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+      `,
+      [studentId, monthStart, monthEnd]
+    )
+  ]);
+
+  const gorev = statusRes.rows[0];
+  const soru = questionRes.rows[0];
+  const uyanma = wakeRes.rows[0];
+  const scored = soru.correct + soru.wrong;
+
+  return {
+    monthStart,
+    monthEnd,
+    taskDone: gorev.done,
+    taskTotal: gorev.total,
+    // Veri yoksa oran null doner ve arayuzde "-" gorunur; %0 ile karistirilmasin.
+    taskRate: gorev.total > 0 ? Math.round((gorev.done / gorev.total) * 1000) / 10 : null,
+    questionsSolved: soru.solved,
+    accuracy: scored > 0 ? Math.round((soru.correct / scored) * 1000) / 10 : null,
+    duration: soru.duration,
+    wakeTracked: uyanma.tracked,
+    wakeOnTime: uyanma.onTime,
+    wakeRate: uyanma.tracked > 0 ? Math.round((uyanma.onTime / uyanma.tracked) * 1000) / 10 : null
+  };
+}
+
+/** Admin "Aylık Hedefler" sayfasinin goruntusu. */
+async function buildMonthlyGoalsView(req, students) {
+  const today = todayDateString();
+  const monthStart = normalizeMonthStart(req.query.ay, today);
+  const secilenIdRaw = normalizeText(req.query.goalStudentId);
+  const secilen = students.find((s) => s.id === secilenIdRaw) || students[0] || null;
+
+  const goalsRes = secilen
+    ? await query(
+        `
+          SELECT id, title, description, status, evidence,
+                 evaluated_at AS "evaluatedAt"
+          FROM monthly_goals
+          WHERE student_id = $1 AND month_start = $2
+          ORDER BY created_at ASC
+        `,
+        [secilen.id, monthStart]
+      )
+    : { rows: [] };
+
+  const goals = goalsRes.rows.map((row) => ({
+    ...row,
+    statusLabel: GOAL_STATUS_LABELS[row.status] || row.status
+  }));
+
+  return {
+    monthStart,
+    monthLabel: monthLabel(monthStart),
+    prevMonth: shiftMonth(monthStart, -1),
+    nextMonth: shiftMonth(monthStart, 1),
+    thisMonth: `${today.slice(0, 7)}-01`,
+    student: secilen,
+    students,
+    goals,
+    counts: {
+      total: goals.length,
+      achieved: goals.filter((g) => g.status === 'achieved').length,
+      missed: goals.filter((g) => g.status === 'missed').length,
+      pending: goals.filter((g) => g.status === 'pending').length
+    },
+    facts: secilen ? await buildMonthFacts(secilen.id, monthStart) : null
+  };
+}
+
 /** Admin "Ders Programı" sayfasinin goruntusu. */
 async function buildScheduleView(req) {
   const [ayar, kayitlar] = await Promise.all([getScheduleSettings(), getScheduleEntries()]);
@@ -2342,7 +2506,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule|goals)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -2550,6 +2714,8 @@ async function getAdminViewModel(req, currentPage) {
   }
 
   const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
+
+  const goalsView = currentPage === 'goals' ? await buildMonthlyGoalsView(req, students) : null;
 
   const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
   const ydsView = currentPage === 'yds' ? await buildYdsView(30) : null;
@@ -2762,6 +2928,7 @@ async function getAdminViewModel(req, currentPage) {
     copyWeekNextStart,
     weeklyAnalysis,
     yzProgramView,
+    goalsView,
     ydsView,
     ydsProgramView,
     scheduleView,
@@ -2933,7 +3100,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds', 'schedule']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds', 'schedule', 'goals']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -3643,6 +3810,106 @@ async function saveLessonTopics(body) {
 
 // Ogretmen isareti: bir ogrenci hesabinin ders defterini KENDI panelinden
 // yazabilmesini acar. Rol degismez; yalnizca defter yazma yetkisi verilir.
+app.post(
+  '/admin/goals',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const monthStart = normalizeMonthStart(req.body.monthStart, null);
+    const title = normalizeText(req.body.title).slice(0, 200);
+    const description = normalizeText(req.body.description).slice(0, 1000);
+
+    if (!monthStart) {
+      return adminRedirect(req, res, { error: 'Ay seçilmedi.' });
+    }
+    if (!title) {
+      return adminRedirect(req, res, { error: 'Hedef başlığı boş olamaz.' });
+    }
+
+    const studentRes = await query(`SELECT id FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const sonuc = await query(
+      `
+        INSERT INTO monthly_goals (id, student_id, month_start, title, description, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6)
+        ON CONFLICT (student_id, month_start, title) DO NOTHING
+      `,
+      [makeId('goal'), studentId, monthStart, title, description, req.currentUser.id]
+    );
+
+    if (sonuc.rowCount === 0) {
+      return adminRedirect(req, res, {
+        error: 'Bu ay için aynı başlıkta bir hedef zaten var.'
+      });
+    }
+
+    return adminRedirect(req, res, { message: `Hedef eklendi: ${title}` });
+  })
+);
+
+// Hedefi degerlendirir. "Basarildi" demek icin KANIT zorunlu: uygulama serbest
+// metin hedefi kendi olcemedigi icin, kanit alani bos birakilirsa kayit kuru
+// bir "yaptim" beyanindan ibaret kalir. "Basarilamadi" icin kanit istenmez -
+// orada kanitlanacak bir iddia yok.
+app.post(
+  '/admin/goals/:goalId/evaluate',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { goalId } = req.params;
+    const status = normalizeText(req.body.status);
+    const evidence = normalizeText(req.body.evidence).slice(0, 2000);
+
+    if (!['pending', 'achieved', 'missed'].includes(status)) {
+      return adminRedirect(req, res, { error: 'Geçersiz hedef durumu.' });
+    }
+
+    if (status === 'achieved' && !evidence) {
+      return adminRedirect(req, res, {
+        error: 'Başarıldı işaretlemek için kanıt yazmalısın (ne yapıldı, nereden görülüyor).'
+      });
+    }
+
+    const mevcut = await query(`SELECT id, title FROM monthly_goals WHERE id = $1`, [goalId]);
+    if (mevcut.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Hedef bulunamadı.' });
+    }
+
+    await query(
+      `
+        UPDATE monthly_goals
+        SET status = $1,
+            evidence = $2,
+            evaluated_at = CASE WHEN $1 = 'pending' THEN NULL ELSE NOW() END,
+            evaluated_by = CASE WHEN $1 = 'pending' THEN NULL ELSE $3 END
+        WHERE id = $4
+      `,
+      [status, evidence, req.currentUser.id, goalId]
+    );
+
+    return adminRedirect(req, res, {
+      message: `"${mevcut.rows[0].title}" hedefi ${GOAL_STATUS_LABELS[status].toLowerCase()} olarak kaydedildi.`
+    });
+  })
+);
+
+app.post(
+  '/admin/goals/:goalId/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { goalId } = req.params;
+    const sonuc = await query(`DELETE FROM monthly_goals WHERE id = $1`, [goalId]);
+    if (sonuc.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Hedef bulunamadı.' });
+    }
+    return adminRedirect(req, res, { message: 'Hedef silindi.' });
+  })
+);
+
 app.post(
   '/admin/schedule/teacher',
   requireRole('admin'),
@@ -4732,6 +4999,12 @@ async function getStudentViewModel(req, currentPage) {
 
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
+  // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
+  const goalsView =
+    currentPage === 'goals'
+      ? await buildMonthlyGoalsView(req, [{ id: req.currentUser.id, name: req.currentUser.name }])
+      : null;
+
   return {
     user: req.currentUser,
     currentPage,
@@ -4744,6 +5017,7 @@ async function getStudentViewModel(req, currentPage) {
     calendar,
     wake,
     scheduleView,
+    goalsView,
     message: req.query.message || null,
     error: req.query.error || null
   };
@@ -4755,7 +5029,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule', 'goals']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);

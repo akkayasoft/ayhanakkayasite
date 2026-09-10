@@ -512,6 +512,39 @@ değiştirmek zorunda kalmasın diye bir yetki bayrağı var.
 - Kart hem `/student/wake` sayfasında hem panonun tepesinde (`.wake-strip`)
   görünür: sabah uygulamayı açınca ilk iş ona basmak olmalı.
 
+## Aylık hedefler
+
+`/admin/goals` — öğrenci başına aylık hedefler. Hedefler **serbest metindir**;
+uygulama onları kendi ölçmez. Bu bilinçli bir seçimdi (ölçülebilir metrik
+hedefler yerine), o yüzden "kanıt" iki şekilde sağlanır:
+
+1. **"Başarıldı" işaretlemek için kanıt metni zorunludur** — rota boş kanıtı
+   reddeder. Yoksa kayıt kuru bir "yaptım" beyanı olurdu.
+   *"Başarılamadı"* için kanıt istenmez: orada kanıtlanacak bir iddia yok.
+2. Hedeflerin üstünde **o ayın gerçek kaydı** durur (`buildMonthFacts`):
+   tamamlanan görev / toplam, tamamlama oranı, çözülen soru, doğruluk,
+   çalışma süresi, zamanında uyanma. Elle yazılan kanıt bu sayılarla
+   karşılaştırılabilir olsun diye.
+
+- `monthly_goals`: `student_id`, `month_start` (ayın 1'i, `DATE`), `title`,
+  `description`, `status` (`pending` | `achieved` | `missed`), `evidence`,
+  `evaluated_at`, `evaluated_by`. `UNIQUE (student_id, month_start, title)` —
+  aynı ay aynı başlıkta ikinci hedef açılmaz.
+- **Hedefi yalnızca admin koyar ve değerlendirir.** Öğrenci `/student/goals`
+  sayfasında yalnızca **görür**: hedef, durum rozeti, kanıt metni ve ayın
+  kaydı. Öğrenci görünümü `buildMonthlyGoalsView`'a **yalnızca kendisini**
+  içeren bir öğrenci listesi geçer; bu yüzden `?goalStudentId=` ile başka
+  öğrencinin hedefine bakılamaz (doğrulandı: başkasının hedefi 0 kez geçiyor,
+  beş admin rotası 403).
+- Ay gezinme `?ay=YYYY-MM` ile; `normalizeMonthStart` hem `YYYY-MM` hem
+  `YYYY-MM-DD` kabul edip ayın 1'ine indirger.
+- Veri olmayan yerde oran `null` döner ve `-` gösterilir — `%0` ile
+  karıştırılmamalı.
+
+> Not: "Başarılamadı" işaretlerken kanıt alanı boş gönderilirse daha önce
+> yazılmış kanıt silinir. Arayüzde alan mevcut kanıtla dolu geldiği için bu
+> kazara olmaz; bilerek temizlenebilsin diye de böyle bırakıldı.
+
 ## Haftalık analiz
 
 `/admin/analysis` — "Haftalık Analiz" sayfası. `buildWeeklyAnalysis(weekStart,

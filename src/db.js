@@ -46,6 +46,30 @@ async function initDb() {
   // yetki bayragi; ogrenci rolu ve tum diger kisitlar aynen durur.
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_teacher BOOLEAN NOT NULL DEFAULT FALSE`);
 
+  // Aylik hedefler: serbest metin hedef + elle kanit. Hedefi admin koyar.
+  // "Basarildi" isaretlemek icin KANIT zorunludur (rota kontrol eder); yoksa
+  // kayit "yaptim" beyanindan ibaret kalirdi.
+  await query(`
+    CREATE TABLE IF NOT EXISTS monthly_goals (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      month_start DATE NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'achieved', 'missed')),
+      evidence TEXT NOT NULL DEFAULT '',
+      evaluated_at TIMESTAMPTZ,
+      evaluated_by TEXT,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, month_start, title)
+    )
+  `);
+  await query(`
+    CREATE INDEX IF NOT EXISTS monthly_goals_student_month_idx
+    ON monthly_goals (student_id, month_start)
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
