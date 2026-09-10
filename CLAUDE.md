@@ -183,6 +183,12 @@ saatleri gün sonudur. Saat **sonradan elle girilebilir**:
 - **Toplu giriş:** `/admin/tasks/update` → toplu güncelleme formunda "Yeni
   Saat" alanı ve "Saati temizle" kutusu. 149 YZ görevini tek tek girmek
   gerçekçi olmadığı için eklendi. İkisi birden seçilirse hata döner.
+- **"Tümünü seç" filtreye saygı duyar.** Önceden tüm kutuları işaretliyordu:
+  kategoriye göre filtreleyip basan biri ekranda görmediği görevleri de toplu
+  güncellemeye sokuyordu (YZ'yi filtreleyip saat yazarken YDS ve defter
+  görevleri de değişirdi). Ayrıca filtre daraltılınca gizlenen satırın kutusu
+  temizlenir — yoksa eski seçim formda asılı kalırdı. Doğrulandı: YZ filtresi
+  açıkken 191 değil **151** seçildi ve yalnızca YZ görevleri güncellendi.
 - Doğrulandı: kilitli görevde 403 ve veritabanı değişmiyor; başka öğrencinin
   görevinde 404; geçersiz saatte 400; aktarılan görevin başlığını değiştirmek
   hâlâ 404.
