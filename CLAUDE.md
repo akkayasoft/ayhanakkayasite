@@ -90,7 +90,11 @@ boyutlu olan iki ızgarada kalır.
   sarar; `nowrap` yalnızca kısa/sabit biçimli alanlarda (saat, kategori).
 - `.student-task-table` masaüstünde `table-layout: fixed`. Önce başlık ve
   açıklama sütunları içeriğe göre büyüyüp tabloyu **1440px ekranda bile 505px**
-  dışarı itiyordu.
+  dışarı itiyordu. Sütun sırası: **Tarih · Kategori · Konu · Saat · Açıklama ·
+  Durum · İşlem**; genişlikler CSS'te `nth-child` ile verildiği için sütun
+  sırası değişirse o kurallar da (hem masaüstü hem mobil sıfırlama bloğu)
+  birlikte güncellenmelidir. Satır içi düzenleme `data-field` seçicileriyle
+  çalışır, sütun konumuna bağlı değildir.
 - **Mobil (≤640px): `.stack-mobile` taşıyan tablolar karta döner.** Her satır
   "etiket: değer" çiftlerinden oluşan bir blok olur. Etiketler her `<td>`'ye
   elle yazılmaz — sayfa sonundaki küçük betik `thead th` metinlerinden

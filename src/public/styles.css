@@ -1874,14 +1874,16 @@ tr.day-off td {
   table-layout: fixed;
 }
 
+/* Sutun sirasi: Tarih . Kategori . Konu . Saat . Aciklama . Durum . Islem
+   Konu (3) ve Aciklama (5) genisligi kalan yeri paylasir. */
 .student-task-table th:nth-child(1),
-.student-task-table td:nth-child(1) { width: 116px; }
-.student-task-table th:nth-child(3),
-.student-task-table td:nth-child(3) { width: 132px; }
+.student-task-table td:nth-child(1) { width: 124px; }
+.student-task-table th:nth-child(2),
+.student-task-table td:nth-child(2) { width: 132px; }
 .student-task-table th:nth-child(4),
-.student-task-table td:nth-child(4) { width: 124px; }
-.student-task-table th:nth-child(5),
-.student-task-table td:nth-child(5) { width: 72px; }
+.student-task-table td:nth-child(4) { width: 72px; }
+.student-task-table th:nth-child(6),
+.student-task-table td:nth-child(6) { width: 116px; }
 .student-task-table th:nth-child(7),
 .student-task-table td:nth-child(7) { width: 128px; }
 
@@ -1959,12 +1961,12 @@ tr.day-off td {
      bolunur. */
   .student-task-table th:nth-child(1),
   .student-task-table td:nth-child(1),
-  .student-task-table th:nth-child(3),
-  .student-task-table td:nth-child(3),
+  .student-task-table th:nth-child(2),
+  .student-task-table td:nth-child(2),
   .student-task-table th:nth-child(4),
   .student-task-table td:nth-child(4),
-  .student-task-table th:nth-child(5),
-  .student-task-table td:nth-child(5),
+  .student-task-table th:nth-child(6),
+  .student-task-table td:nth-child(6),
   .student-task-table th:nth-child(7),
   .student-task-table td:nth-child(7) {
     width: auto;
