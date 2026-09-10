@@ -504,14 +504,27 @@
               const studentOptions = <%- JSON.stringify(students.map((s) => ({ value: s.id, label: s.name }))) %>;
               const categoryOptions = <%- JSON.stringify(categories.map((c) => ({ value: c.id, label: c.name }))) %>;
 
+              // "Tumunu sec" YALNIZCA filtreden gecen satirlari kapsar. Onceden
+              // tum kutulari isaretliyordu: kategoriye gore filtreleyip basan
+              // biri, ekranda gormedigi gorevleri de toplu guncellemeye
+              // sokuyordu (orn. YZ'yi filtreleyip saat yazarken YDS gorevleri de
+              // degisiyordu). Gizlenen satirin kutusu ayrica temizlenir, yoksa
+              // filtre daraltildiginda eski secim formda asili kalirdi.
+              const gorunurKutular = () =>
+                checkboxes.filter((input) => {
+                  const row = input.closest('.task-data-row');
+                  return row && !row.hidden;
+                });
+
               const syncHeader = () => {
                 if (!selectAll) return;
-                selectAll.checked = checkboxes.length > 0 && checkboxes.every((input) => input.checked);
+                const gorunur = gorunurKutular();
+                selectAll.checked = gorunur.length > 0 && gorunur.every((input) => input.checked);
               };
 
               if (selectAll && isUpdatePage) {
                 selectAll.addEventListener('change', () => {
-                  checkboxes.forEach((input) => {
+                  gorunurKutular().forEach((input) => {
                     input.checked = selectAll.checked;
                   });
                 });
@@ -539,7 +552,12 @@
                   const matchDate = !dateTerm || dateText.includes(dateTerm);
                   const visible = matchSearch && matchTitle && matchCategory && matchDate;
                   row.hidden = !visible;
+                  if (!visible) {
+                    const kutu = row.querySelector('input[name="taskIds"]');
+                    if (kutu) kutu.checked = false;
+                  }
                 });
+                syncHeader();
               };
 
               if (searchInput) {
