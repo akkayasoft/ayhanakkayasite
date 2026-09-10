@@ -761,7 +761,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   const prevWeekStart = shiftDate(weekStart, -7);
   const prevWeekEnd = shiftDate(weekStart, -1);
 
-  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes, wakeRes] = await Promise.all([
+  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes, wakeRes, sportRes] =
+    await Promise.all([
     query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
     query(`SELECT id, name FROM categories ORDER BY name ASC`),
     query(`
@@ -811,6 +812,16 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         WHERE day BETWEEN $1 AND $2
       `,
       [prevWeekStart, weekEnd]
+    ),
+    // Spor da uyanmayla ayni turda cekilir; trend icin ikinci bir gidis yok.
+    query(
+      `
+        SELECT student_id AS "studentId", day, done_at AS "doneAt",
+               status, delay_minutes AS "delayMinutes"
+        FROM sport_logs
+        WHERE day BETWEEN $1 AND $2
+      `,
+      [prevWeekStart, weekEnd]
     )
   ]);
 
@@ -851,6 +862,15 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   }));
   const wakeByStudentDay = new Map(wakeRows.map((r) => [`${r.studentId}:${r.date}`, r]));
 
+  const sportRows = sportRes.rows.map((row) => ({
+    studentId: row.studentId,
+    date: toDateOnly(row.day),
+    doneAt: normalizeEstimatedTimeForDisplay(row.doneAt),
+    status: row.status,
+    delayMinutes: Number(row.delayMinutes || 0)
+  }));
+  const sportByStudentDay = new Map(sportRows.map((r) => [`${r.studentId}:${r.date}`, r]));
+
   const bosMetrik = () => ({
     due: 0,
     done: 0,
@@ -865,7 +885,15 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     wakeMissed: 0,
     wakeWoke: 0,
     wakeMinutesSum: 0,
-    wakeDelaySum: 0
+    wakeDelaySum: 0,
+    // Spor: ayni desen (tracked = kayit girilmis gun, done = gercekten basilan).
+    sportTracked: 0,
+    sportOnTime: 0,
+    sportLate: 0,
+    sportMissed: 0,
+    sportDone: 0,
+    sportMinutesSum: 0,
+    sportDelaySum: 0
   });
 
   /** Bir gunun uyanma kaydini metrige ekler. */
@@ -880,6 +908,21 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       metrik.wakeWoke += 1;
       metrik.wakeMinutesSum += dakika;
       metrik.wakeDelaySum += log.delayMinutes;
+    }
+  }
+
+  /** Bir gunun spor kaydini metrige ekler. */
+  function addSport(metrik, log) {
+    if (!log) return;
+    metrik.sportTracked += 1;
+    if (log.status === 'on_time') metrik.sportOnTime += 1;
+    else if (log.status === 'late') metrik.sportLate += 1;
+    else if (log.status === 'missed') metrik.sportMissed += 1;
+    const dakika = hmToMinutes(log.doneAt);
+    if (dakika !== null) {
+      metrik.sportDone += 1;
+      metrik.sportMinutesSum += dakika;
+      metrik.sportDelaySum += log.delayMinutes;
     }
   }
 
@@ -906,6 +949,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
 
     for (const day of days) {
       addWake(metrik, wakeByStudentDay.get(`${studentId}:${day}`));
+      addSport(metrik, sportByStudentDay.get(`${studentId}:${day}`));
     }
 
     return metrik;
@@ -925,7 +969,11 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       averageWake: metrik.wakeWoke
         ? minutesToHm(metrik.wakeMinutesSum / metrik.wakeWoke)
         : null,
-      averageDelay: metrik.wakeWoke ? Math.round(metrik.wakeDelaySum / metrik.wakeWoke) : null
+      averageDelay: metrik.wakeWoke ? Math.round(metrik.wakeDelaySum / metrik.wakeWoke) : null,
+      sportTracked: metrik.sportTracked,
+      sportOnTime: metrik.sportOnTime,
+      sportOnTimeRate: oran(metrik.sportOnTime, metrik.sportTracked),
+      averageSport: metrik.sportDone ? minutesToHm(metrik.sportMinutesSum / metrik.sportDone) : null
     };
   }
 
@@ -947,6 +995,10 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
             : null,
         questionTotal: current.questionTotal - previous.questionTotal,
         duration: current.duration - previous.duration,
+        sportOnTimeRate:
+          current.sportOnTimeRate !== null && previous.sportOnTimeRate !== null
+            ? Math.round((current.sportOnTimeRate - previous.sportOnTimeRate) * 10) / 10
+            : null,
         wakeOnTimeRate:
           current.wakeOnTimeRate !== null && previous.wakeOnTimeRate !== null
             ? Math.round((current.wakeOnTimeRate - previous.wakeOnTimeRate) * 10) / 10
@@ -1022,6 +1074,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
 
       const wakeLog = wakeByStudentDay.get(`${selected.id}:${day}`) || null;
       addWake(gun, wakeLog);
+      const sportLog = sportByStudentDay.get(`${selected.id}:${day}`) || null;
+      addSport(gun, sportLog);
 
       return {
         date: day,
@@ -1030,6 +1084,9 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         isSchoolDay: dayInfo.isSchoolDay,
         wake: wakeLog
           ? { ...wakeLog, statusText: wakeStatusText(wakeLog.status) }
+          : null,
+        sport: sportLog
+          ? { ...sportLog, statusText: sportStatusText(sportLog.status) }
           : null,
         ...ozetle(gun)
       };

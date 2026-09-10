@@ -1862,9 +1862,16 @@ tr.day-off td {
    satirlarin karta donustugu gorev listesi.
    -------------------------------------------------------------------------- */
 
-/* Haftalik analiz karsilastirmasi 11 sutun; daraltmak okunmaz kilar. */
+/* Haftalik analiz tablolari genis: karsilastirma 13, gun kirilimi 14 sutun.
+   Daraltmak okunmaz kiliyor - "Ayhan Akkaya" ve "2026-09-07" dikey dilimlere
+   bolunuyordu. Bu iki tablo kapsayici icinde yatay kaydirilir; telefonda zaten
+   .stack-mobile ile karta doner, orada kaydirma yok. */
 .analysis-table {
-  min-width: 720px;
+  min-width: 1180px;
+}
+
+.analysis-day-table {
+  min-width: 1280px;
 }
 
 /* Ogrenci gorev listesi: masaustunde sabit duzen. Onceden baslik ve aciklama

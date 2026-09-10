@@ -84,8 +84,13 @@ boyutlu olan iki ızgarada kalır.
 
 - `table` üzerindeki genel `min-width: 640px` **kaldırıldı**. 390px'lik bir
   telefonda bu kural, sığabilecek tabloları bile 318px taşırıyordu. Geniş
-  olması gereken tablolar kendi `min-width`'ini tanımlar
-  (`.analysis-table` 720px, `.schedule-grid` 520px).
+  olması gereken tablolar kendi `min-width`'ini tanımlar.
+- **İstisna — haftalık analiz tabloları.** Karşılaştırma 13, gün kırılımı 14
+  sütun; 1084px'lik içerik alanına sığdırmaya çalışmak metni dikey dilimlere
+  böler ("Ayhan Akkay a", "202 6-09-07"). Bu ikisi `.analysis-table` (1180px)
+  ve `.analysis-day-table` (1280px) ile kapsayıcı içinde **yatay kaydırılır**;
+  masaüstünde 96-196px kaydırma çıkar, telefonda `.stack-mobile` ile karta
+  döndükleri için kaydırma olmaz.
 - `td` metni sarar (`overflow-wrap: anywhere`). `.single-line-cell` de artık
   sarar; `nowrap` yalnızca kısa/sabit biçimli alanlarda (saat, kategori).
 - `.student-task-table` masaüstünde `table-layout: fixed`. Önce başlık ve
@@ -538,13 +543,17 @@ kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
 - Kart hem `/student/sport` sayfasında hem panonun tepesinde (uyanma
   şeridinin altında) görünür.
 - Aylık hedeflerdeki "ayın kaydı" panosuna **Zamanında Spor** eklendi.
+- **Haftalık analizde** de var: öğrenci karşılaştırmasında *Spor*
+  (zamanında/toplam + oran, önceki haftaya göre puan farkı) ve *Ort. Spor*
+  sütunları; gün kırılımında *Spor Saati* ve *Spor* durumu. Uyanma ile aynı
+  turda çekilir (`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir
+  gidiş yok.
 
 > Yapı olarak uyanma rutinine paralel yazıldı (ayrı tablolar, ayrı
 > fonksiyonlar) — ortak bir "rutin" soyutlamasına çıkarmak canlı `wake_*`
 > verisini taşımayı gerektirirdi. Bir üçüncü rutin gerekirse önce o soyutlama
 > yapılmalı; iki kopya sınırdır.
->
-> Haftalık analize **henüz eklenmedi**; uyanma orada var, spor yok.
+
 
 ## Aylık hedefler
 
@@ -592,9 +601,9 @@ studentId)` bir haftanın metriklerini üretir:
   metrikler. Gün satırları `academicCalendar` etiketini, ayrıca o günün
   kalkış saatini ve uyanma durumunu taşır. Uyanma kategoriye bağlı olmadığı
   için kategori tablosunda yer almaz.
-- Uyanma ortalamaları yalnızca **basılan** günlerden hesaplanır (`missed`
-  günler paydaya girmez); zamanında oranının paydası ise kayıt girilmiş tüm
-  günlerdir.
+- Uyanma ve spor ortalamaları yalnızca **basılan** günlerden hesaplanır
+  (`missed` günler paydaya girmez); zamanında oranının paydası ise kayıt
+  girilmiş tüm günlerdir.
 - Veri olmayan yerde oran `null` döner ve arayüzde `-` gösterilir — `%0` ile
   karıştırılmamalı (veri yok ≠ başarısız).
 
