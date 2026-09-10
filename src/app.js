@@ -1176,82 +1176,72 @@ async function buildYzProgramView(req, students) {
  * estimated_time bilerek bos birakilir: otomatik kilit boylece gun sonunu
  * (23:59) son saat kabul eder, dersin sure bilgisi aciklamaya yazilir.
  */
+// yapayzeka.obs mufredatinin TAMAMI tek kategoride toplanir. Once her kurs
+// ayri bir kategoriydi (24 tane) ve kategori listesi YZ kurslariyla doluyordu.
+// Kurs adi kaybolmaz: gorev aciklamasinin ilk parcasi hala kurs adidir
+// (bkz. yzProgram.describeLesson).
+const YZ_CATEGORY = 'Yapay Zeka';
+
 async function importYzProgram(studentId, createdBy) {
   const program = yzProgram.loadYzProgram();
   if (!program.gorevler.length) {
-    return { inserted: 0, skipped: 0, categories: 0, renamed: 0, moved: 0, pinned: 0 };
+    return { inserted: 0, skipped: 0, merged: 0, removedCategories: 0, keptCategories: 0, moved: 0, pinned: 0 };
   }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Kurslari kurs id'sine gore grupla. Kategoriyi ada gore degil, o kursun
-    // daha once aktarilmis derslerine gore bulmak onemli: platformda kurs adi
-    // duzeltilirse (orn. "Derin Ogrenme Egitimi" -> "Derin Öğrenme Eğitimi")
-    // ada bakan bir eslesme ikinci bir kategori acar ve gecmis gorevler eski
-    // kategoride oksuz kalirdi. Burada mevcut kategori bulunup adi guncellenir.
-    const kurslar = new Map();
-    for (const lesson of program.gorevler) {
-      let kurs = kurslar.get(lesson.kurs);
-      if (!kurs) {
-        kurs = { kursAd: lesson.kursAd, sourceKeys: [] };
-        kurslar.set(lesson.kurs, kurs);
-      }
-      kurs.sourceKeys.push(lesson.sourceKey);
+    // Tek kategori: varsa bul, yoksa ac.
+    let categoryId;
+    const mevcutKategori = await client.query(`SELECT id FROM categories WHERE name = $1`, [
+      YZ_CATEGORY
+    ]);
+    if (mevcutKategori.rowCount > 0) {
+      categoryId = mevcutKategori.rows[0].id;
+    } else {
+      categoryId = makeId('cat');
+      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [
+        categoryId,
+        YZ_CATEGORY
+      ]);
     }
 
-    const categoryIdByKurs = new Map();
-    let createdCategories = 0;
-    let renamedCategories = 0;
+    // Gecis: daha once kurs basina acilmis kategorilerdeki YZ gorevlerini tek
+    // kategoriye tasi. Hangi kategorilerin "YZ kategorisi" oldugunu ADA GORE
+    // tahmin etmiyoruz - halen yz: gorevi tutan kategorilerin kimligine
+    // bakiyoruz; elle acilmis bir kategoriyi yanlislikla toplamamak icin.
+    const eskiKategoriler = await client.query(
+      `SELECT DISTINCT category_id AS "id" FROM tasks
+       WHERE source_key LIKE $1 AND category_id <> $2`,
+      [`${yzProgram.SOURCE_PREFIX}:%`, categoryId]
+    );
+    const tasima = await client.query(
+      `UPDATE tasks SET category_id = $1 WHERE source_key LIKE $2 AND category_id <> $1`,
+      [categoryId, `${yzProgram.SOURCE_PREFIX}:%`]
+    );
+    const merged = tasima.rowCount || 0;
 
-    for (const [kursId, kurs] of kurslar) {
-      // 1) Bu kursun daha once aktarilmis bir dersi var mi? (hangi ogrenci olursa olsun)
-      const mevcutGorev = await client.query(
-        `SELECT category_id AS "categoryId" FROM tasks WHERE source_key = ANY($1::text[]) LIMIT 1`,
-        [kurs.sourceKeys]
+    // Bosalan eski kategorileri sil - ama yalnizca gercekten bos olanlari.
+    // Baska bir gorev ya da bir soru kaydi hala baglysa kategori durur; silmek
+    // o kaydin kategorisini kaybettirirdi (daily_questions.category_id
+    // ON DELETE SET NULL).
+    let removedCategories = 0;
+    let keptCategories = 0;
+    for (const row of eskiKategoriler.rows) {
+      const kullanim = await client.query(
+        `SELECT
+           (SELECT COUNT(*) FROM tasks WHERE category_id = $1)::int AS "gorev",
+           (SELECT COUNT(*) FROM daily_questions WHERE category_id = $1)::int AS "soru"`,
+        [row.id]
       );
-
-      if (mevcutGorev.rowCount > 0) {
-        const categoryId = mevcutGorev.rows[0].categoryId;
-        const mevcutKategori = await client.query(`SELECT name FROM categories WHERE id = $1`, [
-          categoryId
-        ]);
-
-        if (mevcutKategori.rowCount > 0 && mevcutKategori.rows[0].name !== kurs.kursAd) {
-          // Yeni ad baska bir kategoride kullanimda mi?
-          const cakisan = await client.query(
-            `SELECT id FROM categories WHERE name = $1 AND id <> $2`,
-            [kurs.kursAd, categoryId]
-          );
-          if (cakisan.rowCount === 0) {
-            await client.query(`UPDATE categories SET name = $1 WHERE id = $2`, [
-              kurs.kursAd,
-              categoryId
-            ]);
-            renamedCategories += 1;
-            categoryIdByKurs.set(kursId, categoryId);
-            continue;
-          }
-          // Cakisma varsa yeniden adlandirma yerine var olan kategoriyi kullan.
-          categoryIdByKurs.set(kursId, cakisan.rows[0].id);
-          continue;
-        }
-
-        categoryIdByKurs.set(kursId, categoryId);
-        continue;
+      const { gorev, soru } = kullanim.rows[0];
+      if (gorev === 0 && soru === 0) {
+        await client.query(`DELETE FROM categories WHERE id = $1`, [row.id]);
+        removedCategories += 1;
+      } else {
+        keptCategories += 1;
       }
-
-      // 2) Ilk aktarim: ada gore bul, yoksa olustur.
-      const adaGore = await client.query(`SELECT id FROM categories WHERE name = $1`, [kurs.kursAd]);
-      if (adaGore.rowCount > 0) {
-        categoryIdByKurs.set(kursId, adaGore.rows[0].id);
-        continue;
-      }
-      const id = makeId('cat');
-      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [id, kurs.kursAd]);
-      categoryIdByKurs.set(kursId, id);
-      createdCategories += 1;
     }
 
     // Program yeniden uretildiginde ders tarihleri kayabilir (orn. haftada 4
@@ -1308,7 +1298,7 @@ async function importYzProgram(studentId, createdBy) {
           makeId('task'),
           lesson.baslik,
           yzProgram.describeLesson(lesson),
-          categoryIdByKurs.get(lesson.kurs),
+          categoryId,
           studentId,
           lesson.tarih,
           createdBy,
@@ -1322,8 +1312,9 @@ async function importYzProgram(studentId, createdBy) {
     return {
       inserted,
       skipped: program.gorevler.length - inserted,
-      categories: createdCategories,
-      renamed: renamedCategories,
+      merged,
+      removedCategories,
+      keptCategories,
       moved,
       pinned
     };
@@ -3991,23 +3982,28 @@ app.post(
     }
 
     const sonuc = await importYzProgram(studentId, req.currentUser.id);
+    const notlar = [];
+    if (sonuc.merged) {
+      notlar.push(`${sonuc.merged} görev "${YZ_CATEGORY}" kategorisinde toplandı.`);
+    }
+    if (sonuc.removedCategories) {
+      notlar.push(`${sonuc.removedCategories} boşalan kurs kategorisi silindi.`);
+    }
+    if (sonuc.keptCategories) {
+      notlar.push(`${sonuc.keptCategories} kategori başka kayıtlar bağlı olduğu için silinmedi.`);
+    }
+    if (sonuc.moved) notlar.push(`${sonuc.moved} görevin tarihi programa hizalandı.`);
+    if (sonuc.pinned) notlar.push(`${sonuc.pinned} görev işaretli/geçmiş olduğu için taşınmadı.`);
+    const ek = notlar.length ? ' ' + notlar.join(' ') : '';
+
     if (sonuc.inserted === 0) {
-      const ekNotlar = [];
-      if (sonuc.renamed) ekNotlar.push(`${sonuc.renamed} kategori adı güncellendi.`);
-      if (sonuc.moved) ekNotlar.push(`${sonuc.moved} görevin tarihi programa hizalandı.`);
-      if (sonuc.pinned) ekNotlar.push(`${sonuc.pinned} görev işaretli/geçmiş olduğu için taşınmadı.`);
       return adminRedirect(req, res, {
-        message: `${studentRes.rows[0].name} için yeni ders yok; ${sonuc.skipped} ders zaten aktarılmış.${ekNotlar.length ? ' ' + ekNotlar.join(' ') : ''}`
+        message: `${studentRes.rows[0].name} için yeni ders yok; ${sonuc.skipped} ders zaten aktarılmış.${ek}`
       });
     }
 
-    const notlar = [];
-    if (sonuc.categories) notlar.push(`${sonuc.categories} kategori oluşturuldu.`);
-    if (sonuc.renamed) notlar.push(`${sonuc.renamed} kategori adı güncellendi.`);
-    if (sonuc.moved) notlar.push(`${sonuc.moved} görevin tarihi programa hizalandı.`);
-    if (sonuc.pinned) notlar.push(`${sonuc.pinned} görev işaretli/geçmiş olduğu için taşınmadı.`);
     return adminRedirect(req, res, {
-      message: `${sonuc.inserted} ders görev olarak eklendi (${sonuc.skipped} ders zaten vardı).${notlar.length ? ' ' + notlar.join(' ') : ''}`
+      message: `${sonuc.inserted} ders görev olarak eklendi (${sonuc.skipped} ders zaten vardı).${ek}`
     });
   })
 );
