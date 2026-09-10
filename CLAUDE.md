@@ -168,6 +168,25 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 - Otomatik yazılan `not_done` kayıtları raporlarda durumu
   `İşaretlenmedi` yerine `Yapılmadı` olarak netleştirir.
 
+### Saat sonradan girilebilir
+
+Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
+saatleri gün sonudur. Saat **sonradan elle girilebilir**:
+
+- **Öğrenci tarafı:** "Saat" hücresi, görev kim tarafından açılmış olursa olsun
+  düzenlenebilir; tek koşul görevin **kilitli olmaması**. Diğer alanlar
+  (konu, açıklama, kategori, tarih) eskisi gibi yalnızca öğrencinin kendi
+  açtığı tek seferlik görevlerde açık — görünüm modelinde `canEditTime`
+  `canManage`'den ayrıdır.
+- Bu bir yetki **gevşetmesi değil sıkılaştırmadır**: saat girmek son teslimi
+  öne çeker, erteleyemez — üst sınır zaten gün sonudur (23:59).
+- **Toplu giriş:** `/admin/tasks/update` → toplu güncelleme formunda "Yeni
+  Saat" alanı ve "Saati temizle" kutusu. 149 YZ görevini tek tek girmek
+  gerçekçi olmadığı için eklendi. İkisi birden seçilirse hata döner.
+- Doğrulandı: kilitli görevde 403 ve veritabanı değişmiyor; başka öğrencinin
+  görevinde 404; geçersiz saatte 400; aktarılan görevin başlığını değiştirmek
+  hâlâ 404.
+
 ## Yapay zekâ programı (yapayzeka.obs → takip.obs)
 
 `akkayasoft/uretken-yz-platform` müfredatı (149 ders) 2026-2027 takvimine
