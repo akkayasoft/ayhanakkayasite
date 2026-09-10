@@ -512,6 +512,40 @@ değiştirmek zorunda kalmasın diye bir yetki bayrağı var.
 - Kart hem `/student/wake` sayfasında hem panonun tepesinde (`.wake-strip`)
   görünür: sabah uygulamayı açınca ilk iş ona basmak olmalı.
 
+## Günlük spor rutini
+
+Uyanma rutininin **kardeşi**: aynı "tek dokunuşla işaretle, basılan saati
+kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
+(varsayılan **06:15 - 06:30**).
+
+- `sport_routines` (öğrenci başına tek satır): `start_time`, `end_time`,
+  `is_active`. Admin `/admin/sport` sayfasından ayarlar; bitiş başlangıçtan
+  sonra olmalı (rota kontrol eder).
+- `sport_logs` (gün başına tek satır, `UNIQUE (student_id, day)`): aralık
+  **kaydın içine kopyalanır**, rutin sonradan değişirse geçmiş bozulmaz.
+- Durum: `on_time` (bitişe kadar), `late`, `missed`.
+- **Gecikme bitişe değil başlangıca göre ölçülür.** Aralık "affedilen"
+  süredir; 06:22'de basmak `on_time` sayılır ama `delay_minutes = 7` yazılır.
+  Uyanmadaki hedef/tolerans kararının aynısı.
+- **Erken yapmak geç kalmak değildir**: 05:40'ta basmak `on_time`, gecikme 0.
+  Doğrulandı: 05:40→on_time/0, 06:15→on_time/0, 06:22→on_time/7,
+  06:30→on_time/15, 06:31→**late**/16, 08:00→late/105.
+- Günde tek kayıt, **ilk basış geçerli** (`ON CONFLICT DO NOTHING`).
+- Basılmayan geçmiş günler `sealMissedSportLogs` ile `missed` mühürlenir
+  (`runSealSafely` içinde, açılışta + 5 dakikada bir). Yalnızca **geçmiş**
+  günlere ve **rutin kurulduktan sonrasına** dokunur.
+- Rutin kaldırılınca `sport_logs` **silinmez** — geçmiş denetim verisi durur.
+- Kart hem `/student/sport` sayfasında hem panonun tepesinde (uyanma
+  şeridinin altında) görünür.
+- Aylık hedeflerdeki "ayın kaydı" panosuna **Zamanında Spor** eklendi.
+
+> Yapı olarak uyanma rutinine paralel yazıldı (ayrı tablolar, ayrı
+> fonksiyonlar) — ortak bir "rutin" soyutlamasına çıkarmak canlı `wake_*`
+> verisini taşımayı gerektirirdi. Bir üçüncü rutin gerekirse önce o soyutlama
+> yapılmalı; iki kopya sınırdır.
+>
+> Haftalık analize **henüz eklenmedi**; uyanma orada var, spor yok.
+
 ## Aylık hedefler
 
 `/admin/goals` — öğrenci başına aylık hedefler. Hedefler **serbest metindir**;

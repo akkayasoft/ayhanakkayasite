@@ -315,6 +315,181 @@ async function getWakeRoutine(studentId) {
   };
 }
 
+// --- Gunluk spor rutini ----------------------------------------------------
+//
+// Uyanma rutininin kardesi; ayni "tek dokunusla isaretle, basilan saati kaydet"
+// mantigi. Tek fark hedefin bir ARALIK olmasi (varsayilan 06:15-06:30):
+//   - aralik BASLANGICI  = niyet edilen saat (gecikme buna gore olculur)
+//   - aralik BITISI      = son teslim (bundan sonrasi "gec")
+// Yani uyanmadaki "hedef + tolerans" ikilisinin okunakli hali. Erken yapmak
+// gec kalmak degildir: 05:40'ta spor yapmak da zamanindadir.
+
+const SPORT_LOOKBACK_DAYS = 30;
+const SPORT_DEFAULT_START = '06:15';
+const SPORT_DEFAULT_END = '06:30';
+
+function evaluateSport(doneHm, startHm, endHm) {
+  const done = hmToMinutes(doneHm);
+  const start = hmToMinutes(startHm);
+  const end = hmToMinutes(endHm);
+  if (done === null || start === null || end === null) return null;
+  return {
+    status: done <= end ? 'on_time' : 'late',
+    // Gecikme BITISE degil BASLANGICA gore olculur: aralik "affedilen"
+    // suredir, gercekte ne kadar gec kalindigini gizlememeli.
+    delayMinutes: Math.max(0, done - start)
+  };
+}
+
+function sportStatusText(status) {
+  if (status === 'on_time') return 'Zamanında';
+  if (status === 'late') return 'Geç';
+  if (status === 'missed') return 'Yapılmadı';
+  return 'Bekliyor';
+}
+
+function mapSportLog(row) {
+  return {
+    day: toDateOnly(row.day),
+    startTime: normalizeEstimatedTimeForDisplay(row.startTime),
+    endTime: normalizeEstimatedTimeForDisplay(row.endTime),
+    doneAt: normalizeEstimatedTimeForDisplay(row.doneAt),
+    status: row.status,
+    statusText: sportStatusText(row.status),
+    delayMinutes: Number(row.delayMinutes) || 0,
+    gunAdi: getDayName(toDateOnly(row.day))
+  };
+}
+
+async function getSportRoutine(studentId) {
+  const res = await query(
+    `
+      SELECT student_id AS "studentId", start_time AS "startTime",
+             end_time AS "endTime", is_active AS "isActive"
+      FROM sport_routines
+      WHERE student_id = $1
+    `,
+    [studentId]
+  );
+  if (res.rowCount === 0) return null;
+  const row = res.rows[0];
+  return {
+    studentId: row.studentId,
+    startTime: normalizeEstimatedTimeForDisplay(row.startTime),
+    endTime: normalizeEstimatedTimeForDisplay(row.endTime),
+    isActive: row.isActive
+  };
+}
+
+/** Uyanmadaki ile ayni kural: yalnizca GECMIS gunler muhurlenir, bugun degil. */
+async function sealMissedSportLogs() {
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const routines = await query(
+    `
+      SELECT student_id AS "studentId", start_time AS "startTime",
+             end_time AS "endTime", created_at AS "createdAt"
+      FROM sport_routines
+      WHERE is_active = TRUE
+    `
+  );
+
+  let sealed = 0;
+  for (const routine of routines.rows) {
+    const basladi = toDateOnly(routine.createdAt) || today;
+    for (let i = 1; i <= SPORT_LOOKBACK_DAYS; i += 1) {
+      const gun = shiftDate(today, -i);
+      if (gun < basladi) break;
+      const res = await query(
+        `
+          INSERT INTO sport_logs (id, student_id, day, start_time, end_time, done_at, status, delay_minutes)
+          VALUES ($1,$2,$3,$4,$5,NULL,'missed',0)
+          ON CONFLICT (student_id, day) DO NOTHING
+        `,
+        [makeId('sport'), routine.studentId, gun, routine.startTime, routine.endTime]
+      );
+      sealed += res.rowCount || 0;
+    }
+  }
+  return { sealed };
+}
+
+async function buildSportView(studentId, gunSayisi = 14) {
+  const routine = await getSportRoutine(studentId);
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const nowHm = timeStringInTimeZone();
+
+  if (!routine) {
+    return { routine: null, today, nowHm, todayLog: null, rows: [], summary: null, streak: 0 };
+  }
+
+  const res = await query(
+    `
+      SELECT day, start_time AS "startTime", end_time AS "endTime",
+             done_at AS "doneAt", status, delay_minutes AS "delayMinutes"
+      FROM sport_logs
+      WHERE student_id = $1 AND day >= $2
+      ORDER BY day DESC
+    `,
+    [studentId, shiftDate(today, -(gunSayisi - 1))]
+  );
+
+  const logs = res.rows.map(mapSportLog);
+  const logByDay = new Map(logs.map((l) => [l.day, l]));
+  const todayLog = logByDay.get(today) || null;
+
+  const rows = [];
+  for (let i = 0; i < gunSayisi; i += 1) {
+    const gun = shiftDate(today, -i);
+    rows.push(
+      logByDay.get(gun) || {
+        day: gun,
+        startTime: routine.startTime,
+        endTime: routine.endTime,
+        doneAt: null,
+        status: gun === today ? 'pending' : 'unknown',
+        statusText: gun === today ? 'Bekliyor' : '-',
+        delayMinutes: 0,
+        gunAdi: getDayName(gun)
+      }
+    );
+  }
+
+  let streak = 0;
+  const baslangic = todayLog && todayLog.status === 'on_time' ? 0 : 1;
+  for (let i = baslangic; i < SPORT_LOOKBACK_DAYS; i += 1) {
+    const log = logByDay.get(shiftDate(today, -i));
+    if (!log || log.status !== 'on_time') break;
+    streak += 1;
+  }
+
+  const degerlendirilen = logs.filter((l) => l.status !== 'unknown');
+  const onTime = degerlendirilen.filter((l) => l.status === 'on_time').length;
+  const late = degerlendirilen.filter((l) => l.status === 'late').length;
+  const missed = degerlendirilen.filter((l) => l.status === 'missed').length;
+  const yapilan = degerlendirilen.filter((l) => l.doneAt);
+  const ortalamaDakika = yapilan.length
+    ? yapilan.reduce((t, l) => t + (hmToMinutes(l.doneAt) || 0), 0) / yapilan.length
+    : null;
+
+  return {
+    routine,
+    today,
+    nowHm,
+    todayLog,
+    rows,
+    streak,
+    summary: {
+      gunSayisi,
+      total: degerlendirilen.length,
+      onTime,
+      late,
+      missed,
+      onTimeRate: degerlendirilen.length ? Math.round((onTime / degerlendirilen.length) * 100) : null,
+      averageTime: ortalamaDakika === null ? null : minutesToHm(Math.round(ortalamaDakika))
+    }
+  };
+}
+
 /**
  * Basilmadan gunu gecen rutinleri "missed" olarak muhurler.
  * Yalnizca GECMIS gunlere dokunur: bugun hala gec de olsa basilabilir.
@@ -2327,7 +2502,7 @@ function monthLabel(monthStart) {
 async function buildMonthFacts(studentId, monthStart) {
   const monthEnd = shiftDate(shiftMonth(monthStart, 1), -1);
 
-  const [statusRes, questionRes, wakeRes] = await Promise.all([
+  const [statusRes, questionRes, wakeRes, sportRes] = await Promise.all([
     query(
       `
         SELECT
@@ -2359,12 +2534,23 @@ async function buildMonthFacts(studentId, monthStart) {
         WHERE student_id = $1 AND day BETWEEN $2 AND $3
       `,
       [studentId, monthStart, monthEnd]
+    ),
+    query(
+      `
+        SELECT
+          COUNT(*)::int AS "tracked",
+          COUNT(*) FILTER (WHERE status = 'on_time')::int AS "onTime"
+        FROM sport_logs
+        WHERE student_id = $1 AND day BETWEEN $2 AND $3
+      `,
+      [studentId, monthStart, monthEnd]
     )
   ]);
 
   const gorev = statusRes.rows[0];
   const soru = questionRes.rows[0];
   const uyanma = wakeRes.rows[0];
+  const spor = sportRes.rows[0];
   const scored = soru.correct + soru.wrong;
 
   return {
@@ -2379,7 +2565,9 @@ async function buildMonthFacts(studentId, monthStart) {
     duration: soru.duration,
     wakeTracked: uyanma.tracked,
     wakeOnTime: uyanma.onTime,
-    wakeRate: uyanma.tracked > 0 ? Math.round((uyanma.onTime / uyanma.tracked) * 1000) / 10 : null
+    wakeRate: uyanma.tracked > 0 ? Math.round((uyanma.onTime / uyanma.tracked) * 1000) / 10 : null,
+    sportTracked: spor.tracked,
+    sportOnTime: spor.onTime
   };
 }
 
@@ -2506,7 +2694,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule|goals)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule|goals|sport)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -2722,6 +2910,36 @@ async function getAdminViewModel(req, currentPage) {
   const ydsProgramView =
     currentPage === 'yds' ? await buildYdsProgramSummary(ydsView && ydsView.student ? ydsView.student.id : null) : null;
 
+  let sportAdmin = null;
+  if (currentPage === 'sport') {
+    const secilenIdRaw = normalizeText(req.query.sportStudentId);
+    const secilen = students.find((s) => s.id === secilenIdRaw) || students[0] || null;
+    const detay = secilen ? await buildSportView(secilen.id, 14) : null;
+    const routinesRes = await query(
+      `
+        SELECT student_id AS "studentId", start_time AS "startTime",
+               end_time AS "endTime", is_active AS "isActive"
+        FROM sport_routines
+      `
+    );
+    const routineByStudent = new Map(
+      routinesRes.rows.map((r) => [
+        r.studentId,
+        {
+          startTime: normalizeEstimatedTimeForDisplay(r.startTime),
+          endTime: normalizeEstimatedTimeForDisplay(r.endTime),
+          isActive: r.isActive
+        }
+      ])
+    );
+    sportAdmin = {
+      selected: secilen,
+      detail: detay,
+      defaults: { startTime: SPORT_DEFAULT_START, endTime: SPORT_DEFAULT_END },
+      rows: students.map((s) => ({ student: s, routine: routineByStudent.get(s.id) || null }))
+    };
+  }
+
   let wakeAdmin = null;
   if (currentPage === 'wake') {
     const secilenIdRaw = normalizeText(req.query.wakeStudentId);
@@ -2933,6 +3151,7 @@ async function getAdminViewModel(req, currentPage) {
     ydsProgramView,
     scheduleView,
     wakeAdmin,
+    sportAdmin,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -3100,7 +3319,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds', 'schedule', 'goals']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'yz-program', 'wake', 'yds', 'schedule', 'goals', 'sport']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -4165,6 +4384,70 @@ app.post(
 );
 
 app.post(
+  '/admin/sport',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const startInput = normalizeText(req.body.startTime);
+    const endInput = normalizeText(req.body.endTime);
+    const isActive = normalizeText(req.body.isActive) !== 'off';
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const start = normalizeEstimatedTimeForStorage(startInput);
+    if (!start.ok || !start.value) {
+      return adminRedirect(req, res, { error: 'Başlangıç saati geçersiz (ör. 06:15).' });
+    }
+    const end = normalizeEstimatedTimeForStorage(endInput);
+    if (!end.ok || !end.value) {
+      return adminRedirect(req, res, { error: 'Bitiş saati geçersiz (ör. 06:30).' });
+    }
+    if (hmToMinutes(end.value) <= hmToMinutes(start.value)) {
+      return adminRedirect(req, res, { error: 'Bitiş saati başlangıçtan sonra olmalı.' });
+    }
+
+    await query(
+      `
+        INSERT INTO sport_routines (student_id, start_time, end_time, is_active)
+        VALUES ($1,$2,$3,$4)
+        ON CONFLICT (student_id) DO UPDATE
+        SET start_time = EXCLUDED.start_time,
+            end_time = EXCLUDED.end_time,
+            is_active = EXCLUDED.is_active,
+            updated_at = NOW()
+      `,
+      [studentId, start.value, end.value, isActive]
+    );
+
+    return adminRedirect(req, res, {
+      message: `${studentRes.rows[0].name} için spor rutini ${start.value} - ${end.value}${isActive ? '' : ' (pasif)'} olarak kaydedildi.`
+    });
+  })
+);
+
+// Rutin kaldirilinca sport_logs SILINMEZ - gecmis denetim verisi durur
+// (uyanma rutinindeki kararin aynisi).
+app.post(
+  '/admin/sport/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const sonuc = await query(`DELETE FROM sport_routines WHERE student_id = $1`, [studentId]);
+    if (sonuc.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Bu öğrencide spor rutini yok.' });
+    }
+    return adminRedirect(req, res, {
+      message: 'Spor rutini kaldırıldı. Geçmiş kayıtlar duruyor.'
+    });
+  })
+);
+
+app.post(
   '/admin/wake',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
@@ -4997,6 +5280,12 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildWakeView(req.currentUser.id, currentPage === 'wake' ? 14 : 7)
       : null;
 
+  // Spor karti da hem kendi sayfasinda hem panonun tepesinde gorunur.
+  const sport =
+    currentPage === 'sport' || currentPage === 'dashboard'
+      ? await buildSportView(req.currentUser.id, currentPage === 'sport' ? 14 : 7)
+      : null;
+
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
   // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
@@ -5016,6 +5305,7 @@ async function getStudentViewModel(req, currentPage) {
     questionHistory,
     calendar,
     wake,
+    sport,
     scheduleView,
     goalsView,
     message: req.query.message || null,
@@ -5029,7 +5319,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule', 'goals']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule', 'goals', 'sport']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -5081,6 +5371,53 @@ app.post(
         ? `Günaydın! ${nowHm} — zamanında kalktın.`
         : `${nowHm} kaydedildi — hedeften ${sonuc.delayMinutes} dk geç.`;
     return studentRedirect(req, res, { message: mesaj });
+  })
+);
+
+app.post(
+  '/student/sport',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const routine = await getSportRoutine(req.currentUser.id);
+    if (!routine || !routine.isActive) {
+      return studentRedirect(req, res, { error: 'Spor rutini tanımlı değil.' });
+    }
+
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const nowHm = timeStringInTimeZone();
+    const sonuc = evaluateSport(nowHm, routine.startTime, routine.endTime);
+    if (!sonuc) {
+      return studentRedirect(req, res, { error: 'Spor saati hesaplanamadı.' });
+    }
+
+    // Uyanmadaki kural: gunde tek kayit, ILK basis gecerli.
+    const insert = await query(
+      `
+        INSERT INTO sport_logs (id, student_id, day, start_time, end_time, done_at, status, delay_minutes)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        ON CONFLICT (student_id, day) DO NOTHING
+      `,
+      [
+        makeId('sport'),
+        req.currentUser.id,
+        today,
+        routine.startTime,
+        routine.endTime,
+        nowHm,
+        sonuc.status,
+        sonuc.delayMinutes
+      ]
+    );
+
+    if (insert.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Bugün için spor zaten kaydedilmiş.' });
+    }
+
+    const mesajSpor =
+      sonuc.status === 'on_time'
+        ? `Spor kaydedildi: ${nowHm} — zamanında.`
+        : `${nowHm} kaydedildi — başlangıçtan ${sonuc.delayMinutes} dk geç.`;
+    return studentRedirect(req, res, { message: mesajSpor });
   })
 );
 
@@ -5754,6 +6091,15 @@ async function runSealSafely() {
     }
   } catch (err) {
     console.error('Uyanma rutini mühürleme hatası:', err);
+  }
+
+  try {
+    const { sealed } = await sealMissedSportLogs();
+    if (sealed > 0) {
+      console.log(`${sealed} gün için spor kaydı "yapılmadı" olarak mühürlendi.`);
+    }
+  } catch (err) {
+    console.error('Spor rutini mühürleme hatası:', err);
   }
 
   // YDS ilerlemesi: dosya yoksa (lokal gelistirme) sessizce gecilir, log

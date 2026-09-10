@@ -314,6 +314,39 @@ async function initDb() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS wake_logs_student_day_idx ON wake_logs (student_id, day DESC)`);
 
+  // --- Gunluk spor rutini ------------------------------------------------
+  //
+  // Uyanma rutininin kardesi. Fark: hedef saat + tolerans yerine bir ARALIK
+  // tutulur (varsayilan 06:15-06:30). Aralik baslangici "niyet edilen saat",
+  // bitisi son teslimdir; gecikme baslangica gore olculur (uyanmadaki
+  // tolerans mantiginin aynisi).
+  await query(`
+    CREATE TABLE IF NOT EXISTS sport_routines (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      start_time TIME NOT NULL DEFAULT '06:15',
+      end_time TIME NOT NULL DEFAULT '06:30',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS sport_logs (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      done_at TIME NULL,
+      status TEXT NOT NULL CHECK (status IN ('on_time', 'late', 'missed')),
+      delay_minutes INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, day)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS sport_logs_student_day_idx ON sport_logs (student_id, day DESC)`);
+
   // --- Puan sistemi kaldirildi -------------------------------------------
   //
   // Odul/ceza puanlamasi uygulamadan tamamen cikarildi. Asagidaki migrasyon
