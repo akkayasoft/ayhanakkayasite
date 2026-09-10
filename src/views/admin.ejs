@@ -22,6 +22,7 @@
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
           <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
           <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
+          <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
           <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
           <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>">YDS Takibi</a>
@@ -954,6 +955,138 @@
         <section class="panel">
           <p class="muted">Kategori ve gün kırılımını görmek için yukarıdaki tablodan bir öğrenci seçin.</p>
         </section>
+        <% } %>
+        <% } %>
+
+        <% if (currentPage === 'goals' && goalsView) { %>
+        <% const gv = goalsView; %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Aylık Hedefler</h2>
+            <p class="muted">
+              <%= gv.monthLabel %><% if (gv.student) { %> · <strong><%= gv.student.name %></strong><% } %>
+              &nbsp;·&nbsp; <%= gv.counts.achieved %> başarıldı, <%= gv.counts.missed %> başarılamadı,
+              <%= gv.counts.pending %> bekliyor
+            </p>
+          </div>
+          <div class="row">
+            <a class="button-link" href="/admin/goals?ay=<%= gv.thisMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Bu Ay</a>
+            <a class="button-link" href="/admin/goals?ay=<%= gv.prevMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Önceki Ay</a>
+            <a class="button-link" href="/admin/goals?ay=<%= gv.nextMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Sonraki Ay</a>
+          </div>
+        </header>
+
+        <% if (!gv.student) { %>
+        <section class="panel narrow">
+          <h3>Öğrenci yok</h3>
+          <p class="muted">Önce bir öğrenci ekleyin; hedefler öğrenci başına tutulur.</p>
+        </section>
+        <% } else { %>
+
+        <section class="panel narrow">
+          <form method="get" action="/admin/goals" class="stack">
+            <input type="hidden" name="ay" value="<%= gv.monthStart.slice(0,7) %>" />
+            <label>Öğrenci</label>
+            <select name="goalStudentId" onchange="this.form.submit()">
+              <% gv.students.forEach((st) => { %>
+              <option value="<%= st.id %>" <%= gv.student.id === st.id ? 'selected' : '' %>><%= st.name %></option>
+              <% }) %>
+            </select>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3><%= gv.monthLabel %> Kaydı</h3>
+          <p class="muted">
+            Hedefler serbest metin olduğu için uygulama onları kendi ölçemez.
+            Kanıt yazarken bu sayılara bakabilirsin — ayın gerçek kaydı bunlar.
+          </p>
+          <div class="kpi-grid">
+            <article class="kpi">
+              <p class="kpi-label">Görev (yapılan / toplam)</p>
+              <p class="kpi-value"><%= gv.facts.taskDone %> / <%= gv.facts.taskTotal %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Tamamlama</p>
+              <p class="kpi-value"><%= gv.facts.taskRate === null ? '-' : gv.facts.taskRate + '%' %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Çözülen Soru</p>
+              <p class="kpi-value"><%= gv.facts.questionsSolved %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Doğruluk</p>
+              <p class="kpi-value"><%= gv.facts.accuracy === null ? '-' : gv.facts.accuracy + '%' %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Çalışma Süresi</p>
+              <p class="kpi-value"><%= gv.facts.duration %> dk</p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Zamanında Uyanma</p>
+              <p class="kpi-value"><%= gv.facts.wakeOnTime %> / <%= gv.facts.wakeTracked %></p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel narrow">
+          <h3>Yeni Hedef</h3>
+          <form method="post" action="/admin/goals" class="stack">
+            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <input type="hidden" name="studentId" value="<%= gv.student.id %>" />
+            <input type="hidden" name="monthStart" value="<%= gv.monthStart %>" />
+            <label>Hedef</label>
+            <input type="text" name="title" maxlength="200" placeholder="Örn. Python'da 3 proje bitir" required />
+            <label>Açıklama (opsiyonel)</label>
+            <textarea name="description" rows="2" maxlength="1000" placeholder="Hedefin ölçüsü ne? Neye bakınca başarıldı sayılacak?"></textarea>
+            <button type="submit">Hedefi Ekle</button>
+            <p class="muted">
+              Aynı ay içinde aynı başlıkta ikinci hedef açılmaz.
+            </p>
+          </form>
+        </section>
+
+        <% if (!gv.goals.length) { %>
+        <section class="panel narrow">
+          <h3>Bu ay hedef yok</h3>
+          <p class="muted"><%= gv.monthLabel %> için <%= gv.student.name %> adına henüz hedef girilmedi.</p>
+        </section>
+        <% } else { %>
+        <% gv.goals.forEach((g) => { %>
+        <section class="panel goal-card">
+          <header class="row space-between center">
+            <div>
+              <h3><%= g.title %></h3>
+              <% if (g.description) { %><p class="muted"><%= g.description %></p><% } %>
+            </div>
+            <span class="day-badge <%= g.status === 'achieved' ? 'ok' : g.status === 'missed' ? 'miss' : 'off' %>"><%= g.statusLabel %></span>
+          </header>
+
+          <form method="post" action="/admin/goals/<%= g.id %>/evaluate" class="stack">
+            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <label>Kanıt</label>
+            <textarea name="evidence" rows="3" maxlength="2000" placeholder="Ne yapıldı, nereden görülüyor? (Başarıldı işaretlemek için zorunlu)"><%= g.evidence %></textarea>
+            <label>Durum</label>
+            <select name="status">
+              <option value="pending" <%= g.status === 'pending' ? 'selected' : '' %>>Bekliyor</option>
+              <option value="achieved" <%= g.status === 'achieved' ? 'selected' : '' %>>Başarıldı</option>
+              <option value="missed" <%= g.status === 'missed' ? 'selected' : '' %>>Başarılamadı</option>
+            </select>
+            <div class="row space-between center">
+              <p class="muted">
+                <% if (g.evaluatedAt) { %>Son değerlendirme: <%= new Date(g.evaluatedAt).toLocaleDateString('tr-TR') %><% } else { %>Henüz değerlendirilmedi.<% } %>
+              </p>
+              <button type="submit">Kaydet</button>
+            </div>
+          </form>
+
+          <form method="post" action="/admin/goals/<%= g.id %>/delete" onsubmit="return confirm('Bu hedef silinsin mi?')">
+            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <button type="submit" class="danger">Hedefi Sil</button>
+          </form>
+        </section>
+        <% }) %>
+        <% } %>
         <% } %>
         <% } %>
 

@@ -22,6 +22,7 @@
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
           <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
+          <a href="/student/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
         </nav>
 
         <form method="post" action="/logout" class="sidebar-logout">
@@ -703,6 +704,81 @@
           </article>
           <% }) %>
         </section>
+        <% } %>
+
+        <% if (currentPage === 'goals' && goalsView) { %>
+        <% const gv = goalsView; %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Aylık Hedefler</h2>
+            <p class="muted">
+              <%= gv.monthLabel %> &nbsp;·&nbsp;
+              <%= gv.counts.achieved %> başarıldı, <%= gv.counts.missed %> başarılamadı,
+              <%= gv.counts.pending %> bekliyor
+              &nbsp;·&nbsp; Hedefleri öğretmenin koyar ve değerlendirir.
+            </p>
+          </div>
+          <div class="row">
+            <a class="button-link" href="/student/goals?ay=<%= gv.thisMonth.slice(0,7) %>">Bu Ay</a>
+            <a class="button-link" href="/student/goals?ay=<%= gv.prevMonth.slice(0,7) %>">Önceki Ay</a>
+            <a class="button-link" href="/student/goals?ay=<%= gv.nextMonth.slice(0,7) %>">Sonraki Ay</a>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h3><%= gv.monthLabel %> Kaydı</h3>
+          <div class="kpi-grid">
+            <article class="kpi">
+              <p class="kpi-label">Görev (yapılan / toplam)</p>
+              <p class="kpi-value"><%= gv.facts.taskDone %> / <%= gv.facts.taskTotal %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Tamamlama</p>
+              <p class="kpi-value"><%= gv.facts.taskRate === null ? '-' : gv.facts.taskRate + '%' %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Çözülen Soru</p>
+              <p class="kpi-value"><%= gv.facts.questionsSolved %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Doğruluk</p>
+              <p class="kpi-value"><%= gv.facts.accuracy === null ? '-' : gv.facts.accuracy + '%' %></p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Çalışma Süresi</p>
+              <p class="kpi-value"><%= gv.facts.duration %> dk</p>
+            </article>
+            <article class="kpi">
+              <p class="kpi-label">Zamanında Uyanma</p>
+              <p class="kpi-value"><%= gv.facts.wakeOnTime %> / <%= gv.facts.wakeTracked %></p>
+            </article>
+          </div>
+        </section>
+
+        <% if (!gv.goals.length) { %>
+        <section class="panel narrow">
+          <h3>Bu ay hedef yok</h3>
+          <p class="muted"><%= gv.monthLabel %> için henüz hedef girilmedi.</p>
+        </section>
+        <% } else { %>
+        <% gv.goals.forEach((g) => { %>
+        <section class="panel goal-card">
+          <header class="row space-between center">
+            <div>
+              <h3><%= g.title %></h3>
+              <% if (g.description) { %><p class="muted"><%= g.description %></p><% } %>
+            </div>
+            <span class="day-badge <%= g.status === 'achieved' ? 'ok' : g.status === 'missed' ? 'miss' : 'off' %>"><%= g.statusLabel %></span>
+          </header>
+          <% if (g.evidence) { %>
+          <p class="goal-evidence-label muted">Kanıt</p>
+          <p class="goal-evidence"><%= g.evidence %></p>
+          <% } else { %>
+          <p class="muted">Henüz kanıt yazılmadı.</p>
+          <% } %>
+        </section>
+        <% }) %>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'schedule' && scheduleView) { %>
