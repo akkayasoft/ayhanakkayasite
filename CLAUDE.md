@@ -99,9 +99,30 @@ boyutlu olan iki ızgarada kalır.
 - Kart hücresi `grid` değil **`flex`**: bir hücrede birden fazla öğe olabiliyor
   (rozet + trend gibi). Grid'de ikinci öğe bir sonraki satırın *etiket*
   sütununa düşüyordu.
-- **Dışarıda bırakılanlar:** `.schedule-grid` ve `.topic-grid`. Bunlar
-  satır × sütun kesişimi anlam taşıyan çizelgeler; düzleştirmek okunmaz kılar.
-  Telefonda ızgara içinde yatay kaydırılır (min-width 520px).
+- **Ders çizelgesi ve defter ızgarası** ayrı bir mekanizma kullanır: `.board`
+  (aşağıya bakın). Onlar da telefonda sığar.
+
+### Çizelge/defter panosu (`.board`)
+
+Ders çizelgesi ve işlenen konular artık `<table>` değil, **tek bir CSS grid**.
+Hücreler DOM'a **gün sırasıyla** yazılır (önce pazartesinin tüm saatleri):
+
+- **Masaüstünde** grid her hücreyi satır içi `--g` (sütun = gün) ve `--s`
+  (satır = ders saati) ile kendi yerine koyar. DOM sırası önemsiz; ekranda
+  eskisiyle birebir aynı ızgara çıkar, satırlar günler arasında hizalı kalır
+  (flex sütunlarla hizalanmazdı).
+- **Telefonda** grid kapanır, akış DOM sırası olur: **gün gün liste**. Zil
+  saati her hücrenin içinde yazılıdır (`.board-cell-time`), soldaki saat
+  sütunu gizlenir. Boş saatler gizlenir — 4 dersi olan gün 10 değil 4 satır.
+
+> **Neden ikinci bir mobil blok değil:** işlenen konular ekranı bir formdur.
+> Aynı `name`'li textarea'ları iki kez göndermek (biri gizli olsa bile)
+> `konu[gün-saat]` alanını diziye çevirir ve kaydı bozardı. Tek işaretleme
+> şart. Doğrulandı: sayfada `konu[1-1]` **bir kez** geçiyor, admin ve öğrenci
+> panellerinden kayıt doğru satırlara yazıyor.
+
+`--g` / `--s` / `--gun-sayisi` HTML'de satır içi tanımlanır; CSS token
+denetleyicisi onları "tanımsız" görür, bu beklenen durumdur.
 
 > Ölçüm notu: sayfa taşmasını Playwright ile ölçerken `waitUntil` **`load`**
 > olmalı. `domcontentloaded` ile CSS henüz uygulanmadan ölçülüyor ve uydurma

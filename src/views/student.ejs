@@ -750,38 +750,41 @@
 
         <section class="panel">
           <h3>Haftalık Çizelge</h3>
+          <%
+            // Hucreler GUN sirasiyla yazilir (once pazartesinin tum saatleri).
+            // Masaustunde CSS grid her hucreyi --g/--s ile kendi yerine koyar;
+            // telefonda ise akis DOM sirasi olur, yani gun gun.
+            const gunAdlari = ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'];
+          %>
           <div class="table-wrap">
-            <table class="schedule-grid">
-              <thead>
-                <tr>
-                  <th>Saat</th>
-                  <% [1,2,3,4,5].forEach((g) => { %>
-                  <th><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][g] %></th>
-                  <% }) %>
-                </tr>
-              </thead>
-              <tbody>
-                <% scheduleView.izgara.forEach((satir) => { %>
-                <tr class="<%= satir.lunchAfter ? 'lunch-row' : '' %>">
-                  <th class="period-cell">
-                    <span class="period-no"><%= satir.period %>.</span>
-                    <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
-                  </th>
-                  <% satir.hucreler.forEach((h) => { %>
-                  <td class="schedule-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %>">
-                    <% if (h.entry) { %>
-                    <p class="cell-static">
-                      <strong><%= h.entry.subject %></strong>
-                      <% if (h.entry.className) { %><span><%= h.entry.className %></span><% } %>
-                      <% if (h.entry.room) { %><span class="muted"><%= h.entry.room %></span><% } %>
-                    </p>
-                    <% } %>
-                  </td>
-                  <% }) %>
-                </tr>
-                <% }) %>
-              </tbody>
-            </table>
+            <div class="board" style="--gun-sayisi: 5; --saat-sayisi: <%= scheduleView.izgara.length %>">
+              <div class="board-corner">Saat</div>
+              <% scheduleView.izgara.forEach((satir, i) => { %>
+              <div class="board-time <%= satir.lunchAfter ? 'lunch-after' : '' %>" style="--s: <%= i + 2 %>">
+                <span class="period-no"><%= satir.period %>.</span>
+                <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
+              </div>
+              <% }) %>
+
+              <% [1,2,3,4,5].forEach((g) => { %>
+              <h4 class="board-dayhead" style="--g: <%= g + 1 %>"><%= gunAdlari[g] %></h4>
+              <% scheduleView.izgara.forEach((satir, i) => { const h = satir.hucreler[g - 1]; %>
+              <div
+                class="board-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
+                style="--g: <%= g + 1 %>; --s: <%= i + 2 %>"
+              >
+                <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                <% if (h.entry) { %>
+                <p class="cell-static">
+                  <strong><%= h.entry.subject %></strong>
+                  <% if (h.entry.className) { %><span><%= h.entry.className %></span><% } %>
+                  <% if (h.entry.room) { %><span class="muted"><%= h.entry.room %></span><% } %>
+                </p>
+                <% } %>
+              </div>
+              <% }) %>
+              <% }) %>
+            </div>
           </div>
         </section>
 
@@ -825,56 +828,53 @@
 
         <section class="panel">
           <div class="table-wrap">
-            <table class="schedule-grid topic-grid">
-              <thead>
-                <tr>
-                  <th>Saat</th>
-                  <% tw.gunler.forEach((g) => { %>
-                  <th>
-                    <%= g.gunAdi %>
-                    <span class="th-sub"><%= g.tarih.slice(5) %></span>
-                    <% if (!g.isSchoolDay) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
-                  </th>
-                  <% }) %>
-                </tr>
-              </thead>
-              <tbody>
-                <% tw.izgara.forEach((satir) => { %>
-                <tr class="<%= satir.lunchAfter ? 'lunch-row' : '' %>">
-                  <th class="period-cell">
-                    <span class="period-no"><%= satir.period %>.</span>
-                    <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
-                  </th>
-                  <% satir.hucreler.forEach((h) => { %>
-                  <td class="schedule-cell <%= h.entry && h.isSchoolDay ? 'filled' : 'empty' %>">
-                    <% if (h.entry && h.isSchoolDay) { %>
-                    <p class="topic-head">
-                      <strong><%= h.entry.subject %></strong>
-                      <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
-                    </p>
-                    <% if (scheduleView.canEditTopics) { %>
-                    <textarea
-                      name="konu[<%= h.dayOfWeek %>-<%= satir.period %>]"
-                      rows="2"
-                      placeholder="İşlenen konu"
-                    ><%= h.topic %></textarea>
-                    <% if (!h.topic && h.oncekiTopic) { %>
-                    <p class="topic-prev muted">geçen hafta: <%= h.oncekiTopic %></p>
-                    <% } %>
-                    <% } else if (h.topic) { %>
-                    <p class="topic-static"><%= h.topic %></p>
-                    <% } else { %>
-                    <p class="muted topic-off">—</p>
-                    <% } %>
-                    <% } else if (h.entry && !h.isSchoolDay) { %>
-                    <p class="muted topic-off"><%= h.dayLabel %></p>
-                    <% } %>
-                  </td>
-                  <% }) %>
-                </tr>
-                <% }) %>
-              </tbody>
-            </table>
+            <div class="board topic-board" style="--gun-sayisi: <%= tw.gunler.length %>; --saat-sayisi: <%= tw.izgara.length %>">
+              <div class="board-corner">Saat</div>
+              <% tw.izgara.forEach((satir, i) => { %>
+              <div class="board-time <%= satir.lunchAfter ? 'lunch-after' : '' %>" style="--s: <%= i + 2 %>">
+                <span class="period-no"><%= satir.period %>.</span>
+                <span class="period-time"><%= satir.start %><br /><%= satir.end %></span>
+              </div>
+              <% }) %>
+
+              <% tw.gunler.forEach((g, gi) => { %>
+              <h4 class="board-dayhead" style="--g: <%= gi + 2 %>">
+                <%= g.gunAdi %>
+                <span class="th-sub"><%= g.tarih.slice(5) %></span>
+                <% if (!g.isSchoolDay) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
+              </h4>
+              <% tw.izgara.forEach((satir, i) => { const h = satir.hucreler[gi]; %>
+              <div
+                class="board-cell <%= h.entry && h.isSchoolDay ? 'filled' : 'empty' %> <%= h.entry && !h.isSchoolDay ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
+                style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
+              >
+                <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                <% if (h.entry && h.isSchoolDay) { %>
+                <p class="topic-head">
+                  <strong><%= h.entry.subject %></strong>
+                  <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
+                </p>
+                <% if (scheduleView.canEditTopics) { %>
+                <textarea
+                  name="konu[<%= h.dayOfWeek %>-<%= satir.period %>]"
+                  rows="2"
+                  placeholder="İşlenen konu"
+                ><%= h.topic %></textarea>
+                <% if (!h.topic && h.oncekiTopic) { %>
+                <p class="topic-prev muted">geçen hafta: <%= h.oncekiTopic %></p>
+                <% } %>
+                <% } else if (h.topic) { %>
+                <p class="topic-static"><%= h.topic %></p>
+                <% } else { %>
+                <p class="muted topic-off">—</p>
+                <% } %>
+                <% } else if (h.entry && !h.isSchoolDay) { %>
+                <p class="muted topic-off"><%= h.dayLabel %></p>
+                <% } %>
+              </div>
+              <% }) %>
+              <% }) %>
+            </div>
           </div>
 
           <% if (scheduleView.canEditTopics) { %>

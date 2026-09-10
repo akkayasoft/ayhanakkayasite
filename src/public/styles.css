@@ -1207,18 +1207,6 @@ tr.day-off td {
    Satir = ders saati, sutun = gun. Hucreler dokunma hedefi olacak kadar genis;
    bos hucredeki + dogrudan o gun/saat icin formu on doldurur.
    -------------------------------------------------------------------------- */
-.schedule-grid {
-  table-layout: fixed;
-}
-
-.schedule-grid th.period-cell {
-  width: 88px;
-  text-align: left;
-  white-space: nowrap;
-  vertical-align: middle;
-  background: var(--surface-sunken);
-}
-
 .period-no {
   display: block;
   font-size: 0.9375rem;
@@ -1232,21 +1220,6 @@ tr.day-off td {
   line-height: 1.35;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-}
-
-.schedule-cell {
-  position: relative;
-  padding: 6px;
-  vertical-align: top;
-  min-width: 128px;
-}
-
-.schedule-cell.filled {
-  background: var(--primary-soft);
-}
-
-.schedule-cell.duty {
-  background: var(--warning-soft);
 }
 
 .cell-link {
@@ -1304,8 +1277,8 @@ tr.day-off td {
 }
 
 /* Ogle arasinin nereye denk geldigi izgarada gorunsun */
-.schedule-grid tr.lunch-row td,
-.schedule-grid tr.lunch-row th {
+/* Ogle arasi ayiraci: o ders saatinin altina kalin bir cizgi. */
+.board .lunch-after {
   border-bottom-width: 3px;
   border-bottom-color: var(--warning-border);
 }
@@ -1357,9 +1330,12 @@ tr.day-off td {
   font-size: 0.75rem;
 }
 
-/* Islenen konular izgarasi: ayni cizelge, hucrelerde konu alani */
-.topic-grid .schedule-cell {
-  min-width: 190px;
+/* Islenen konular panosu: ayni cizelge, hucrelerde konu alani */
+.topic-board {
+  grid-template-columns: 88px repeat(var(--gun-sayisi, 5), minmax(190px, 1fr));
+}
+
+.topic-board .board-cell {
   padding: 8px;
 }
 
@@ -1377,7 +1353,7 @@ tr.day-off td {
   font-size: 0.6875rem;
 }
 
-.topic-grid textarea {
+.topic-board textarea {
   width: 100%;
   min-height: 48px;
   padding: 6px 8px;
@@ -1411,9 +1387,9 @@ tr.day-off td {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 720px) {
-  .topic-grid .schedule-cell {
-    min-width: 168px;
+@media (min-width: 641px) and (max-width: 720px) {
+  .topic-board {
+    grid-template-columns: 88px repeat(var(--gun-sayisi, 5), minmax(168px, 1fr));
   }
 }
 
@@ -1432,9 +1408,9 @@ tr.day-off td {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 720px) {
-  .schedule-cell {
-    min-width: 108px;
+@media (min-width: 641px) and (max-width: 720px) {
+  .board {
+    grid-template-columns: 88px repeat(var(--gun-sayisi, 5), minmax(108px, 1fr));
   }
 }
 
@@ -1891,12 +1867,6 @@ tr.day-off td {
   min-width: 720px;
 }
 
-/* Ders cizelgesi 5 gun x N saatlik bir izgara; hucre basina en az bir ders
-   adi sigmali. 640 yerine 520: telefonda kaydirma mesafesi yariya iner. */
-.schedule-grid {
-  min-width: 520px;
-}
-
 /* Ogrenci gorev listesi: masaustunde sabit duzen. Onceden baslik ve aciklama
    sutunlari icerige gore buyuyup tabloyu 1440px ekranda bile 505px disari
    itiyordu; sabit duzende ikisi de sarar. */
@@ -2003,5 +1973,131 @@ tr.day-off td {
   /* Kart duzeninde tablo zaten sigar; kaydirma cercevesi gereksiz. */
   .table-wrap:has(> .stack-mobile) {
     overflow-x: visible;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Ders cizelgesi / defter panosu (.board)
+
+   Ayni isaretleme iki duzende calisir. Hucreler DOM'a GUN sirasiyla yazilir
+   (once pazartesinin tum saatleri, sonra salinin...):
+
+   - Masaustunde CSS grid her hucreyi --g (sutun = gun) ve --s (satir = ders
+     saati) ile kendi yerine koyar; DOM sirasi onemsiz, izgara cikar.
+   - Telefonda grid kapanir, akis DOM sirasi olur: gun gun liste. Boylece tek
+     bir isaretleme var - formdaki textarea'lar da tek. Ikinci bir mobil blok
+     yazsaydik ayni name'li alanlar iki kez gonderilirdi.
+   -------------------------------------------------------------------------- */
+.board {
+  display: grid;
+  grid-template-columns: 88px repeat(var(--gun-sayisi, 5), minmax(128px, 1fr));
+  min-width: 520px;
+}
+
+.board-corner {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.board-time {
+  grid-column: 1;
+  grid-row: var(--s);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+}
+
+.board-dayhead {
+  grid-column: var(--g);
+  grid-row: 1;
+  margin: 0;
+}
+
+.board-corner,
+.board-dayhead {
+  padding: 10px var(--sp-4);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.board-dayhead .th-sub,
+.board-dayhead .day-badge {
+  font-weight: 500;
+}
+
+.board-cell {
+  grid-column: var(--g);
+  grid-row: var(--s);
+  position: relative;
+  padding: 6px;
+  border-bottom: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+}
+
+.board-time {
+  padding: 6px var(--sp-4);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.board-cell.filled {
+  background: var(--primary-soft);
+}
+
+.board-cell.duty {
+  background: var(--warning-soft);
+}
+
+/* Zil saati her hucrenin icinde duruyor ama masaustunde soldaki sutun zaten
+   gosteriyor; orada gizli. */
+.board-cell-time {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .board {
+    display: block;
+    min-width: 0;
+  }
+
+  /* Soldaki saat sutunu ve kose basligi telefonda gereksiz: saat artik her
+     hucrenin icinde yaziyor. */
+  .board-corner,
+  .board-time {
+    display: none;
+  }
+
+  .board-dayhead {
+    margin-top: var(--sp-4);
+    border-top: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font-size: 0.8125rem;
+    color: var(--text);
+  }
+
+  .board-dayhead:first-of-type {
+    margin-top: 0;
+    border-top: none;
+  }
+
+  .board-cell {
+    padding: var(--sp-3) var(--sp-4);
+    border-left: none;
+  }
+
+  /* Bos saatler telefonda satir kaplamasin: 4 dersi olan gun 10 degil 4 satir
+     olur. Masaustunde bosluk izgaranin bir parcasi, orada duruyorlar. */
+  .board-cell.empty:not(.off-day) {
+    display: none;
+  }
+
+  .board-cell-time {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
 }
