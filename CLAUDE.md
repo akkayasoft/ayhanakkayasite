@@ -211,9 +211,25 @@ yayılıp görev olarak aktarılır.
   (5 ders/hafta). `--gunler 1,2,3` ile elle zorlanabilir.
 - **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
   Her ders `tasks.source_key` (`yz:<dersId>`) ile işaretlenir.
-- **Her kurs kendi kategorisi.** Kategori adı = kurs adı (Python Temelleri,
-  NumPy Temelleri, ...), 24 kategori. (Bir ara hepsi tek `Yapay Zeka`
-  kategorisinde toplanmıştı; **geri alındı**.)
+- **Tek kategori: `Yapay Zeka`.** Önce her kurs ayrı kategoriydi (24 tane) ve
+  kategori listesi YZ kurslarıyla doluyordu. Kurs adı kaybolmaz — görev
+  açıklamasının ilk parçası hâlâ kurs adıdır (`describeLesson`), YZ Programı
+  sayfasındaki "Kurs Bazında Dağılım" tablosu da aynen durur.
+- **Toplama AÇILIŞTA kendiliğinden çalışır** (`consolidateCategory`,
+  `bootstrap` içinde; aynı fonksiyon YDS için `ydsp:` → `Doktora` ile de
+  çağrılır). Önce yalnızca "Görevlere Aktar" düğmesine basınca
+  oluyordu; kullanıcı deploy sonrası ekranda hâlâ eski kurs kategorilerini
+  görüp özelliğin çalışmadığını düşündü ve özellik yanlışlıkla geri alındı.
+  Görünen durumun koddaki niyetle aynı olması için toplama artık bir düğmeye
+  bağlı değil. Idempotenttir: toplanacak görev yoksa hiçbir şey yapmaz, temiz
+  kurulumda kategoriyi bile açmaz.
+
+> ⚠️ Toplama temiz kurulumda kategori açmadığı için `categoryId` **null**
+> dönebilir; aktarım yazacağı görevler için kategoriye ihtiyaç duyar. İki
+> aktarım da bu yüzden `ensureCategoryId()` yedeğini kullanır. Bu yedek önce
+> yalnızca YDS'ye konmuştu ve sıfırdan kurulumda YZ aktarımı
+> `null value in column "category_id"` ile sessizce düşüyordu (işlem geri
+> alındığı için ekranda hata görünmüyordu, sadece görev eklenmiyordu).
 - **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
   Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
   bas — yalnızca yeni dersler eklenir.
@@ -232,25 +248,19 @@ Aktarım tekrar çalıştırıldığında üç şey birden olur:
    taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
    sabit kaldığı mesajda bildirilir.
 
-Aktarım ayrıca **görevleri kendi kurs kategorisine dağıtır**. Tek kategoride
-toplanmış bir kurulumda asıl iş budur: 149 görev 24 kategoriye geri yayılır.
-Boşalan kategori silinir — ama yalnızca gerçekten boşsa; bağlı başka bir görev
-ya da **soru kaydı** varsa durur (`daily_questions.category_id` ON DELETE SET
-NULL — silmek o kaydın kategorisini kaybettirirdi) ve mesajda bildirilir.
-
-> ⚠️ **"Bu kategori yalnızca bu kursa mı ait?" sorusu dağıtımdan ÖNCEKİ duruma
-> göre cevaplanır.** Döngü içinde bakılırsa son kursa gelindiğinde diğer
-> kurslar çoktan taşınmış olur; paylaşılan kategori (hepsini toplayan
-> `Yapay Zeka`) tek kursa aitmiş gibi görünüp **yeniden adlandırılır** ve ona
-> bağlı soru kayıtlarının etiketi de değişir. Bu hata geliştirme sırasında
-> gerçekten oluştu: soru kaydı "Yapay Zeka" iken "Uçtan Uca Üretken YZ
-> Uygulaması" olmuştu. Bu yüzden kategori→kurs dağılımı ve YZ dışı görev tutan
-> kategoriler döngüden önce anlık görüntü olarak alınır.
->
-> Doğrulandı: tek kategoriden 24 kategoriye geri dağıtım; soru kaydı bağlıyken
-> `Yapay Zeka` **silinmedi ve etiketi kaymadı**; bağ kaldırılınca silindi;
-> işaretli görev durumları bozulmadı; ikinci basışta hiçbir şey değişmedi;
-> sıfırdan kurulumda 24 kategori.
+> Not: 2. madde artık kategori **birleştirmesi** olarak çalışır. Kurs başına
+> kategori döneminden kalan görevler tek kategoriye taşınır, boşalan eski
+> kategoriler silinir. Hangi kategorilerin "YZ kategorisi" olduğu **ada göre
+> tahmin edilmez** — hâlâ `yz:` görevi tutan kategorilerin kimliğine bakılır;
+> elle açılmış bir kategori yanlışlıkla toplanmasın diye. Silme de koşulludur:
+> kategoriye bağlı başka bir görev ya da **soru kaydı** varsa silinmez
+> (`daily_questions.category_id` ON DELETE SET NULL — silmek o kaydın
+> kategorisini kaybettirirdi), kaç tanesinin durduğu mesajda bildirilir.
+> Doğrulandı (açılıştaki otomatik toplama ile, hiçbir düğmeye basmadan):
+> 24 kurs kategorisi → 1; 149 görev taşındı, 24 boşalan kategori silindi,
+> 3 işaretli görev durumu korundu. İkinci açılışta hiçbir şey değişmedi
+> (mesaj da çıkmadı). Soru kaydı bağlı bir kategori **silinmedi** ve o kaydın
+> etiketi değişmedi. Temiz kurulumda `Yapay Zeka` kategorisi hiç açılmadı.
 
 ## YDS / YÖKDİL takibi (yds.obs → takip.obs)
 
@@ -346,8 +356,14 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 > **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
 > hem serbest kayıt hem yeni içerik görevleri görünür.
 
-Kategoriler: `YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` /
-`Serbest Çalışma`. `source_key` = `ydsp:<tarih>:<parçaId>`.
+**Tek kategori: `Doktora`.** Önce tür başına beş kategori açılıyordu
+(`YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` / `Serbest Çalışma`) ve
+kategori listesi bunlarla doluyordu. Tür bilgisi kaybolmaz: görev
+açıklamasının ilk parçası hâlâ tür adıdır (`describeItem`) ve YDS sayfasındaki
+tür kırılımı tablosu program dosyasından geldiği için aynen durur.
+Toplama **açılışta kendiliğinden** çalışır (YZ ile aynı mekanizma —
+`consolidateCategory`), düğmeye basmak gerekmez.
+`source_key` = `ydsp:<tarih>:<parçaId>`.
 
 Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 **53 bekleyen hafta sonu günü**, toplam **221 görev**.
