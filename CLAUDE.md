@@ -215,13 +215,21 @@ yayılıp görev olarak aktarılır.
   kategori listesi YZ kurslarıyla doluyordu. Kurs adı kaybolmaz — görev
   açıklamasının ilk parçası hâlâ kurs adıdır (`describeLesson`), YZ Programı
   sayfasındaki "Kurs Bazında Dağılım" tablosu da aynen durur.
-- **Toplama AÇILIŞTA kendiliğinden çalışır** (`consolidateYzCategories`,
-  `bootstrap` içinde). Önce yalnızca "Görevlere Aktar" düğmesine basınca
+- **Toplama AÇILIŞTA kendiliğinden çalışır** (`consolidateCategory`,
+  `bootstrap` içinde; aynı fonksiyon YDS için `ydsp:` → `Doktora` ile de
+  çağrılır). Önce yalnızca "Görevlere Aktar" düğmesine basınca
   oluyordu; kullanıcı deploy sonrası ekranda hâlâ eski kurs kategorilerini
   görüp özelliğin çalışmadığını düşündü ve özellik yanlışlıkla geri alındı.
   Görünen durumun koddaki niyetle aynı olması için toplama artık bir düğmeye
   bağlı değil. Idempotenttir: toplanacak görev yoksa hiçbir şey yapmaz, temiz
   kurulumda kategoriyi bile açmaz.
+
+> ⚠️ Toplama temiz kurulumda kategori açmadığı için `categoryId` **null**
+> dönebilir; aktarım yazacağı görevler için kategoriye ihtiyaç duyar. İki
+> aktarım da bu yüzden `ensureCategoryId()` yedeğini kullanır. Bu yedek önce
+> yalnızca YDS'ye konmuştu ve sıfırdan kurulumda YZ aktarımı
+> `null value in column "category_id"` ile sessizce düşüyordu (işlem geri
+> alındığı için ekranda hata görünmüyordu, sadece görev eklenmiyordu).
 - **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
   Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
   bas — yalnızca yeni dersler eklenir.
@@ -348,8 +356,14 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 > **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
 > hem serbest kayıt hem yeni içerik görevleri görünür.
 
-Kategoriler: `YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` /
-`Serbest Çalışma`. `source_key` = `ydsp:<tarih>:<parçaId>`.
+**Tek kategori: `Doktora`.** Önce tür başına beş kategori açılıyordu
+(`YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` / `Serbest Çalışma`) ve
+kategori listesi bunlarla doluyordu. Tür bilgisi kaybolmaz: görev
+açıklamasının ilk parçası hâlâ tür adıdır (`describeItem`) ve YDS sayfasındaki
+tür kırılımı tablosu program dosyasından geldiği için aynen durur.
+Toplama **açılışta kendiliğinden** çalışır (YZ ile aynı mekanizma —
+`consolidateCategory`), düğmeye basmak gerekmez.
+`source_key` = `ydsp:<tarih>:<parçaId>`.
 
 Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
 **53 bekleyen hafta sonu günü**, toplam **221 görev**.

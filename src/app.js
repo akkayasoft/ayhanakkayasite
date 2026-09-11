@@ -1413,19 +1413,24 @@ async function buildYzProgramView(req, students) {
 // Kurs adi kaybolmaz: gorev aciklamasinin ilk parcasi hala kurs adidir
 // (bkz. yzProgram.describeLesson).
 const YZ_CATEGORY = 'Yapay Zeka';
+// yds.obs calisma programinin tamami tek kategoride: doktora hazirligi.
+const YDS_CATEGORY = 'Doktora';
 
 /**
- * yapayzeka.obs derslerinin TAMAMINI tek "Yapay Zeka" kategorisinde toplar.
+ * Bir kaynagin (source_key oneki) TUM gorevlerini tek bir kategoride toplar.
+ * Iki yerde kullanilir:
+ *   yz:   -> "Yapay Zeka"  (yapayzeka.obs mufredati)
+ *   ydsp: -> "Doktora"     (yds.obs calisma programi)
  *
  * Hem aktarim dugmesinde hem ACILIŞTA calisir. Acilista da calismasinin sebebi
  * somut: kategoriler yalnizca "Görevlere Aktar" basildiginda duzeliyordu ve
- * kullanici ekranda hala eski kurs adlarini gorup ozelligin calismadigini
+ * kullanici ekranda hala eski kategori adlarini gorup ozelligin calismadigini
  * dusunuyordu. Idempotenttir - toplanacak gorev yoksa hicbir sey yapmaz.
  *
  * Verilen client ile calisir (cagiran islemi yonetir).
  */
-async function consolidateYzCategoriesWith(client) {
-  const desen = `${yzProgram.SOURCE_PREFIX}:%`;
+async function consolidateCategoryWith(client, prefix, categoryName) {
+  const desen = `${prefix}:%`;
 
   // Toplanacak YZ gorevi yoksa kategoriyi bile acma (temiz kurulumda gurultu
   // olmasin diye); aktarim sirasinda zaten gerekince acilir.
@@ -1433,20 +1438,20 @@ async function consolidateYzCategoriesWith(client) {
 
   let categoryId;
   const mevcutKategori = await client.query(`SELECT id FROM categories WHERE name = $1`, [
-    YZ_CATEGORY
+    categoryName
   ]);
   if (mevcutKategori.rowCount > 0) {
     categoryId = mevcutKategori.rows[0].id;
   } else if (varMi.rowCount > 0) {
     categoryId = makeId('cat');
-    await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [categoryId, YZ_CATEGORY]);
+    await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [categoryId, categoryName]);
   } else {
     return { categoryId: null, merged: 0, removedCategories: 0, keptCategories: 0 };
   }
 
-  // Hangi kategorilerin "YZ kategorisi" oldugunu ADA GORE tahmin etmiyoruz -
-  // halen yz: gorevi tutan kategorilerin kimligine bakiyoruz; elle acilmis bir
-  // kategoriyi yanlislikla toplamamak icin.
+  // Hangi kategorilerin bu kaynaga ait oldugunu ADA GORE tahmin etmiyoruz -
+  // halen bu oneke sahip gorev tutan kategorilerin kimligine bakiyoruz; elle
+  // acilmis bir kategoriyi yanlislikla toplamamak icin.
   const eskiKategoriler = await client.query(
     `SELECT DISTINCT category_id AS "id" FROM tasks
      WHERE source_key LIKE $1 AND category_id <> $2`,
@@ -1483,12 +1488,25 @@ async function consolidateYzCategoriesWith(client) {
   return { categoryId, merged, removedCategories, keptCategories };
 }
 
+/**
+ * Kategoriyi ada gore bulur, yoksa acar. Toplama fonksiyonu temiz kurulumda
+ * (hic gorev yokken) bilerek kategori ACMAZ; aktarim ise yazacagi gorevler
+ * icin bir kategoriye ihtiyac duyar. Iki aktarim da bu yardimciyi kullanir.
+ */
+async function ensureCategoryId(client, categoryName) {
+  const mevcut = await client.query(`SELECT id FROM categories WHERE name = $1`, [categoryName]);
+  if (mevcut.rowCount > 0) return { id: mevcut.rows[0].id, created: 0 };
+  const id = makeId('cat');
+  await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [id, categoryName]);
+  return { id, created: 1 };
+}
+
 /** Acilista calisan surum: kendi islemini acar. */
-async function consolidateYzCategories() {
+async function consolidateCategory(prefix, categoryName) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const sonuc = await consolidateYzCategoriesWith(client);
+    const sonuc = await consolidateCategoryWith(client, prefix, categoryName);
     await client.query('COMMIT');
     return sonuc;
   } catch (err) {
@@ -1509,8 +1527,18 @@ async function importYzProgram(studentId, createdBy) {
   try {
     await client.query('BEGIN');
 
-    const { categoryId, merged, removedCategories, keptCategories } =
-      await consolidateYzCategoriesWith(client);
+    const { categoryId: toplananId, merged, removedCategories, keptCategories } =
+      await consolidateCategoryWith(client, yzProgram.SOURCE_PREFIX, YZ_CATEGORY);
+
+    // Temiz kurulumda toplama kategori acmaz (acacak gorev yok); aktarim
+    // yazacagi gorevler icin kategoriye ihtiyac duyar.
+    let categoryId = toplananId;
+    let createdCategories = 0;
+    if (!categoryId) {
+      const olusan = await ensureCategoryId(client, YZ_CATEGORY);
+      categoryId = olusan.id;
+      createdCategories = olusan.created;
+    }
 
     // Program yeniden uretildiginde ders tarihleri kayabilir (orn. haftada 4
     // ders yerine 5 ders duzenine gecince). Daha once aktarilmis gorevler eski
@@ -1580,6 +1608,7 @@ async function importYzProgram(studentId, createdBy) {
     return {
       inserted,
       skipped: program.gorevler.length - inserted,
+      categories: createdCategories,
       merged,
       removedCategories,
       keptCategories,
@@ -1830,27 +1859,27 @@ async function importYdsProgram(studentId, createdBy) {
   try {
     await client.query('BEGIN');
 
-    // Kategoriler (tur basina bir tane).
-    const kategoriIdByAd = new Map();
+    // TEK kategori: "Doktora". Once tur basina bes kategori aciliyordu
+    // (YDS · Konu Anlatimi, Kelime, Okuma, Test, Serbest Calisma); kategori
+    // listesi bunlarla doluyordu. Tur bilgisi kaybolmaz: gorev aciklamasinin
+    // ilk parcasi hala tur adidir (ydsProgram.describeItem) ve YDS sayfasindaki
+    // tur kirilimi tablosu program dosyasindan geldigi icin aynen durur.
+    const { categoryId, merged, removedCategories, keptCategories } =
+      await consolidateCategoryWith(client, ydsProgram.SOURCE_PREFIX, YDS_CATEGORY);
+
+    // Temiz kurulumda toplama kategori acmaz; aktarim burada aciyor.
+    let kategoriId = categoryId;
     let createdCategories = 0;
-    for (const ad of [...new Set(program.gorevler.map((g) => g.kategoriAd))]) {
-      const mevcut = await client.query(`SELECT id FROM categories WHERE name = $1`, [ad]);
-      if (mevcut.rowCount > 0) {
-        kategoriIdByAd.set(ad, mevcut.rows[0].id);
-        continue;
-      }
-      const id = makeId('cat');
-      await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [id, ad]);
-      kategoriIdByAd.set(ad, id);
-      createdCategories += 1;
+    if (!kategoriId) {
+      const olusan = await ensureCategoryId(client, YDS_CATEGORY);
+      kategoriId = olusan.id;
+      createdCategories = olusan.created;
     }
 
     let inserted = 0;
     let updated = 0;
     for (const gorev of program.gorevler) {
       const aciklama = ydsProgram.describeItem(gorev);
-      const kategoriId = kategoriIdByAd.get(gorev.kategoriAd);
-
       const ekleme = await client.query(
         `
           INSERT INTO tasks (
@@ -1916,7 +1945,10 @@ async function importYdsProgram(studentId, createdBy) {
       updated,
       removed: silme.rowCount || 0,
       skipped: program.gorevler.length - inserted,
-      categories: createdCategories
+      categories: createdCategories,
+      merged,
+      removedCategories,
+      keptCategories
     };
   } catch (err) {
     await client.query('ROLLBACK');
@@ -3816,6 +3848,15 @@ app.post(
     const sonuc = await importYdsProgram(student.id, req.currentUser.id);
     const notlar = [];
     if (sonuc.categories) notlar.push(`${sonuc.categories} kategori oluşturuldu.`);
+    if (sonuc.merged) {
+      notlar.push(`${sonuc.merged} görev "${YDS_CATEGORY}" kategorisinde toplandı.`);
+    }
+    if (sonuc.removedCategories) {
+      notlar.push(`${sonuc.removedCategories} boşalan kategori silindi.`);
+    }
+    if (sonuc.keptCategories) {
+      notlar.push(`${sonuc.keptCategories} kategori başka kayıtlar bağlı olduğu için silinmedi.`);
+    }
     if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
     if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
 
@@ -4626,6 +4667,7 @@ app.post(
 
     const sonuc = await importYzProgram(studentId, req.currentUser.id);
     const notlar = [];
+    if (sonuc.categories) notlar.push(`${sonuc.categories} kategori oluşturuldu.`);
     if (sonuc.merged) {
       notlar.push(`${sonuc.merged} görev "${YZ_CATEGORY}" kategorisinde toplandı.`);
     }
@@ -6220,18 +6262,23 @@ async function bootstrap() {
   // diye: kullanici deploy sonrasi ekranda hala eski kurs kategorilerini
   // gorunce ozelligin calismadigini dusunuyordu. Idempotent - toplanacak
   // gorev yoksa sessizce gecer. Hata uygulamayi durdurmaz.
-  try {
-    const yzSonuc = await consolidateYzCategories();
-    if (yzSonuc.merged > 0) {
-      console.log(
-        `${yzSonuc.merged} YZ görevi "${YZ_CATEGORY}" kategorisinde toplandı` +
-          (yzSonuc.removedCategories ? `, ${yzSonuc.removedCategories} boşalan kategori silindi` : '') +
-          (yzSonuc.keptCategories ? `, ${yzSonuc.keptCategories} kategori başka kayıtlar bağlı olduğu için silinmedi` : '') +
-          '.'
-      );
+  for (const [prefix, ad, etiket] of [
+    [yzProgram.SOURCE_PREFIX, YZ_CATEGORY, 'YZ'],
+    [ydsProgram.SOURCE_PREFIX, YDS_CATEGORY, 'YDS']
+  ]) {
+    try {
+      const sonuc = await consolidateCategory(prefix, ad);
+      if (sonuc.merged > 0) {
+        console.log(
+          `${sonuc.merged} ${etiket} görevi "${ad}" kategorisinde toplandı` +
+            (sonuc.removedCategories ? `, ${sonuc.removedCategories} boşalan kategori silindi` : '') +
+            (sonuc.keptCategories ? `, ${sonuc.keptCategories} kategori başka kayıtlar bağlı olduğu için silinmedi` : '') +
+            '.'
+        );
+      }
+    } catch (err) {
+      console.error(`${etiket} kategori toplama hatası:`, err);
     }
-  } catch (err) {
-    console.error('YZ kategori toplama hatası:', err);
   }
 
   await runSealSafely();
