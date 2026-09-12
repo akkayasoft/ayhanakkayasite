@@ -173,6 +173,17 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 - Otomatik yazılan `not_done` kayıtları raporlarda durumu
   `İşaretlenmedi` yerine `Yapılmadı` olarak netleştirir.
 
+> ⚠️ **"Saat" alanı tahmini süre değil SON TESLİM saatidir.** Alan adı bir
+> dönem "Tahmini Saat"ti; bu yanıltıcıydı, çünkü girilen saat geçtiğinde görev
+> kilitlenir ve işaretlenmemişse kalıcı olarak `not_done` olur. Etiket her iki
+> formda da **"Son Saat"** olarak düzeltildi ve kilit uyarısı forma yazıldı.
+> Somut sonucu: YZ görevlerine toplu **07:30** yazılırsa o günün görevi
+> **07:31'de kilitlenir** — 08:00'de işaretlemek artık mümkün değildir.
+> Doğrulandı: 07:30'lu görev, saat 08:00'de açılan uygulamada `not_done`
+> mühürlendi. Sabah saati yazmak bilinçli bir tercih olabilir (okula çıkmadan
+> önce işaretle), ama bir sabah unutulursa telafisi yoktur; gün sonu (23:59)
+> isteniyorsa toplu güncellemedeki **"Saati temizle"** kutusu kullanılır.
+
 ### Saat sonradan girilebilir
 
 Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
@@ -633,6 +644,43 @@ studentId)` bir haftanın metriklerini üretir:
 Sorgular tek turda hem içinde bulunulan hem önceki haftayı çeker
 (`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok —
 `wake_logs` de aynı desenle aynı turda çekilir.
+
+## Açılış öncesi doğrulama (2026-09-14)
+
+Öğretim yılının başladığı pazartesiye karşı tüm zincir, sahte saatle
+(`FAKE_NOW`) ileri sarılmış **temiz bir veritabanında** uçtan uca çalıştırıldı.
+Doğrulananlar:
+
+- **Takvim:** 11-13 Eylül `outside`, **14 Eylül `school`**, 1. Dönem 2026-09-14
+  → 2027-01-22. İlk altı haftada tatil/bayram yok.
+- **Yapay Zeka:** 149 görev, 2026-09-14 → 2027-05-11; okul günü olmayan güne
+  düşen ders **0**; ilk hafta Pzt-Cum 5 ders.
+- **Doktora:** 221 görev, 2026-09-19 → 2027-06-20; hafta sonu dışına düşen
+  görev **0**. YZ ile ortak gün **0**.
+- **Kategoriler:** temiz kurulumda açılışta tam **iki** kategori oluşuyor
+  (`Yapay Zeka`, `Doktora`); düğmeye basmak gerekmiyor.
+- **YDS aynası:** dosya yoksa senkron sessizce geçiyor, hata `yds_sync.last_error`'a
+  yazılıyor, uygulama ayakta kalıyor. Geçerli dosyada `yds_days` +
+  `daily_questions` doğru dolduruldu. `resetAt` ilerletildiğinde yansıma
+  silinip yeniden yazıldı, **elle girilen soru kaydı korundu**.
+- **Uyanma / Spor:** tek dokunuş kaydediyor; erken basış `on_time` + gecikme 0;
+  basılmayan geçmiş günler mühürleniyor.
+- **Ders defteri:** çizelge girilince 37 haftalık görev açıldı, 1. hafta son
+  tarihi **20 Eylül Pazar**. Haftanın tüm hücreleri dolunca görev `done`
+  işaretlendi — süresi geçmiş olmasına rağmen `not_done` olmadı (sıralama
+  doğru). Öğrenci listesinde yalnızca içinde bulunulan haftanınki görünüyor.
+- **Öğretmen bayrağı:** işaretli öğrenci haftanın konularını yazabildi; yalnızca
+  çizelgede dersi olan ve okul günü olan hücreler kaydedildi.
+- **Yetki sınırları:** öğrenci → admin Excel çıktısı 403, admin → öğrenci
+  çıktısı 403. Tüm öğrenci ve admin sayfaları 200.
+- **Dağıtım:** `devDependencies` yok; `npm ci --omit=dev` tüm çalışma zamanı
+  bağımlılıklarını kuruyor. Production'da oturum PG store'a yazılıyor
+  (`createTableIfMissing`), `trust proxy` açık. Tarih/saat **`Europe/Istanbul`**
+  varsayılanından geliyor; sunucunun TZ ayarına bağlı değil.
+
+> Bilinen davranış, hata değil: uyanma/spor rutini **kurulduğu günden** itibaren
+> geriye mühürler. Rutini öğretim yılından önce açarsan aradaki günler
+> `missed` yazılır. Pazartesi sabahı açmak ya da o satırları silmek yeterli.
 
 ## Çalışırken dikkat
 

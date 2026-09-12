@@ -85,8 +85,13 @@
               <input id="studentTaskRangeDayCountInput" type="number" name="rangeDayCount" min="1" max="180" value="30" />
             </div>
             <div class="stack">
-              <label>Tahmini Saat</label>
+              <label>Son Saat (opsiyonel)</label>
               <input type="time" name="estimatedTime" />
+              <p class="muted form-helper">
+                Bu saat görevin <strong>son teslim saatidir</strong>: geçtiğinde görev
+                kilitlenir ve işaretlenmemişse "yapılmadı" olur. Boş bırakırsan
+                son teslim gün sonudur (23:59).
+              </p>
             </div>
             <div class="stack">
               <label>Açıklama</label>
@@ -280,7 +285,7 @@
                   <th>Tarih</th>
                   <th>Kategori</th>
                   <th>Konu</th>
-                  <th>Saat</th>
+                  <th>Son Saat</th>
                   <th>Açıklama</th>
                   <th>Durum</th>
                   <th>İşlem</th>
@@ -298,7 +303,7 @@
                   <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
                   <td data-label="Konu" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
-                  <td data-label="Saat" class="single-line-cell <%= task.canEditTime ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
+                  <td data-label="Son Saat" class="single-line-cell <%= task.canEditTime ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><%= task.estimatedTime || '-' %></td>
                   <td data-label="Açıklama" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td data-label="Durum" class="status-cell">
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">

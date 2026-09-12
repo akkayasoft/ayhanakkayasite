@@ -276,8 +276,12 @@
               <label>Tek Seferlik Tarih</label>
               <input type="date" name="singleDate" />
 
-              <label>Tahmini Saat</label>
+              <label>Son Saat (opsiyonel)</label>
               <input type="time" name="estimatedTime" />
+              <p class="muted form-helper">
+                Son teslim saatidir: geçtiğinde görev kilitlenir ve işaretlenmemişse
+                "yapılmadı" olur. Boşsa son teslim gün sonudur (23:59).
+              </p>
 
               <label>Haftalık Gün (0-6)</label>
               <input type="number" min="0" max="6" name="weeklyDay" />
@@ -399,6 +403,9 @@
               <p class="muted form-helper">
                 Aktarılan görevler (YZ, YDS, defter) saatsiz gelir; son teslim gün
                 sonu (23:59) sayılır. Buradan seçilen görevlere toplu saat yazabilirsin.
+                <strong>Dikkat:</strong> yazdığın saat son teslim saatidir — o saat
+                geçtiğinde görev kilitlenir ve işaretlenmemişse "yapılmadı" olur.
+                Sabah saati yazarsan (ör. 07:30) o günün görevi 07:31'de kilitlenir.
               </p>
               <label class="row center">
                 <input type="checkbox" name="clearTime" value="1" />
@@ -458,7 +465,7 @@
                   <th>Konu</th>
                   <th>Öğrenci</th>
                   <th>Kategori</th>
-                  <th>Saat</th>
+                  <th>Son Saat</th>
                   <th>Tarih</th>
                   <th>İşlem</th>
                 </tr>
