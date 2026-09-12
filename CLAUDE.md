@@ -367,6 +367,63 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 > **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
 > hem serbest kayıt hem yeni içerik görevleri görünür.
 
+### Çalışma günleri admin tarafından değiştirilebilir
+
+Program dosyası hafta sonuna göre üretilmiştir, ama gün düzeni **arayüzden**
+değiştirilebilir — deploy beklemeden. `/admin/yds` → **Çalışma Günleri**
+paneli: hazır düzen (Hafta Sonu / Hafta İçi / Her Gün), **özel günler** (tek
+tek işaretleme) ve **günlük süre** (15-600 dk).
+
+- `yds_program_settings` (tek satır, id `default`): `gun_set` (`'0,6'` gibi,
+  0 = Pazar), `gunluk_dakika`. Yalnızca admin yazar (`POST
+  /admin/yds/program-settings`, doğrulandı: öğrenci 403).
+- **Ayar dosyayla aynıysa hiçbir şey yeniden yayılmaz** — aktarım eskisiyle
+  birebir aynı sonucu verir. Yeniden yayma yalnızca ayar farklıyken devreye
+  girer; bu, mevcut davranışı bozmamak için bilinçli bir kapı.
+- Değişiklik ayarı kaydetmekle görevlere işlemez; panelde "bu ayar henüz
+  görevlere işlenmedi" uyarısı çıkar ve **"Görevlere Aktar"**'a basılması
+  beklenir. Aktarım düğmesi bu durumda `pending === 0` olsa bile açıktır —
+  yoksa ayar kaydedilir ama uygulanamazdı.
+
+**Yeniden yayma kuralı: içerik baştan üretilmez, KALAN PLAN taşınır.**
+`ydsPlan.yenidenYay()` dosyadaki planın **bugün ve sonrasına** düşen parça
+görünümlerini (tekrarlar dahil) sırasıyla yeni günlere paketler.
+
+> İlk denemede "zaten görülmüş parçaları ele, kalanı baştan yay" yapılmıştı.
+> Yıl ortasında bu, tüm içerik zaten tanıtılmış olduğu için **kalan bütün
+> tekrarları siliyor** ve takvimin geri kalanını boş "serbest çalışma" gününe
+> çeviriyordu. Ölçüldü: gelecekteki 54 içerik görevi 0'a düşüyordu. Kalan planı
+> taşımak hem içeriği hem tekrar sırasını koruyor.
+
+Korunanlar (doğrulandı, parmak izi karşılaştırmasıyla):
+
+- **Geçmiş günlerdeki görevler** hiç oynamaz (aktarımdaki silme zaten
+  `single_date >= bugün` ile sınırlı, yeni plan da bugünden başlar).
+- **İşaretlenmiş görevler** — geçmişte ya da gelecekte — yerinde kalır ve aynı
+  görünüm ikinci kez yayılmaz (yoksa tamamlanan iş tekrar önüne gelirdi).
+- Doğrulandı (15 Kasım'da hafta sonu → her gün, 60 dk): geçmiş 114 görev ve
+  işaretli 33 görev **bit bit aynı** (md5 eşit); gelecekteki içerik görevi
+  54 → 54 (kayıp yok); hafta içi görev 0 → 177. Aynı düğmeye tekrar basmak
+  hiçbir şey değiştirmedi (0 eklendi). Özel günlere (Pzt/Çar/Cmt) ve oradan
+  hafta sonuna geri dönüşte de parmak izi değişmedi; hafta sonuna dönünce
+  görev sayısı tam olarak dosyadaki 221'e indi.
+- `ydsp:<tarih>:<parçaId>` anahtarı tekrar seviyesini taşımadığı için aynı
+  parça aynı güne iki kez konmaz (`yenidenYay` içinde engellenir); yoksa biri
+  `ON CONFLICT DO NOTHING` ile sessizce düşerdi.
+- Günlük bütçeye sığmayan tek bir parça (ör. 25 dk'lık test, 20 dk'lık gün)
+  günü tek başına alır — yoksa sonsuz döngü olurdu; sığmayan kalan sayısı
+  mesajda bildirilir.
+
+**Çakışma uyarısı:** hafta içi bir gün seçilirse panel, o günlerin kaçında
+zaten Yapay Zeka görevi olduğunu söyler. "İki program çakışmaz" garantisi
+yalnızca varsayılan hafta sonu düzeninde geçerlidir; başka düzen seçmek yasak
+değil ama bilerek yapılmalı.
+
+**Planlama motoru paylaşımlı:** `src/ydsPlan.js`. Aynı kod hem
+`scripts/yds-program-uret.js` (depodaki JSON'u üretir, artık `--gunler` /
+`--dakika` alır) hem de uygulama tarafından kullanılır. Doğrulandı: motor,
+commit'li `ydsProgram.json`'u parçalarından **birebir** yeniden üretiyor.
+
 **Tek kategori: `Doktora`.** Önce tür başına beş kategori açılıyordu
 (`YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` / `Serbest Çalışma`) ve
 kategori listesi bunlarla doluyordu. Tür bilgisi kaybolmaz: görev
@@ -681,6 +738,29 @@ Doğrulananlar:
 > Bilinen davranış, hata değil: uyanma/spor rutini **kurulduğu günden** itibaren
 > geriye mühürler. Rutini öğretim yılından önce açarsan aradaki günler
 > `missed` yazılır. Pazartesi sabahı açmak ya da o satırları silmek yeterli.
+
+## Güncellemeler ve veri korunumu
+
+Kurallar süreç içinde değişebilir; **değişiklik geçmişi silmez.** Uygulama
+genelinde tek bir desen var: *karar kaydın içine kopyalanır, geçmiş mühürlüdür,
+yalnızca gelecek yeniden düzenlenir.*
+
+| Ne değişiyor | Ne olur | Doğrulandı |
+|---|---|---|
+| Uyanma hedefi (06:00 → 06:30, tolerans) | Geçmiş `wake_logs` satırları kendi hedef/tolerans kopyasını taşıdığı için **hiç değişmez** | ✅ eski kayıt 06:00/10 olarak kaldı |
+| Spor aralığı (06:15-06:30 → 07:00-07:45) | Geçmiş `sport_logs` satırları kendi aralığını taşır | ✅ eski kayıt 06:15-06:30 kaldı |
+| Rutin tamamen kaldırılır | `wake_logs` / `sport_logs` **silinmez** | ✅ 39 satır yerinde kaldı |
+| Doktora gün düzeni / günlük süre | Bugünden itibaren yeniden yayılır; geçmiş ve işaretli görevler yerinde | ✅ parmak izi eşit, içerik kaybı yok |
+| YZ / YDS / defter programı yeniden aktarılır | Yeni görev eklenir, **işaretlenmemiş ve günü gelmemiş** görevler tazelenir/silinir | ✅ geçmiş ve işaretli hiç oynamıyor |
+| Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
+| YDS uygulamasında "ilerlemeyi sıfırla" | Yalnızca `yds:` kaynaklı ayna satırları silinir | ✅ elle girilen soru kaydı korundu |
+
+> Tek istisna bilinçli: aylık hedefte "Başarılamadı" işaretlerken kanıt alanı
+> boş gönderilirse eski kanıt silinir (bkz. Aylık hedefler).
+
+Yeni bir "program" ya da "rutin" eklerken aynı desen izlenmeli: değerlendirmeyi
+belirleyen ayar **kaydın içine kopyalanmalı**, silme/taşıma **yalnızca
+işaretlenmemiş ve günü gelmemiş** satırlara dokunmalı.
 
 ## Çalışırken dikkat
 

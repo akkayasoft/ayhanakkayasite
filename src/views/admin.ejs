@@ -1717,18 +1717,86 @@
           </div>
 
           <% if (ydsView.student) { %>
+          <% const aktarimAcik = ydsProgramView.pending > 0 || ydsProgramView.ayarBekliyor; %>
           <form
             method="post"
             action="/admin/yds/program-import"
             class="stack"
-            onsubmit="return confirm('<%= ydsProgramView.pending %> görev <%= ydsView.student.name %> adlı öğrencinin görevlerine eklensin mi?')"
+            onsubmit="return confirm('Program <%= ydsView.student.name %> adlı öğrencinin görevlerine aktarılsın mı? Geçmiş ve işaretli görevler korunur.')"
           >
             <input type="hidden" name="next" value="/admin/yds" />
-            <button type="submit" <%= ydsProgramView.pending === 0 ? 'disabled' : '' %>>
-              <%= ydsProgramView.pending === 0 ? 'Aktarılacak yeni görev yok' : 'Görevlere Aktar' %>
+            <button type="submit" <%= aktarimAcik ? '' : 'disabled' %>>
+              <%= aktarimAcik ? 'Görevlere Aktar' : 'Aktarılacak yeni görev yok' %>
             </button>
           </form>
           <% } %>
+        </section>
+
+        <section class="panel">
+          <h3>Çalışma Günleri</h3>
+          <p class="muted">
+            Doktora programının hangi günlere yayılacağını buradan belirlersin.
+            Program dosyası hafta sonuna göre üretildi; "her gün" ya da özel
+            günler seçersen program <strong>bugünden itibaren</strong> yeniden
+            yayılır. <strong>Geçmiş günlerdeki ve işaretlenmiş görevlere
+            dokunulmaz</strong> — tamamladığın konu tekrar önüne gelmez.
+          </p>
+          <p class="muted">
+            Şu anki ayar: <strong><%= ydsProgramView.gunSetEtiket %></strong> ·
+            <strong><%= ydsProgramView.ayarGunlukDakika %> dk/gün</strong>
+            <% if (ydsProgramView.ayarBekliyor) { %>
+            — <strong>bu ayar henüz görevlere işlenmedi.</strong> Uygulamak için
+            yukarıdaki "Görevlere Aktar" düğmesine bas.
+            <% } %>
+          </p>
+          <% if (ydsProgramView.cakisanGun > 0) { %>
+          <p class="muted">
+            ⚠️ Seçilen günlerin <strong><%= ydsProgramView.cakisanGun %> tanesinde</strong>
+            zaten Yapay Zeka görevi var. Yapay Zeka programı hafta içi çalışır;
+            iki program aynı güne düşerse o günün toplam yükü artar. Sorun değil,
+            ama bilerek seçilmeli — günlük süreyi buna göre ayarla.
+          </p>
+          <% } %>
+
+          <form method="post" action="/admin/yds/program-settings" class="stack">
+            <input type="hidden" name="next" value="/admin/yds" />
+
+            <label>Düzen</label>
+            <% ydsProgramView.duzenler.forEach((d) => { %>
+            <label class="row center">
+              <input type="radio" name="duzen" value="<%= d.ad %>" <%= ydsProgramView.gunSetDuzen === d.ad ? 'checked' : '' %> />
+              <span><%= d.etiket %></span>
+            </label>
+            <% }) %>
+            <label class="row center">
+              <input type="radio" name="duzen" value="ozel" <%= ydsProgramView.gunSetDuzen === 'ozel' ? 'checked' : '' %> />
+              <span>Özel günler (aşağıdan seç)</span>
+            </label>
+
+            <label>Özel günler</label>
+            <div class="row">
+              <% [1, 2, 3, 4, 5, 6, 0].forEach((g) => { %>
+              <label class="row center">
+                <input type="checkbox" name="gunler" value="<%= g %>" <%= ydsProgramView.gunSet.indexOf(g) !== -1 ? 'checked' : '' %> />
+                <span><%= ydsProgramView.gunAdlari[g] %></span>
+              </label>
+              <% }) %>
+            </div>
+            <p class="muted form-helper">
+              Özel günler yalnızca "Özel günler" seçiliyken kullanılır; hazır bir
+              düzen seçersen bu kutular yok sayılır.
+            </p>
+
+            <label>Günlük Süre (dk)</label>
+            <input type="number" name="gunlukDakika" min="15" max="600" value="<%= ydsProgramView.ayarGunlukDakika %>" />
+            <p class="muted form-helper">
+              Bir güne kaç dakikalık içerik konacağını belirler. Hafta sonu düzeninde
+              120 dk makuldü; her güne yayarsan daha küçük bir değer (ör. 45-60)
+              daha gerçekçi olur.
+            </p>
+
+            <button type="submit">Çalışma Günlerini Kaydet</button>
+          </form>
         </section>
 
         <section class="panel">
