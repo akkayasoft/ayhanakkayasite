@@ -15,6 +15,7 @@ const academicCalendar = require('./academicCalendar');
 const yzProgram = require('./yzProgram');
 const ydsSync = require('./ydsSync');
 const ydsProgram = require('./ydsProgram');
+const ydsPlan = require('./ydsPlan');
 const schedule = require('./schedule');
 
 const app = express();
@@ -1848,6 +1849,129 @@ async function syncYdsProgress() {
  * olmayan gorevler silinir — ama yalnizca ISARETLENMEMIS ve GUNU GELMEMIS
  * olanlar. Gecmis ya da isaretli gorev asla silinmez/oynatilmaz.
  */
+const YDS_PROGRAM_SETTINGS_ID = 'default';
+
+/**
+ * Doktora programinin CALISMA GUNU ayari (admin belirler).
+ *
+ * Program dosyasi hafta sonuna gore uretilmistir; kullanici "haftanin her gunu
+ * ya da ozel gunler" isteyebilir ve bunun icin deploy beklemek zorunda
+ * kalmamali. Ayar burada tutulur, aktarim sirasinda uygulanir.
+ */
+async function getYdsProgramSettings() {
+  const program = ydsProgram.loadYdsProgram();
+  const varsayilanGun = ydsPlan.normalizeGunSet(program.gunSet || program.gunDuzeni || 'hafta-sonu');
+  const varsayilanDakika = Number(program.gunlukDakika) || ydsPlan.VARSAYILAN_DAKIKA;
+
+  const res = await query(
+    `SELECT gun_set AS "gunSet", gunluk_dakika AS "gunlukDakika", updated_at AS "updatedAt"
+       FROM yds_program_settings WHERE id = $1`,
+    [YDS_PROGRAM_SETTINGS_ID]
+  );
+  if (res.rowCount === 0) {
+    return { gunSet: varsayilanGun, gunlukDakika: varsayilanDakika, isDefault: true, updatedAt: null };
+  }
+  const row = res.rows[0];
+  return {
+    gunSet: ydsPlan.normalizeGunSet(row.gunSet),
+    gunlukDakika: Number(row.gunlukDakika) || varsayilanDakika,
+    isDefault: false,
+    updatedAt: row.updatedAt
+  };
+}
+
+async function saveYdsProgramSettings(gunSet, gunlukDakika) {
+  const gunler = ydsPlan.normalizeGunSet(gunSet);
+  const dakika = Math.floor(Number(gunlukDakika));
+  if (!Number.isFinite(dakika) || dakika < 15 || dakika > 600) {
+    return { ok: false, error: 'Günlük süre 15 ile 600 dakika arasında olmalı.' };
+  }
+  await query(
+    `
+      INSERT INTO yds_program_settings (id, gun_set, gunluk_dakika, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (id) DO UPDATE
+        SET gun_set = EXCLUDED.gun_set,
+            gunluk_dakika = EXCLUDED.gunluk_dakika,
+            updated_at = NOW()
+    `,
+    [YDS_PROGRAM_SETTINGS_ID, gunler.join(','), dakika]
+  );
+  return { ok: true, gunSet: gunler, gunlukDakika: dakika };
+}
+
+/**
+ * Aktarilacak gorev listesini uretir.
+ *
+ * Ayar program dosyasiyla AYNIYSA dosya oldugu gibi kullanilir — davranis
+ * eskisiyle birebir ayni kalir, yeniden yayma yok. Ayar degistiyse program
+ * BUGUNDEN ITIBAREN yeniden yayilir ve su iki kural korunur:
+ *
+ *   - Gecmis gune yazilmis ya da ISARETLENMIS bir gorevin parcasi yeniden
+ *     planlanmaz; islenmis is tekrar onune konmaz.
+ *   - Yeni plan yalnizca bugun ve sonrasini kapsar; aktarimdaki silme kurali
+ *     zaten gecmise ve isaretliye dokunmuyor.
+ */
+async function planYdsGorevleri(client, studentId) {
+  const program = ydsProgram.loadYdsProgram();
+  const ayar = await getYdsProgramSettings();
+  const dosyaGun = ydsPlan.normalizeGunSet(program.gunSet || program.gunDuzeni || 'hafta-sonu');
+
+  const ayni =
+    ayar.gunSet.join(',') === dosyaGun.join(',') &&
+    Number(ayar.gunlukDakika) === Number(program.gunlukDakika);
+  if (ayni) {
+    return { gorevler: program.gorevler, ayar, yenidenYayildi: false };
+  }
+
+  const bugun = todayDateString();
+
+  // Isaretlenmis gorevler yerinde kalir (aktarim onlari zaten silmez), o yuzden
+  // ayni occurrence ikinci kez yayilmamali — yoksa tamamladigi is tekrar
+  // karsisina cikardi.
+  const isaretliRes = await client.query(
+    `
+      SELECT t.source_key AS "sourceKey"
+      FROM tasks t
+      WHERE t.student_id = $1
+        AND t.source_key LIKE $2
+        AND t.single_date >= $3::date
+        AND EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+    `,
+    [studentId, `${ydsProgram.SOURCE_PREFIX}:%`, bugun]
+  );
+  const isaretliAnahtarlar = new Set(isaretliRes.rows.map((r) => r.sourceKey));
+
+  // Dosyadaki planin BUGUN VE SONRASINA dusen kismi — icerik ve tekrar sirasi
+  // korunarak yeni gunlere tasinacak. Gecmis gunlere hic dokunulmaz.
+  const kalanOccurrences = [];
+  for (const gun of program.gunler) {
+    if (!gun || typeof gun.tarih !== 'string' || gun.tarih < bugun) continue;
+    for (const parca of gun.parcalar || []) {
+      if (!parca || !parca.id) continue;
+      if (isaretliAnahtarlar.has(ydsProgram.sourceKey(gun.tarih, parca.id))) continue;
+      kalanOccurrences.push(parca);
+    }
+  }
+
+  const dosyaBaslangic = program.baslangic || bugun;
+  const baslangic = bugun > dosyaBaslangic ? bugun : dosyaBaslangic;
+  const gunler = ydsPlan.calismaGunleri({ gunSet: ayar.gunSet, baslangic });
+  const { program: yeniPlan, yerlesmeyen } = ydsPlan.yenidenYay(kalanOccurrences, gunler, {
+    gunlukDakika: ayar.gunlukDakika
+  });
+
+  return {
+    gorevler: ydsProgram.gunlerdenGorevler(yeniPlan, ayar.gunlukDakika),
+    ayar,
+    yenidenYayildi: true,
+    tasinanParca: kalanOccurrences.length,
+    yerlesmeyen,
+    calismaGunu: gunler.length,
+    doluGun: yeniPlan.filter((g) => g.durum === 'dolu').length
+  };
+}
+
 async function importYdsProgram(studentId, createdBy) {
   const program = ydsProgram.loadYdsProgram();
   if (!program.gorevler.length) {
@@ -1858,6 +1982,14 @@ async function importYdsProgram(studentId, createdBy) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Aktarilacak liste ya dosyadaki plandir ya da admin gun duzenini
+    // degistirmisse bugunden itibaren yeniden yayilmis plandir.
+    const plan = await planYdsGorevleri(client, studentId);
+    // Yeniden yayimda gecmis gunler plana girmez; yine de savunma amacli
+    // suzuluyor ki gecmise gorev YAZILMASIN (yazilsaydi muhurleyici onu aninda
+    // "yapilmadi" isaretlerdi).
+    const planGorevleri = plan.gorevler.filter((g) => !plan.yenidenYayildi || g.tarih >= today);
 
     // TEK kategori: "Doktora". Once tur basina bes kategori aciliyordu
     // (YDS · Konu Anlatimi, Kelime, Okuma, Test, Serbest Calisma); kategori
@@ -1878,7 +2010,7 @@ async function importYdsProgram(studentId, createdBy) {
 
     let inserted = 0;
     let updated = 0;
-    for (const gorev of program.gorevler) {
+    for (const gorev of planGorevleri) {
       const aciklama = ydsProgram.describeItem(gorev);
       const ekleme = await client.query(
         `
@@ -1926,7 +2058,7 @@ async function importYdsProgram(studentId, createdBy) {
     }
 
     // Bayat gorevler: programda olmayan, gunu gelmemis, isaretlenmemis olanlar.
-    const gecerliAnahtarlar = program.gorevler.map((g) => g.sourceKey);
+    const gecerliAnahtarlar = planGorevleri.map((g) => g.sourceKey);
     const silme = await client.query(
       `
         DELETE FROM tasks t
@@ -1944,7 +2076,12 @@ async function importYdsProgram(studentId, createdBy) {
       inserted,
       updated,
       removed: silme.rowCount || 0,
-      skipped: program.gorevler.length - inserted,
+      skipped: planGorevleri.length - inserted,
+      replanned: plan.yenidenYayildi,
+      gunSet: plan.ayar.gunSet,
+      gunlukDakika: plan.ayar.gunlukDakika,
+      movedPieces: plan.tasinanParca || 0,
+      unplaced: plan.yerlesmeyen || 0,
       categories: createdCategories,
       merged,
       removedCategories,
@@ -1986,12 +2123,46 @@ async function buildYdsProgramSummary(studentId) {
   }
 
   const today = todayDateString();
+  const ayar = await getYdsProgramSettings();
+  const dosyaGun = ydsPlan.normalizeGunSet(program.gunSet || program.gunDuzeni || 'hafta-sonu');
+  // Ayar dosyadan farkliysa aktarim programi yeniden yayacak; arayuz bunu
+  // "aktarim bekliyor" olarak gostersin ki degisiklik sessizce asili kalmasin.
+  const ayarBekliyor =
+    ayar.gunSet.join(',') !== dosyaGun.join(',') ||
+    Number(ayar.gunlukDakika) !== Number(program.gunlukDakika);
+
+  // YZ programi hafta ici calisiyor. Doktora hafta ici bir gune tasinirsa iki
+  // program ayni gune duser; bu yasak degil ama kullanici bilerek secmeli.
+  let cakisanGun = 0;
+  if (studentId && ayar.gunSet.some((g) => g >= 1 && g <= 5)) {
+    const res = await query(
+      `
+        SELECT count(DISTINCT single_date)::int AS n
+        FROM tasks
+        WHERE student_id = $1
+          AND source_key LIKE $2
+          AND single_date >= $3::date
+          AND EXTRACT(dow FROM single_date)::int = ANY($4::int[])
+      `,
+      [studentId, `${yzProgram.SOURCE_PREFIX}:%`, today, ayar.gunSet]
+    );
+    cakisanGun = res.rows[0] ? res.rows[0].n : 0;
+  }
+
   return {
+    cakisanGun,
     surum: program.surum,
     kaynak: program.kaynak,
     baslangic: program.baslangic,
     bitis: program.bitis,
     gunlukDakika: program.gunlukDakika,
+    gunSet: ayar.gunSet,
+    gunSetEtiket: ydsPlan.gunSetEtiketi(ayar.gunSet),
+    gunSetDuzen: ydsPlan.duzenAdi(ayar.gunSet),
+    ayarGunlukDakika: ayar.gunlukDakika,
+    ayarBekliyor,
+    gunAdlari: ydsPlan.GUN_ADLARI,
+    duzenler: Object.entries(ydsPlan.GUN_DUZENLERI).map(([ad, t]) => ({ ad, etiket: t.etiket })),
     toplamParca: program.toplamParca,
     dersGunu: program.dersGunu,
     doluGun: program.doluGun,
@@ -3830,6 +4001,45 @@ app.post(
 );
 
 app.post(
+  '/admin/yds/program-settings',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    // Gunler ya hazir duzen adiyla ('her-gun') ya da tek tek isaretlenmis
+    // kutularla ('gunler' alani) gelir; ikisi de normalizeGunSet'ten gecer.
+    const duzen = normalizeText(req.body.duzen);
+
+    let gunSet;
+    if (duzen && duzen !== 'ozel') {
+      if (!ydsPlan.GUN_DUZENLERI[duzen]) {
+        return adminRedirect(req, res, { error: 'Geçersiz düzen seçildi.' });
+      }
+      gunSet = ydsPlan.normalizeGunSet(duzen);
+    } else {
+      // Ozel secimde varsayilana DUSULMEZ: gecersiz/bos secim sessizce hafta
+      // sonuna donmemeli, kullanici ne sectigini bilmeli.
+      const secilenler = normalizeIdList(req.body.gunler)
+        .map((g) => Number(g))
+        .filter((g) => Number.isInteger(g) && g >= 0 && g <= 6);
+      if (!secilenler.length) {
+        return adminRedirect(req, res, { error: 'En az bir geçerli çalışma günü seçin.' });
+      }
+      gunSet = ydsPlan.normalizeGunSet(secilenler);
+    }
+
+    const sonuc = await saveYdsProgramSettings(gunSet, req.body.gunlukDakika);
+    if (!sonuc.ok) {
+      return adminRedirect(req, res, { error: sonuc.error });
+    }
+
+    return adminRedirect(req, res, {
+      message:
+        `Doktora çalışma günleri "${ydsPlan.gunSetEtiketi(sonuc.gunSet)}" (${sonuc.gunlukDakika} dk/gün) olarak ayarlandı. ` +
+        'Değişikliğin göreve dönüşmesi için "Görevlere Aktar" düğmesine basın; geçmiş ve işaretli görevler korunur.'
+    });
+  })
+);
+
+app.post(
   '/admin/yds/program-import',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
@@ -3859,6 +4069,17 @@ app.post(
     }
     if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
     if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
+    if (sonuc.replanned) {
+      notlar.push(
+        `Program "${ydsPlan.gunSetEtiketi(sonuc.gunSet)}" düzenine göre bugünden itibaren yeniden yayıldı (${sonuc.gunlukDakika} dk/gün).`
+      );
+      if (sonuc.movedPieces) {
+        notlar.push(`${sonuc.movedPieces} içerik parçası yeni günlere taşındı; geçmiş ve işaretli görevler yerinde kaldı.`);
+      }
+      if (sonuc.unplaced) {
+        notlar.push(`${sonuc.unplaced} parça takvime sığmadı — günlük süreyi artırmayı ya da daha çok gün seçmeyi düşün.`);
+      }
+    }
 
     if (sonuc.inserted === 0 && !notlar.length) {
       return adminRedirect(req, res, {

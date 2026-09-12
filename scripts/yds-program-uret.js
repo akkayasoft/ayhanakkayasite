@@ -7,6 +7,7 @@
  *
  * Kullanim:
  *   node scripts/yds-program-uret.js --yds /yol/yds-yokdil-app
+ *   node scripts/yds-program-uret.js --yds ... --gunler her-gun --dakika 90
  *
  * YZ PROGRAMINDAN FARKI
  * ---------------------
@@ -26,6 +27,9 @@ const fs = require('fs');
 const path = require('path');
 
 const academicCalendar = require('../src/academicCalendar');
+// Yayma motoru paylasimli: ayni kod admin arayuzunden gun duzeni degistiginde
+// de calisiyor (src/ydsPlan.js).
+const ydsPlan = require('../src/ydsPlan');
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -40,13 +44,11 @@ const BASLANGIC = process.env.YDS_PROGRAM_START || academicCalendar.ACADEMIC_YEA
 // butce 60 degil 120 dk: hafta sonu daha genis blok var. --dakika ile degisir.
 const GUNLUK_DAKIKA = Number(arg('dakika', process.env.YDS_GUNLUK_DAKIKA || 120));
 
-// Bir parcanin kac kez planlanacagi ve tekrar araliklari (gun).
-const TEKRAR_ARALIKLARI = [3, 10];
-
-// Tekrarlarin gunluk butcede kaplayabilecegi en fazla oran. Sinir olmazsa
-// vadesi gelen tekrarlar gunu tamamen doldurup yeni icerigi kovuyor — ilk
-// denemede 17-18 Eylul bastan sona tekrar cikmisti.
-const TEKRAR_PAYI = 1 / 3;
+// Calisma gunleri: hazir duzen adi ('hafta-sonu' | 'hafta-ici' | 'her-gun') ya
+// da virgullu hafta gunu listesi ('0,3,6'; 0=Pazar). Varsayilan hafta sonu.
+// Ayni secim admin panelinden de yapilabilir; orada secilen deposu degil
+// veritabanini gunceller (bkz. yds_program_settings).
+const GUN_SET = ydsPlan.normalizeGunSet(arg('gunler', process.env.YDS_GUN_SET || 'hafta-sonu'));
 
 // Tur basina tahmini sureler (dk) — olcum degil, makul tahmin.
 const SURE = { konu: 15, kelime: 12, okuma: 20, test: 25 };
@@ -139,109 +141,11 @@ function parcalariTopla(ydsDir) {
   return parcalar;
 }
 
-/**
- * Calisma gunleri: ogretim yilindaki CUMARTESI ve PAZAR gunleri.
- *
- * YDS hafta sonuna alindi ki hafta ici calisan YZ programiyla cakismasin.
- * Yalnizca resmi/dini bayramlar cikarilir; ara tatil ve yariyil tatiline denk
- * gelen hafta sonlari DAHILDIR (okul tatili YDS calismasini engellemez, aksine
- * o gunlerde daha cok vakit vardir).
- *
- * Not: getDayInfo() tatil donemini hafta sonundan once dondurdugu icin
- * (ara tatildeki cumartesi type='break' gelir) gun secimi takvim etiketine
- * degil, gercek hafta gunune bakar.
- */
-function calismaGunleri() {
-  const { end } = academicCalendar.ACADEMIC_YEAR;
-  const gunler = [];
-  let g = BASLANGIC;
-  while (g <= end) {
-    const haftaninGunu = new Date(`${g}T00:00:00Z`).getUTCDay(); // 0=Pazar, 6=Cumartesi
-    const bilgi = academicCalendar.getDayInfo(g);
-    if ((haftaninGunu === 0 || haftaninGunu === 6) && bilgi.type !== 'holiday' && bilgi.type !== 'outside') {
-      gunler.push(g);
-    }
-    g = shiftDate(g, 1);
-  }
-  return gunler;
-}
+const calismaGunleri = () =>
+  ydsPlan.calismaGunleri({ gunSet: GUN_SET, baslangic: BASLANGIC });
 
-/**
- * Gunleri doldurur. Her gun once VADESI GELEN tekrarlar, sonra YENI parcalar
- * yerlestirilir; boylece tekrar birikip kaymaz.
- */
-function programUret(parcalar, gunler) {
-  const yeniKuyruk = [...parcalar];
-  const tekrarlar = []; // { parca, vadeGunuIndex, tur: kacinci tekrar }
-  const program = [];
-
-  gunler.forEach((tarih, gunIndex) => {
-    const paket = [];
-    let kalan = GUNLUK_DAKIKA;
-
-    // Yeni icerik bittikten sonra tekrarlarin takvimde delik birakmamasi icin
-    // vade sarti kalkar ve kalan tekrarlar ardisik gunlere sikistirilir.
-    const yeniBitti = yeniKuyruk.length === 0;
-    // Yeni icerik varken tekrar butcesi sinirli; bittiginde gunun tamami acilir.
-    let tekrarButcesi = yeniBitti ? GUNLUK_DAKIKA : Math.floor(GUNLUK_DAKIKA * TEKRAR_PAYI);
-
-    // 1) Tekrarlar (en eski vade once).
-    tekrarlar.sort((a, b) => a.vade - b.vade);
-    for (let i = 0; i < tekrarlar.length; ) {
-      const t = tekrarlar[i];
-      const vadeUygun = yeniBitti || t.vade <= gunIndex;
-      if (vadeUygun && t.parca.sure <= Math.min(kalan, tekrarButcesi)) {
-        paket.push({ ...t.parca, tekrar: t.sira });
-        kalan -= t.parca.sure;
-        tekrarButcesi -= t.parca.sure;
-        tekrarlar.splice(i, 1);
-        if (t.sira < TEKRAR_ARALIKLARI.length) {
-          tekrarlar.push({
-            parca: t.parca,
-            sira: t.sira + 1,
-            vade: gunIndex + TEKRAR_ARALIKLARI[t.sira]
-          });
-        }
-        continue;
-      }
-      i += 1;
-    }
-
-    // 2) Yeni parcalar — ayni turden ust uste iki tane koymamaya calis.
-    while (yeniKuyruk.length && kalan > 0) {
-      let secilenIndex = yeniKuyruk.findIndex(
-        (p) => p.sure <= kalan && !paket.some((x) => x.tur === p.tur)
-      );
-      if (secilenIndex === -1) {
-        secilenIndex = yeniKuyruk.findIndex((p) => p.sure <= kalan);
-      }
-      if (secilenIndex === -1) break;
-      const [parca] = yeniKuyruk.splice(secilenIndex, 1);
-      paket.push({ ...parca, tekrar: 0 });
-      kalan -= parca.sure;
-      tekrarlar.push({ parca, sira: 1, vade: gunIndex + TEKRAR_ARALIKLARI[0] });
-    }
-
-    program.push({
-      tarih,
-      gunAdi: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][
-        new Date(`${tarih}T00:00:00Z`).getUTCDay()
-      ],
-      durum: paket.length ? 'dolu' : 'bekliyor',
-      toplamSure: paket.reduce((t, p) => t + p.sure, 0),
-      parcalar: paket.map((p) => ({
-        id: p.id,
-        tur: p.tur,
-        turAdi: TUR_ADI[p.tur],
-        baslik: p.baslik,
-        sure: p.sure,
-        tekrar: p.tekrar
-      }))
-    });
-  });
-
-  return program;
-}
+const programUret = (parcalar, gunler) =>
+  ydsPlan.programUret(parcalar, gunler, { gunlukDakika: GUNLUK_DAKIKA });
 
 function main() {
   const ydsDir = arg('yds', path.resolve(__dirname, '../../yds-yokdil-app'));
@@ -267,7 +171,8 @@ function main() {
     gunlukDakika: GUNLUK_DAKIKA,
     toplamParca: parcalar.length,
     calismaGunu: gunler.length,
-    gunDuzeni: 'hafta-sonu',
+    gunDuzeni: ydsPlan.duzenAdi(GUN_SET),
+    gunSet: GUN_SET.join(','),
     doluGun: dolu.length,
     bekleyenGun: bekleyen.length,
     gunler: program
@@ -281,7 +186,7 @@ function main() {
   parcalar.forEach((p) => (turSayisi[p.tur] = (turSayisi[p.tur] || 0) + 1));
 
   console.log(`parca         : ${parcalar.length}  (${Object.entries(turSayisi).map(([k, v]) => `${k}:${v}`).join(' ')})`);
-  console.log(`calisma gunu  : ${gunler.length} hafta sonu gunu  (${cikti.baslangic} -> ${cikti.bitis})`);
+  console.log(`calisma gunu  : ${gunler.length} gun [${ydsPlan.gunSetEtiketi(GUN_SET)}]  (${cikti.baslangic} -> ${cikti.bitis})`);
   console.log(`icerikli gun  : ${dolu.length}   (son: ${dolu.length ? dolu[dolu.length - 1].tarih : '-'})`);
   console.log(`bekleyen gun  : ${bekleyen.length}`);
   const ortalama = dolu.length

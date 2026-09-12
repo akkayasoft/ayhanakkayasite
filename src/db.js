@@ -183,6 +183,18 @@ async function initDb() {
   // sureleri verilir, her ders saatinin baslangic-bitisi bunlardan turetilir.
   // Boylece "8. ders kacta" sorusunun tek bir dogru cevabi olur.
   await query(`
+    CREATE TABLE IF NOT EXISTS yds_program_settings (
+      id TEXT PRIMARY KEY,
+      -- Virgullu hafta gunu listesi (0=Pazar ... 6=Cumartesi). Varsayilan
+      -- hafta sonu; admin /admin/yds sayfasindan degistirebilir. Program
+      -- yeniden yayildiginda GECMIS ve ISARETLI gorevlere dokunulmaz.
+      gun_set TEXT NOT NULL DEFAULT '0,6',
+      gunluk_dakika INTEGER NOT NULL DEFAULT 120 CHECK (gunluk_dakika BETWEEN 15 AND 600),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS school_settings (
       id TEXT PRIMARY KEY,
       start_time TIME NOT NULL DEFAULT '08:00',
