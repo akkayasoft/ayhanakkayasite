@@ -391,17 +391,22 @@ idempotentlik ve "geçmiş + işaretli görev korunur" güvenceleri değişmeden
 - **Gün tipleri:** `ders` (Pzt/Çar/Cmt/Paz, 180 dk) · `tekrar` (Sal/Per/Cum,
   50 dk: 20 dk kelime + önceki dersin özeti) · `deneme` (180 dk) · `hafif`
   (sınavdan önceki gün, yalnız hata defteri).
-- **Ara ölçümler Cuma'ya konur** — ders günü değil, ertesi gün okul yok.
-  Böylece 40 ders gününün hiçbiri denemeye harcanmaz.
-- **Sınav bloğu** (`--sinav-blogu`, varsayılan son 6 gün = 16-21 Kasım)
-  tamamen denemeye ayrılır; o bloğa ders yazılmaz.
+- **Ders günleri kutsaldır.** Ders YALNIZCA seçili günlere konur; Sal/Per/Cum
+  günlerine dokunulmaz. Üretici sonunda bunu **denetler** ve ihlal varsa hata
+  verip çıkar — sessizce yanlış program yazmaz.
+- **Son hafta istisna** (`--sinav-blogu`, varsayılan son 6 gün = 16-21 Kasım):
+  orada her gün kullanılabilir. Ders penceresine sığmayan dersler buraya taşar;
+  bu bir çaresizlik değil tercih — setin **son dersleri deneme sınavı
+  analizidir**, yani sınavdan hemen önce işlenmeleri doğru yer. Dersler
+  bittikten sonra kalan gün tam denemeye, son gün hafif tekrara ayrılır.
 
-> ⚠️ **Ödünç günler aralığa eşit dağıtılır, sona yığılmaz.** 40 ders, 36 ders
-> gününe sığmıyor; eksik 4 gün tekrar günlerinden ödünç alınır. İlk sürümde
-> ödünç **sınava en yakın** günlerden alınıyordu ve 38-40. dersler
-> 18-20 Kasım'a düşüyordu — yani sınavdan önceki 48 saate yeni konu, üstelik
-> deneme haftasının yerine. Oturmamış konu net getirmez. Eşit dağıtım hem
-> haftalık yükü dengeliyor (14,5-16,7 sa) hem sınav haftasını boş bırakıyor.
+> ⚠️ **İlk sürümün hatası: kullanıcının kısıtını kendi başına esnetmek.**
+> 40 ders 36 ders gününe sığmıyordu ve eksik 4 gün Sal/Per/Cum'dan "ödünç"
+> alınıyordu. Kullanıcı günleri açıkça vermişti; o günler dinlenme + hızlı
+> tekrar günü olarak tasarlanmıştı ve doldurulunca haftalık tempo
+> sürdürülemez hale geliyordu. Doğru çözüm taşmayı **son haftaya** vermekti —
+> zaten oraya ait oldukları için. Ders penceresi yetmediğinde kısıt esnetilmez,
+> taşma bildirilir.
 
 **Uygulama ayarı dosyayla eşleşmeli.** Program her güne içerik yazdığı için
 dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
@@ -409,11 +414,17 @@ dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
 programı *yeniden yayar* ve bu özenle kurulmuş takvim bozulur.
 
 Doğrulandı (temiz veritabanı, 14 Eylül saatiyle): 69 görev aktarıldı —
-**40 ders** (son ders 15 Kasım), **8 deneme** (3 ara ölçüm Cuma + 5 sınav
-haftası), **20 hızlı tekrar**, **1 hafif gün**; toplam 162 saat. Ödünç günler
-15 Eyl, 29 Eyl, 15 Eki, 30 Eki'ye düştü. İkinci aktarım 0 görev ekledi;
-işaretli görevin parmak izi değişmedi. "Yeniden yayıldı" mesajı çıkmadı —
-yani dosya olduğu gibi kullanıldı.
+**40 ders** (36'sı ders günlerinde, 4'ü son haftada), **27 hızlı tekrar**,
+**1 tam deneme** (20 Kasım), **1 hafif gün**; toplam 147 saat. Sınav öncesi
+her hafta tam olarak **4 ders / 14,5 saat**. Sal/Per/Cum gününe düşen ders
+sayısı **0** (hem üreticide hem veritabanında doğrulandı). İkinci aktarım
+0 görev ekledi; "yeniden yayıldı" mesajı çıkmadı — dosya olduğu gibi
+kullanıldı.
+
+> Bilinen boşluk: programda 20 Kasım'dan önce **ara ölçüm yok**. Deneme
+> günleri yalnızca seçili günlere ya da son haftaya konabildiği için ara
+> deneme yeri kalmadı. Kullanıcı isterse bir Cuma denemeye ayrılabilir —
+> ama bu Sal/Per/Cum kısıtını deldiği için **sorulmadan yapılmaz**.
 
 ### Çalışma günleri admin tarafından değiştirilebilir
 

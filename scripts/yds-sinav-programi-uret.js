@@ -19,7 +19,7 @@
  * GUN TIPLERI
  *   ders    : Pzt / Car / Cmt / Paz — 1 ders (video + kitap), varsayilan 180 dk
  *   tekrar  : Sal / Per / Cum       — hizli tekrar: kelime + onceki dersin ozeti
- *   deneme  : belirli Cumalar + sinav oncesi bos gunler — tam deneme (180 dk)
+ *   deneme  : sinav oncesi blokta derslerden arta kalan gunler (180 dk)
  *   hafif   : sinavdan onceki gun   — yalniz hata defteri
  */
 
@@ -69,80 +69,60 @@ function dersleriOku() {
 }
 
 /**
- * Deneme gunlerini secer.
+ * Gun tiplerini belirler ve dersleri yerlestirir.
  *
- * Ara olcumler CUMA aksamina konur: ders gunu degil, ertesi gun okul yok.
- * Boylece ders gunlerinin hicbiri deneme icin harcanmaz — "her ders gununde
- * bir ders" kurali bozulmaz.
+ * KURAL (kullanicinin koydugu, degistirilemez):
+ *   - Ders YALNIZCA secilen gunlere konur (varsayilan Pzt/Car/Cmt/Paz).
+ *   - Diger gunlere (Sal/Per/Cum) DOKUNULMAZ; onlar hizli tekrar gunudur.
+ *   - SON HAFTA istisna: sinav oncesi blokta her gun kullanilabilir.
+ *
+ * Ders penceresine sigmayan dersler son hafta blokuna tasar. Bu bir caresizlik
+ * degil tercih: setin son dersleri deneme sinavi ANALIZI oldugu icin sinavdan
+ * hemen once islenmeleri dogru yer. Blokta ders bittikten sonra kalan gunler
+ * tam denemeye, son gun hafif tekrara ayrilir.
+ *
+ * > Ilk surumde eksik gunler Sal/Per/Cum'dan "odunc" aliniyordu. Bu, acikca
+ * > verilmis bir kisiti kendi basina esnetmekti ve yanlisti: o gunler dinlenme
+ * > + hizli tekrar gunu olarak tasarlandi, doldurulunca haftalik tempo
+ * > surdurulemez hale geliyor.
  */
-function araOlcumGunleri(gunler) {
-  const cumalar = gunler.filter((g) => dow(g) === 5);
-  const secili = [];
-  for (const oran of [0.35, 0.62, 0.85]) {
-    const aday = cumalar[Math.floor(cumalar.length * oran)];
-    if (aday && !secili.includes(aday)) secili.push(aday);
-  }
-  return new Set(secili);
-}
+function gunTipleri(tumGunler, blokBaslangic, dersSayisi) {
+  const tip = new Map();
+  const sonGun = tumGunler[tumGunler.length - 1];
 
-/**
- * Ders gunu yetmediginde tekrar gunlerinden odunc alir.
- *
- * Odunc gunler ARALIGA ESIT DAGITILIR, sona yigilmaz. Ilk surumde eksik
- * gunler sinava en yakin tekrar gunlerinden aliniyordu; sonuc olarak 38-40.
- * dersler 18-20 Kasim'a dusuyordu — yani sinavdan onceki 48 saate yeni konu,
- * ustelik deneme haftasinin yerine. Oturmamis konu net getirmez; esit dagitim
- * hem yuku dengeler hem sinav haftasini bos birakir.
- */
-function oduncGunler(adaylar, adet) {
-  if (adet <= 0 || !adaylar.length) return new Set();
-  const secili = new Set();
-  const adim = adaylar.length / adet;
-  for (let i = 0; i < adet; i++) {
-    const idx = Math.min(adaylar.length - 1, Math.floor(i * adim));
-    let g = adaylar[idx];
-    // Ayni gun iki kez secilirse bir sonraki bos adaya kay.
-    let k = idx;
-    while (g && secili.has(g) && k < adaylar.length - 1) g = adaylar[++k];
-    if (g) secili.add(g);
+  // 1) Ders penceresi: yalnizca secili gunler ders, gerisi tekrar.
+  const dersSlotlari = [];
+  for (const g of tumGunler) {
+    if (g >= blokBaslangic) continue;
+    if (DERS_GUNLERI.includes(dow(g))) {
+      tip.set(g, 'ders');
+      dersSlotlari.push(g);
+    } else {
+      tip.set(g, 'tekrar');
+    }
   }
-  return secili;
+
+  // 2) Son hafta blogu: once kalan dersler, sonra deneme, en son hafif gun.
+  const blokGunleri = tumGunler.filter((g) => g >= blokBaslangic);
+  const kalanDers = Math.max(0, dersSayisi - dersSlotlari.length);
+  blokGunleri.forEach((g, i) => {
+    if (g === sonGun) tip.set(g, 'hafif');
+    else if (i < kalanDers) tip.set(g, 'ders');
+    else tip.set(g, 'deneme');
+  });
+
+  return tip;
 }
 
 function uret() {
   const { kaynak, dersler } = dersleriOku();
   const tumGunler = gunListesi(BASLANGIC, shiftDate(SINAV, -1));
 
-  // Sinav oncesi blok: yeni konu YOK, yalnizca deneme + hata analizi.
-  // Varsayilan 6 gun, yani ara tatil (16-20 Kasim) + Cumartesi.
-  const blok = Math.max(0, Number(arg('sinav-blogu', 6)));
-  const blokBaslangic = tumGunler.length > blok ? tumGunler[tumGunler.length - blok] : tumGunler[0];
-  const dersPenceresi = tumGunler.filter((g) => g < blokBaslangic);
-  const sonGun = tumGunler[tumGunler.length - 1];
+  // Sinav oncesi blok: varsayilan son 6 gun (16-21 Kasim = ara tatil + Cmt).
+  const blok = Math.max(1, Number(arg('sinav-blogu', 6)));
+  const blokBaslangic = tumGunler[Math.max(0, tumGunler.length - blok)];
 
-  const araOlcumler = araOlcumGunleri(dersPenceresi);
-
-  // 1) Gun tipleri — once ders penceresi.
-  const tip = new Map();
-  for (const g of dersPenceresi) {
-    if (araOlcumler.has(g)) tip.set(g, 'deneme');
-    else if (DERS_GUNLERI.includes(dow(g))) tip.set(g, 'ders');
-    else tip.set(g, 'tekrar');
-  }
-
-  // 2) Ders gunu yetmiyorsa tekrar gunlerinden ESIT ARALIKLA odunc al.
-  const dersGunu = dersPenceresi.filter((g) => tip.get(g) === 'ders').length;
-  const eksik = dersler.length - dersGunu;
-  if (eksik > 0) {
-    const adaylar = dersPenceresi.filter((g) => tip.get(g) === 'tekrar');
-    for (const g of oduncGunler(adaylar, eksik)) tip.set(g, 'ders');
-  }
-
-  // 3) Sinav blogu: son gun hafif, gerisi deneme.
-  for (const g of tumGunler) {
-    if (g < blokBaslangic) continue;
-    tip.set(g, g === sonGun ? 'hafif' : 'deneme');
-  }
+  const tip = gunTipleri(tumGunler, blokBaslangic, dersler.length);
 
   const program = [];
   let sira = 0;
@@ -216,14 +196,21 @@ function uret() {
     });
   }
 
-  return {
-    kaynak,
-    dersler,
-    program,
-    yerlesen: sira,
-    denemeSayisi: denemeNo,
-    sonDersGunu: [...tip.entries()].filter(([, v]) => v === 'ders').map(([k]) => k).sort().pop()
-  };
+  // Denetim: secili gunler disinda ders kalmamali (son hafta blogu haric).
+  const kacak = program.filter(
+    (g) =>
+      g.tarih < blokBaslangic &&
+      g.parcalar[0].turAdi === 'Ders' &&
+      !DERS_GUNLERI.includes(dow(g.tarih))
+  );
+  if (kacak.length) {
+    console.error(
+      `HATA: secili gunler disina ${kacak.length} ders dusmus: ${kacak.map((g) => g.tarih).join(', ')}`
+    );
+    process.exit(1);
+  }
+
+  return { kaynak, dersler, program, yerlesen: sira, denemeSayisi: denemeNo, blokBaslangic };
 }
 
 function main() {
