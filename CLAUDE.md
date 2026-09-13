@@ -367,6 +367,54 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 > **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
 > hem serbest kayıt hem yeni içerik görevleri görünür.
 
+### Sınav programı (22 Kasım 2026 YDS) — şu an yürürlükte olan program
+
+`scripts/yds-sinav-programi-uret.js` **aynı** `src/data/ydsProgram.json`
+dosyasını üretir; yani iki üretici **birbirinin yerine geçer**, aynı anda
+kullanılamaz. Şu an dosyanın sahibi bu betik (`surum: 2026-2027.sinav.1`).
+`yds-program-uret.js`'i çalıştırmak sınav programını siler — sınavdan sonra
+bilinçli olarak yapılacak iş.
+
+**Neden ayrı bir üretici:** `yds-program-uret.js` uygulamanın kendi içeriğini
+(56 parça) günlük dakika bütçesine göre yayar — açık uçlu. Bu betik sabit
+sıralı **40 dersi** sabit bir sınav tarihine doğru, **günde bir ders** olacak
+şekilde yerleştirir. İkisi aynı çıktı biçimini ürettiği için aktarım,
+idempotentlik ve "geçmiş + işaretli görev korunur" güvenceleri değişmeden
+çalışır.
+
+- **Ders listesi:** `src/data/ydsDersleri.json` (40 kayıt: `no`, `baslik`,
+  `sure`). Başlıklar **yer tutucu** — Ankara Dil setinin gerçek ders adları
+  henüz `yds-yokdil-app` deposunda yok (`content/lessons.json` içinde 2 ders
+  transkribe edilmiş; kaynak PDF'ler yereldeki `../ankaradilydspdf/`). Gerçek
+  başlıklar girilince yalnızca bu dosya değişir, program tek komutla yeniden
+  üretilir.
+- **Gün tipleri:** `ders` (Pzt/Çar/Cmt/Paz, 180 dk) · `tekrar` (Sal/Per/Cum,
+  50 dk: 20 dk kelime + önceki dersin özeti) · `deneme` (180 dk) · `hafif`
+  (sınavdan önceki gün, yalnız hata defteri).
+- **Ara ölçümler Cuma'ya konur** — ders günü değil, ertesi gün okul yok.
+  Böylece 40 ders gününün hiçbiri denemeye harcanmaz.
+- **Sınav bloğu** (`--sinav-blogu`, varsayılan son 6 gün = 16-21 Kasım)
+  tamamen denemeye ayrılır; o bloğa ders yazılmaz.
+
+> ⚠️ **Ödünç günler aralığa eşit dağıtılır, sona yığılmaz.** 40 ders, 36 ders
+> gününe sığmıyor; eksik 4 gün tekrar günlerinden ödünç alınır. İlk sürümde
+> ödünç **sınava en yakın** günlerden alınıyordu ve 38-40. dersler
+> 18-20 Kasım'a düşüyordu — yani sınavdan önceki 48 saate yeni konu, üstelik
+> deneme haftasının yerine. Oturmamış konu net getirmez. Eşit dağıtım hem
+> haftalık yükü dengeliyor (14,5-16,7 sa) hem sınav haftasını boş bırakıyor.
+
+**Uygulama ayarı dosyayla eşleşmeli.** Program her güne içerik yazdığı için
+dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
+→ Çalışma Günleri **"Her Gün" + 180 dk** olmalı; farklı olursa aktarım
+programı *yeniden yayar* ve bu özenle kurulmuş takvim bozulur.
+
+Doğrulandı (temiz veritabanı, 14 Eylül saatiyle): 69 görev aktarıldı —
+**40 ders** (son ders 15 Kasım), **8 deneme** (3 ara ölçüm Cuma + 5 sınav
+haftası), **20 hızlı tekrar**, **1 hafif gün**; toplam 162 saat. Ödünç günler
+15 Eyl, 29 Eyl, 15 Eki, 30 Eki'ye düştü. İkinci aktarım 0 görev ekledi;
+işaretli görevin parmak izi değişmedi. "Yeniden yayıldı" mesajı çıkmadı —
+yani dosya olduğu gibi kullanıldı.
+
 ### Çalışma günleri admin tarafından değiştirilebilir
 
 Program dosyası hafta sonuna göre üretilmiştir, ama gün düzeni **arayüzden**
