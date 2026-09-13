@@ -33,14 +33,14 @@
    "tarih": "2026-09-15",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "ders-02",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "02. (ders başlığı girilmedi)",
-     "sure": 180,
+     "id": "tekrar-2026-09-15",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 01. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -52,10 +52,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-03",
+     "id": "ders-02",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "03. (ders başlığı girilmedi)",
+     "baslik": "02. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -71,7 +71,7 @@
      "id": "tekrar-2026-09-17",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 03. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 02. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -87,7 +87,7 @@
      "id": "tekrar-2026-09-18",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 03. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 02. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -96,6 +96,22 @@
   {
    "tarih": "2026-09-19",
    "gunAdi": "Cumartesi",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-03",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "03. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-20",
+   "gunAdi": "Pazar",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -110,8 +126,8 @@
    ]
   },
   {
-   "tarih": "2026-09-20",
-   "gunAdi": "Pazar",
+   "tarih": "2026-09-21",
+   "gunAdi": "Pazartesi",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -120,22 +136,6 @@
      "tur": "konu",
      "turAdi": "Ders",
      "baslik": "05. (ders başlığı girilmedi)",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
-   "tarih": "2026-09-21",
-   "gunAdi": "Pazartesi",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "ders-06",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "06. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -151,7 +151,7 @@
      "id": "tekrar-2026-09-22",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 06. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 05. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -164,10 +164,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-07",
+     "id": "ders-06",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "07. (ders başlığı girilmedi)",
+     "baslik": "06. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -183,7 +183,7 @@
      "id": "tekrar-2026-09-24",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 07. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 06. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -199,7 +199,7 @@
      "id": "tekrar-2026-09-25",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 07. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 06. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -208,6 +208,22 @@
   {
    "tarih": "2026-09-26",
    "gunAdi": "Cumartesi",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-07",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "07. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-09-27",
+   "gunAdi": "Pazar",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -222,8 +238,8 @@
    ]
   },
   {
-   "tarih": "2026-09-27",
-   "gunAdi": "Pazar",
+   "tarih": "2026-09-28",
+   "gunAdi": "Pazartesi",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -238,33 +254,17 @@
    ]
   },
   {
-   "tarih": "2026-09-28",
-   "gunAdi": "Pazartesi",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "ders-10",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "10. (ders başlığı girilmedi)",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
    "tarih": "2026-09-29",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "ders-11",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "11. (ders başlığı girilmedi)",
-     "sure": 180,
+     "id": "tekrar-2026-09-29",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 09. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -276,10 +276,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-12",
+     "id": "ders-10",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "12. (ders başlığı girilmedi)",
+     "baslik": "10. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -295,7 +295,7 @@
      "id": "tekrar-2026-10-01",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 12. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 10. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -311,7 +311,7 @@
      "id": "tekrar-2026-10-02",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 12. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 10. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -324,10 +324,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-13",
+     "id": "ders-11",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "13. (ders başlığı girilmedi)",
+     "baslik": "11. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -340,10 +340,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-14",
+     "id": "ders-12",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "14. (ders başlığı girilmedi)",
+     "baslik": "12. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -356,10 +356,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-15",
+     "id": "ders-13",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "15. (ders başlığı girilmedi)",
+     "baslik": "13. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -375,7 +375,7 @@
      "id": "tekrar-2026-10-06",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 15. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 13. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -388,10 +388,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-16",
+     "id": "ders-14",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "16. (ders başlığı girilmedi)",
+     "baslik": "14. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -407,7 +407,7 @@
      "id": "tekrar-2026-10-08",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 16. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 14. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -417,14 +417,14 @@
    "tarih": "2026-10-09",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "deneme-01",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "1. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
+     "id": "tekrar-2026-10-09",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 14. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -436,10 +436,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-17",
+     "id": "ders-15",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "17. (ders başlığı girilmedi)",
+     "baslik": "15. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -452,10 +452,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-18",
+     "id": "ders-16",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "18. (ders başlığı girilmedi)",
+     "baslik": "16. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -468,10 +468,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-19",
+     "id": "ders-17",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "19. (ders başlığı girilmedi)",
+     "baslik": "17. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -487,7 +487,7 @@
      "id": "tekrar-2026-10-13",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 19. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 17. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -500,10 +500,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-20",
+     "id": "ders-18",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "20. (ders başlığı girilmedi)",
+     "baslik": "18. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -513,14 +513,14 @@
    "tarih": "2026-10-15",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "ders-21",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "21. (ders başlığı girilmedi)",
-     "sure": 180,
+     "id": "tekrar-2026-10-15",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 18. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -535,7 +535,7 @@
      "id": "tekrar-2026-10-16",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 21. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 18. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -548,10 +548,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-22",
+     "id": "ders-19",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "22. (ders başlığı girilmedi)",
+     "baslik": "19. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -564,10 +564,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-23",
+     "id": "ders-20",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "23. (ders başlığı girilmedi)",
+     "baslik": "20. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -580,10 +580,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-24",
+     "id": "ders-21",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "24. (ders başlığı girilmedi)",
+     "baslik": "21. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -599,7 +599,7 @@
      "id": "tekrar-2026-10-20",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 24. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 21. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -612,10 +612,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-25",
+     "id": "ders-22",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "25. (ders başlığı girilmedi)",
+     "baslik": "22. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -631,7 +631,7 @@
      "id": "tekrar-2026-10-22",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 25. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 22. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -641,14 +641,14 @@
    "tarih": "2026-10-23",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "deneme-02",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "2. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
+     "id": "tekrar-2026-10-23",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 22. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -660,10 +660,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-26",
+     "id": "ders-23",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "26. (ders başlığı girilmedi)",
+     "baslik": "23. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -676,10 +676,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-27",
+     "id": "ders-24",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "27. (ders başlığı girilmedi)",
+     "baslik": "24. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -692,10 +692,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-28",
+     "id": "ders-25",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "28. (ders başlığı girilmedi)",
+     "baslik": "25. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -711,7 +711,7 @@
      "id": "tekrar-2026-10-27",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 28. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 25. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -724,10 +724,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-29",
+     "id": "ders-26",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "29. (ders başlığı girilmedi)",
+     "baslik": "26. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -743,7 +743,7 @@
      "id": "tekrar-2026-10-29",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 29. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 26. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -753,14 +753,14 @@
    "tarih": "2026-10-30",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "ders-30",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "30. (ders başlığı girilmedi)",
-     "sure": 180,
+     "id": "tekrar-2026-10-30",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 26. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -772,10 +772,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-31",
+     "id": "ders-27",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "31. (ders başlığı girilmedi)",
+     "baslik": "27. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -788,10 +788,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-32",
+     "id": "ders-28",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "32. (ders başlığı girilmedi)",
+     "baslik": "28. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -804,10 +804,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-33",
+     "id": "ders-29",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "33. (ders başlığı girilmedi)",
+     "baslik": "29. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -823,7 +823,7 @@
      "id": "tekrar-2026-11-03",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 33. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 29. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -836,10 +836,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-34",
+     "id": "ders-30",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "34. (ders başlığı girilmedi)",
+     "baslik": "30. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -855,7 +855,7 @@
      "id": "tekrar-2026-11-05",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 34. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 30. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -865,14 +865,14 @@
    "tarih": "2026-11-06",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 50,
    "parcalar": [
     {
-     "id": "deneme-03",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "3. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
+     "id": "tekrar-2026-11-06",
+     "tur": "kelime",
+     "turAdi": "Hızlı Tekrar",
+     "baslik": "20 dk kelime + 30. (ders başlığı girilmedi) özeti",
+     "sure": 50,
      "tekrar": 0
     }
    ]
@@ -884,10 +884,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-35",
+     "id": "ders-31",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "35. (ders başlığı girilmedi)",
+     "baslik": "31. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -900,10 +900,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-36",
+     "id": "ders-32",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "36. (ders başlığı girilmedi)",
+     "baslik": "32. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -916,10 +916,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-37",
+     "id": "ders-33",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "37. (ders başlığı girilmedi)",
+     "baslik": "33. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -935,7 +935,7 @@
      "id": "tekrar-2026-11-10",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 37. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 33. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -948,10 +948,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-38",
+     "id": "ders-34",
      "tur": "konu",
      "turAdi": "Ders",
-     "baslik": "38. (ders başlığı girilmedi)",
+     "baslik": "34. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
     }
@@ -967,7 +967,7 @@
      "id": "tekrar-2026-11-12",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 38. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 34. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -983,7 +983,7 @@
      "id": "tekrar-2026-11-13",
      "tur": "kelime",
      "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 38. (ders başlığı girilmedi) özeti",
+     "baslik": "20 dk kelime + 34. (ders başlığı girilmedi) özeti",
      "sure": 50,
      "tekrar": 0
     }
@@ -992,6 +992,70 @@
   {
    "tarih": "2026-11-14",
    "gunAdi": "Cumartesi",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-35",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "35. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-15",
+   "gunAdi": "Pazar",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-36",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "36. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-16",
+   "gunAdi": "Pazartesi",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-37",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "37. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-17",
+   "gunAdi": "Salı",
+   "durum": "dolu",
+   "toplamSure": 180,
+   "parcalar": [
+    {
+     "id": "ders-38",
+     "tur": "konu",
+     "turAdi": "Ders",
+     "baslik": "38. (ders başlığı girilmedi)",
+     "sure": 180,
+     "tekrar": 0
+    }
+   ]
+  },
+  {
+   "tarih": "2026-11-18",
+   "gunAdi": "Çarşamba",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -1006,8 +1070,8 @@
    ]
   },
   {
-   "tarih": "2026-11-15",
-   "gunAdi": "Pazar",
+   "tarih": "2026-11-19",
+   "gunAdi": "Perşembe",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
@@ -1022,80 +1086,16 @@
    ]
   },
   {
-   "tarih": "2026-11-16",
-   "gunAdi": "Pazartesi",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "deneme-04",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "4. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
-   "tarih": "2026-11-17",
-   "gunAdi": "Salı",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "deneme-05",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "5. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
-   "tarih": "2026-11-18",
-   "gunAdi": "Çarşamba",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "deneme-06",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "6. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
-   "tarih": "2026-11-19",
-   "gunAdi": "Perşembe",
-   "durum": "dolu",
-   "toplamSure": 180,
-   "parcalar": [
-    {
-     "id": "deneme-07",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "7. tam deneme — 180 dk tek oturum + hata analizi",
-     "sure": 180,
-     "tekrar": 0
-    }
-   ]
-  },
-  {
    "tarih": "2026-11-20",
    "gunAdi": "Cuma",
    "durum": "dolu",
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "deneme-08",
+     "id": "deneme-01",
      "tur": "test",
      "turAdi": "Deneme",
-     "baslik": "8. tam deneme — 180 dk tek oturum + hata analizi",
+     "baslik": "1. tam deneme — 180 dk tek oturum + hata analizi",
      "sure": 180,
      "tekrar": 0
     }
