@@ -1,246 +1,456 @@
 {
  "kaynak": "akkayasoft/yds-yokdil-app · content/",
- "not": "yds.obs uygulamasindaki uygulanabilir icerik. Icerik buyuyunce yeniden cikar: pipeline content/*.json.",
+ "not": "yds.obs uygulamasindaki uygulanabilir icerik. Icerik buyuyunce: node scripts/yds-uygulama-cikar.js --yds /yol/yds-yokdil-app",
+ "uretildi": "2026-09-14",
+ "toplamSure": 935,
  "uygulamalar": [
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "prep-test-1",
-   "baslik": "Preposition Testi 1"
+   "id": "konu:if-clauses:1",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 1/5",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "prep-test-2",
-   "baslik": "Preposition Testi 2"
+   "id": "konu:if-clauses:2",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 2/5",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-5",
-   "baslik": "Dilbilgisi Testi 5"
+   "id": "konu:if-clauses:3",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 3/5",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-6",
-   "baslik": "Dilbilgisi Testi 6"
+   "id": "konu:if-clauses:4",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 4/5",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-7",
-   "baslik": "Dilbilgisi Testi 7"
+   "id": "konu:if-clauses:5",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 5/5",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-8",
-   "baslik": "Dilbilgisi Testi 8"
+   "id": "konu:conjunctions:1",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "Bağlaçlar (Conjunctions) — Bölüm 1/3",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-9",
-   "baslik": "Dilbilgisi Testi 9"
+   "id": "konu:conjunctions:2",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "Bağlaçlar (Conjunctions) — Bölüm 2/3",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-10",
-   "baslik": "Dilbilgisi Testi 10"
+   "id": "konu:conjunctions:3",
+   "tur": "konu",
+   "turAdi": "Konu Anlatımı",
+   "ekran": "Dilbilgisi → Konu Anlatımı",
+   "baslik": "Bağlaçlar (Conjunctions) — Bölüm 3/3",
+   "sure": 15
   },
   {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-11",
-   "baslik": "Dilbilgisi Testi 11"
-  },
-  {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-12",
-   "baslik": "Dilbilgisi Testi 12"
-  },
-  {
-   "tur": "Test",
-   "ekran": "Dilbilgisi → Testler",
-   "id": "grammar-test-13",
-   "baslik": "Dilbilgisi Testi 13"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-1",
-   "baslik": "Eş Anlamlı Fiiller — Grup 1"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-2",
-   "baslik": "Eş Anlamlı Fiiller — Grup 2"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-3",
-   "baslik": "Eş Anlamlı Fiiller — Grup 3"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-4",
-   "baslik": "Eş Anlamlı Fiiller — Grup 4"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-5",
-   "baslik": "Eş Anlamlı Fiiller — Grup 5"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "vocab-verbs-6",
-   "baslik": "Eş Anlamlı Fiiller — Grup 6"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-1",
-   "baslik": "Phrasal Verbs — Grup 1"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-2",
-   "baslik": "Phrasal Verbs — Grup 2"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-3",
-   "baslik": "Phrasal Verbs — Grup 3"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-4",
-   "baslik": "Phrasal Verbs — Grup 4"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-5",
-   "baslik": "Phrasal Verbs — Grup 5"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-6",
-   "baslik": "Phrasal Verbs — Grup 6"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-7",
-   "baslik": "Phrasal Verbs — Grup 7"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-8",
-   "baslik": "Phrasal Verbs — Grup 8"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-9",
-   "baslik": "Phrasal Verbs — Grup 9"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-10",
-   "baslik": "Phrasal Verbs — Grup 10"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-11",
-   "baslik": "Phrasal Verbs — Grup 11"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-12",
-   "baslik": "Phrasal Verbs — Grup 12"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-13",
-   "baslik": "Phrasal Verbs — Grup 13"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-14",
-   "baslik": "Phrasal Verbs — Grup 14"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-15",
-   "baslik": "Phrasal Verbs — Grup 15"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-16",
-   "baslik": "Phrasal Verbs — Grup 16"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-17",
-   "baslik": "Phrasal Verbs — Grup 17"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-18",
-   "baslik": "Phrasal Verbs — Grup 18"
-  },
-  {
-   "tur": "Kelime",
-   "ekran": "Kelime → Desteler",
-   "id": "phrasal-19",
-   "baslik": "Phrasal Verbs — Grup 19"
-  },
-  {
-   "tur": "Okuma",
+   "id": "okuma:reading-1:1",
+   "tur": "okuma",
+   "turAdi": "Okuma",
    "ekran": "Reading",
-   "id": "reading-1",
-   "baslik": "Trees From The Wood"
+   "baslik": "Trees From The Wood — Metin ve sözlük",
+   "sure": 20
   },
   {
-   "tur": "Okuma",
+   "id": "okuma:reading-1:2",
+   "tur": "okuma",
+   "turAdi": "Okuma",
    "ekran": "Reading",
-   "id": "reading-2",
-   "baslik": "Why Smoking Rates Aren't Falling"
+   "baslik": "Trees From The Wood — Cümle analizi 1",
+   "sure": 20
   },
   {
-   "tur": "Okuma",
+   "id": "okuma:reading-1:3",
+   "tur": "okuma",
+   "turAdi": "Okuma",
    "ekran": "Reading",
-   "id": "reading-3",
-   "baslik": "A 'Mini Ice Age' Is Coming"
+   "baslik": "Trees From The Wood — Cümle analizi 2",
+   "sure": 20
   },
   {
-   "tur": "Okuma",
+   "id": "okuma:reading-2:1",
+   "tur": "okuma",
+   "turAdi": "Okuma",
    "ekran": "Reading",
-   "id": "reading-4",
-   "baslik": "Deadlier Than Sharks: Selfies"
+   "baslik": "Why Smoking Rates Aren't Falling — Metin ve sözlük",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-2:2",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 1",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-2:3",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 2",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-3:1",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "A 'Mini Ice Age' Is Coming — Metin ve sözlük",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-3:2",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 1",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-3:3",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 2",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-4:1",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "Deadlier Than Sharks: Selfies — Metin ve sözlük",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-4:2",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 1",
+   "sure": 20
+  },
+  {
+   "id": "okuma:reading-4:3",
+   "tur": "okuma",
+   "turAdi": "Okuma",
+   "ekran": "Reading",
+   "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 2",
+   "sure": 20
+  },
+  {
+   "id": "kelime:vocab-verbs-1",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 1 (6 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:vocab-verbs-2",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 2 (6 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:vocab-verbs-3",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 3 (6 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:vocab-verbs-4",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 4 (6 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:vocab-verbs-5",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 5 (6 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:vocab-verbs-6",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Eş Anlamlı Fiiller — Grup 6 (2 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-1",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 1 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-2",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 2 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-3",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 3 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-4",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 4 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-5",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 5 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-6",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 6 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-7",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 7 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-8",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 8 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-9",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 9 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-10",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 10 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-11",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 11 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-12",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 12 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-13",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 13 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-14",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 14 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-15",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 15 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-16",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 16 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-17",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 17 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-18",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 18 (8 kart)",
+   "sure": 12
+  },
+  {
+   "id": "kelime:phrasal-19",
+   "tur": "kelime",
+   "turAdi": "Kelime",
+   "ekran": "Kelime → Desteler",
+   "baslik": "Phrasal Verbs — Grup 19 (7 kart)",
+   "sure": 12
+  },
+  {
+   "id": "test:prep-test-1",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Preposition Testi 1 (25 soru, puanlı)",
+   "sure": 25
+  },
+  {
+   "id": "test:prep-test-2",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Preposition Testi 2 (23 soru, puanlı)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-5",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 5 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-6",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 6 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-7",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 7 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-8",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 8 (24 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-9",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 9 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-10",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 10 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-11",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 11 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-12",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 12 (25 soru)",
+   "sure": 25
+  },
+  {
+   "id": "test:grammar-test-13",
+   "tur": "test",
+   "turAdi": "Test",
+   "ekran": "Dilbilgisi → Testler",
+   "baslik": "Dilbilgisi Testi 13 (24 soru)",
+   "sure": 25
   }
  ]
 }

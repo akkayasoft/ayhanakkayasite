@@ -20,8 +20,11 @@
  *   ders     : Pzt / Car / Cmt / Paz — 1 video ders. Son 10 ders DENEME
  *              ANALIZI videosudur (src/data/ydsDersleri.json icindeki tur).
  *   uygulama : Sal / Per / Cum       — o derslere ait yds.obs uygulamalari
- *              (src/data/ydsUygulamalar.json: 9 dilbilgisi + 2 preposition
- *              testi, 25 kelime destesi, 4 okuma unitesi = 40 parca).
+ *              (src/data/ydsUygulamalar.json; scripts/yds-uygulama-cikar.js
+ *              ile yds-yokdil-app'ten cikarilir: konu anlatimi bolumleri,
+ *              kelime desteleri, okuma oturumlari ve testler = 56 parca).
+ *              Her parcanin KENDI suresi vardir (konu 15, kelime 12,
+ *              okuma 20, test 25 dk); gun suresi bunlarin toplamidir.
  *   hafif    : sinavdan onceki gun   — yalniz hata defteri
  */
 
@@ -93,6 +96,33 @@ function dersleriOku() {
  * > + hizli tekrar gunu olarak tasarlandi, doldurulunca haftalik tempo
  * > surdurulemez hale geliyor.
  */
+/**
+ * Uygulama parcalarini TURE GORE ZAMANA YAYAR.
+ *
+ * Havuz dosyada tur tur sirali geliyor (once konu anlatimi, sonra okuma,
+ * kelime, test). Oldugu gibi kullanilsa ilk gunler bastan sona konu
+ * anlatimi, testler ise Kasim'a kalirdi — oysa test geri bildirim veren en
+ * degerli icerik ve erken baslamali.
+ *
+ * Her parcaya kendi turu icindeki goreli konumu (i / turdekiToplam) verilir;
+ * siralama bu orana gore yapilir. Boylece her tur programin TAMAMINA esit
+ * yayilir ve ardisik gunler farkli turlerden gelir.
+ */
+function turlereGoreYay(uygulamalar) {
+  const turSayisi = new Map();
+  for (const u of uygulamalar) turSayisi.set(u.tur, (turSayisi.get(u.tur) || 0) + 1);
+
+  const sayac = new Map();
+  return uygulamalar
+    .map((u) => {
+      const i = sayac.get(u.tur) || 0;
+      sayac.set(u.tur, i + 1);
+      return { u, oran: (i + 0.5) / turSayisi.get(u.tur) };
+    })
+    .sort((a, b) => a.oran - b.oran)
+    .map((x) => x.u);
+}
+
 function gunTipleri(tumGunler, dersSayisi) {
   const tip = new Map();
   const sonGun = tumGunler[tumGunler.length - 1];
@@ -121,7 +151,7 @@ function gunTipleri(tumGunler, dersSayisi) {
 
 function uret() {
   const { kaynak, dersler } = dersleriOku();
-  const uygulamalar = uygulamalariOku();
+  const uygulamalar = turlereGoreYay(uygulamalariOku());
   const tumGunler = gunListesi(BASLANGIC, shiftDate(SINAV, -1));
   const tip = gunTipleri(tumGunler, dersler.length);
 
@@ -177,11 +207,12 @@ function uret() {
       const atif = sonDers ? `${String(sonDers.no).padStart(2, '0')}. ders sonrası` : 'başlangıç';
       parcalar = pay.length
         ? pay.map((u) => ({
-            id: `uyg-${u.tur.toLowerCase()}-${u.id}`,
-            tur: u.tur === 'Test' ? 'test' : u.tur === 'Kelime' ? 'kelime' : 'okuma',
-            turAdi: `yds.obs · ${u.tur}`,
+            id: `uyg-${u.id}`,
+            tur: u.tur,
+            turAdi: `yds.obs · ${u.turAdi}`,
             baslik: `${u.baslik} — ${u.ekran} (${atif})`,
-            sure: Math.round(UYGULAMA_DAKIKA / pay.length),
+            // Parcanin KENDI suresi; sabit bir gun butcesine bolunmez.
+            sure: Number(u.sure) || UYGULAMA_DAKIKA,
             tekrar: 0
           }))
         : [
