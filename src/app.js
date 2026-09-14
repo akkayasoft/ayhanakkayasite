@@ -239,6 +239,18 @@ function isTaskLockedNow(task, today, nowHm) {
 // "yapilmadi" saymak bu bilgiyi yok eder. Hic basilmayan gunler ertesi gun
 // otomatik "missed" muhurlenir.
 
+// Rutinler icin TABAN TARIH: bu tarihten onceki gunler hic degerlendirilmez.
+//
+// Uyanma ve spor rutini "kuruldugu gunden" itibaren geriye muhurluyordu. Rutin
+// ogretim yili baslamadan once acilinca aradaki gunler (12-13 Eylul gibi)
+// "kacirildi" yazilip kayda ve haftalik analize giriyordu — oysa o gunlerde
+// ortada bir rutin yoktu. Taban tarih bu gurultuyu keser.
+//
+// Muhurleme bu tarihten once calismaz ve acilista bu tarihten onceki OTOMATIK
+// kayitlar temizlenir. Temizlik yalnizca 'missed' satirlari siler; 'on_time'
+// ve 'late' satirlari GERCEK BASISTIR, asla silinmez.
+const ROUTINE_START_DATE = normalizeText(process.env.ROUTINE_START_DATE) || '2026-09-14';
+
 const WAKE_MAX_TOLERANCE = 240;
 // Muhurleme penceresi: bugunden geriye en fazla bu kadar gun taranir.
 const WAKE_LOOKBACK_DAYS = 30;
@@ -396,7 +408,8 @@ async function sealMissedSportLogs() {
 
   let sealed = 0;
   for (const routine of routines.rows) {
-    const basladi = toDateOnly(routine.createdAt) || today;
+    const kuruldu = toDateOnly(routine.createdAt) || today;
+    const basladi = kuruldu > ROUTINE_START_DATE ? kuruldu : ROUTINE_START_DATE;
     for (let i = 1; i <= SPORT_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -441,6 +454,8 @@ async function buildSportView(studentId, gunSayisi = 14) {
   const rows = [];
   for (let i = 0; i < gunSayisi; i += 1) {
     const gun = shiftDate(today, -i);
+    // Taban tarihten onceki gunler takvimde hic gosterilmez.
+    if (gun < ROUTINE_START_DATE) break;
     rows.push(
       logByDay.get(gun) || {
         day: gun,
@@ -512,8 +527,10 @@ async function sealMissedWakeLogs() {
 
   let sealed = 0;
   for (const routine of routines.rows) {
-    // Rutin kurulmadan onceki gunler geriye donuk muhurlenmez.
-    const basladi = toDateOnly(routine.createdAt) || today;
+    // Rutin kurulmadan onceki gunler geriye donuk muhurlenmez; ayrica
+    // ROUTINE_START_DATE'ten onceye hic inilmez.
+    const kuruldu = toDateOnly(routine.createdAt) || today;
+    const basladi = kuruldu > ROUTINE_START_DATE ? kuruldu : ROUTINE_START_DATE;
     for (let i = 1; i <= WAKE_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -563,6 +580,8 @@ async function buildWakeView(studentId, gunSayisi = 14) {
   const rows = [];
   for (let i = 0; i < gunSayisi; i += 1) {
     const gun = shiftDate(today, -i);
+    // Taban tarihten onceki gunler takvimde hic gosterilmez.
+    if (gun < ROUTINE_START_DATE) break;
     const log = logByDay.get(gun);
     rows.push(
       log || {
@@ -6419,7 +6438,39 @@ app.use((err, req, res, _next) => {
 // kimse giris yapmasa bile suresi dolan gorevler isaretlenir.
 const AUTO_LOCK_INTERVAL_MS = 5 * 60 * 1000;
 
+/**
+ * Taban tarihten ONCEKI otomatik rutin kayitlarini temizler.
+ *
+ * Rutin ogretim yili baslamadan once acildigi icin muhurleyici 12-13 Eylul gibi
+ * gunlere "kacirildi" yazmisti; bunlar gercek bir ihmal degil, rutinin
+ * olmadigi gunlerdi. Acilista bir kez temizlenir, sonra idempotenttir.
+ *
+ * GUVENLIK: yalnizca status = 'missed' satirlari silinir. 'on_time' ve 'late'
+ * satirlari gercek basistir — o gun gercekten kalkilmis/spor yapilmistir — ve
+ * asla silinmez. Yani bu temizlik veri kaybettirmez, gurultu siler.
+ */
+async function pruneRoutineLogsBeforeStart() {
+  const [wake, sport] = await Promise.all([
+    query(`DELETE FROM wake_logs WHERE day < $1::date AND status = 'missed'`, [ROUTINE_START_DATE]),
+    query(`DELETE FROM sport_logs WHERE day < $1::date AND status = 'missed'`, [ROUTINE_START_DATE])
+  ]);
+  return { wake: wake.rowCount || 0, sport: sport.rowCount || 0 };
+}
+
 async function runSealSafely() {
+  // Taban tarih oncesi gurultu, muhurlemeden ONCE temizlenir.
+  try {
+    const { wake, sport } = await pruneRoutineLogsBeforeStart();
+    if (wake + sport > 0) {
+      console.log(
+        `${ROUTINE_START_DATE} öncesi otomatik rutin kaydı temizlendi: ` +
+          `${wake} uyanma, ${sport} spor (gerçek basışlara dokunulmadı).`
+      );
+    }
+  } catch (err) {
+    console.error('Rutin kaydı temizleme hatası:', err);
+  }
+
   // Defter tamamlamasi otomatik kilitten ONCE calisir: kilit once calissa
   // pazar gunu tamamlanan bir defter "yapilmadi" muhurlenmis olurdu.
   try {
