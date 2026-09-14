@@ -794,9 +794,31 @@ Doğrulananlar:
   (`createTableIfMissing`), `trust proxy` açık. Tarih/saat **`Europe/Istanbul`**
   varsayılanından geliyor; sunucunun TZ ayarına bağlı değil.
 
-> Bilinen davranış, hata değil: uyanma/spor rutini **kurulduğu günden** itibaren
-> geriye mühürler. Rutini öğretim yılından önce açarsan aradaki günler
-> `missed` yazılır. Pazartesi sabahı açmak ya da o satırları silmek yeterli.
+### Rutinler için taban tarih (`ROUTINE_START_DATE`)
+
+Uyanma ve spor rutini **kurulduğu günden** itibaren geriye mühürlüyordu. Rutin
+öğretim yılı başlamadan açıldığı için 11-13 Eylül gibi günlere "kaçırıldı"
+yazılmıştı — oysa o günlerde ortada bir rutin yoktu. Taban tarih bu gürültüyü
+keser:
+
+- `ROUTINE_START_DATE` (ortam değişkeni, varsayılan **`2026-09-14`**) — öğretim
+  yılının ilk günü. Mühürleme bu tarihten öncesine hiç inmez; mühürleme tabanı
+  `max(rutinin kurulduğu gün, ROUTINE_START_DATE)`.
+- `pruneRoutineLogsBeforeStart()` `runSealSafely` içinde, **mühürlemeden önce**
+  çalışır ve taban tarihten önceki otomatik kayıtları siler.
+- **Güvenlik: yalnızca `status = 'missed'` satırları silinir.** `on_time` ve
+  `late` satırları gerçek basıştır — o gün gerçekten kalkılmış/spor yapılmıştır
+  — ve asla silinmez. Yani bu temizlik veri kaybettirmez, gürültü siler.
+- `buildWakeView` / `buildSportView` gün listesini taban tarihte keser; taban
+  öncesi günler **takvimde hiç görünmez** (satır varsa bile).
+
+> Doğrulandı: 11 Eylül `missed` satırları (uyanma + spor) silindi; 12 Eylül
+> `on_time` ve 13 Eylül `late` satırları **yerinde kaldı**; 14 Eylül ve
+> sonrası normal mühürlendi. Öğrenci sayfalarında yalnızca 14 Eylül ve sonrası
+> listeleniyor. İkinci açılışta hiçbir şey değişmedi, mesaj da çıkmadı.
+
+> Aynı desenin görev tarafındaki karşılığı `AUTO_LOCK_START_DATE`'tir; ikisi
+> ayrı çünkü biri görev kilidini, diğeri rutin mühürlemesini sınırlar.
 
 ## Güncellemeler ve veri korunumu
 
