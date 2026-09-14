@@ -794,31 +794,55 @@ Doğrulananlar:
   (`createTableIfMissing`), `trust proxy` açık. Tarih/saat **`Europe/Istanbul`**
   varsayılanından geliyor; sunucunun TZ ayarına bağlı değil.
 
-### Rutinler için taban tarih (`ROUTINE_START_DATE`)
+### Sistem taban tarihi (`SYSTEM_START_DATE`)
 
-Uyanma ve spor rutini **kurulduğu günden** itibaren geriye mühürlüyordu. Rutin
-öğretim yılı başlamadan açıldığı için 11-13 Eylül gibi günlere "kaçırıldı"
-yazılmıştı — oysa o günlerde ortada bir rutin yoktu. Taban tarih bu gürültüyü
-keser:
+Sistem öğretim yılından önce kurulup denendi; öncesinde kalan görevler,
+durumlar, rutin kayıtları ve defter satırları gerçek bir geçmiş değil **kurulum
+artığı**. `SYSTEM_START_DATE` (ortam değişkeni, varsayılan **`2026-09-14`**)
+uygulamanın kaydının başladığı gündür ve iki iş yapar:
 
-- `ROUTINE_START_DATE` (ortam değişkeni, varsayılan **`2026-09-14`**) — öğretim
-  yılının ilk günü. Mühürleme bu tarihten öncesine hiç inmez; mühürleme tabanı
-  `max(rutinin kurulduğu gün, ROUTINE_START_DATE)`.
-- `pruneRoutineLogsBeforeStart()` `runSealSafely` içinde, **mühürlemeden önce**
-  çalışır ve taban tarihten önceki otomatik kayıtları siler.
-- **Güvenlik: yalnızca `status = 'missed'` satırları silinir.** `on_time` ve
-  `late` satırları gerçek basıştır — o gün gerçekten kalkılmış/spor yapılmıştır
-  — ve asla silinmez. Yani bu temizlik veri kaybettirmez, gürültü siler.
-- `buildWakeView` / `buildSportView` gün listesini taban tarihte keser; taban
-  öncesi günler **takvimde hiç görünmez** (satır varsa bile).
+1. **Mühürleme bu tarihten öncesine hiç inmez.** Uyanma/spor mühürleme tabanı
+   `max(rutinin kurulduğu gün, SYSTEM_START_DATE)`; görev mühürleme penceresi
+   `max(geriye bakış, AUTO_LOCK_START_DATE, SYSTEM_START_DATE)`. Rutin
+   görünümleri de gün listesini burada keser.
+2. **Açılışta öncesi silinir** (`purgeBeforeSystemStart`, `runSealSafely`
+   içinde, mühürlemeden **önce**). Tek işlemde çalışır, idempotenttir.
 
-> Doğrulandı: 11 Eylül `missed` satırları (uyanma + spor) silindi; 12 Eylül
-> `on_time` ve 13 Eylül `late` satırları **yerinde kaldı**; 14 Eylül ve
-> sonrası normal mühürlendi. Öğrenci sayfalarında yalnızca 14 Eylül ve sonrası
-> listeleniyor. İkinci açılışta hiçbir şey değişmedi, mesaj da çıkmadı.
+Silinenler: `wake_logs`, `sport_logs`, `task_statuses`, `task_detail_notes`,
+`lesson_topics` (`week_start <`), tek seferlik `tasks` (`single_date <`;
+durum ve notları CASCADE ile gider), `monthly_goals` (yalnızca taban ayından
+**önceki** aylar — içinde bulunulan ay durur) ve `daily_questions`.
 
-> Aynı desenin görev tarafındaki karşılığı `AUTO_LOCK_START_DATE`'tir; ikisi
-> ayrı çünkü biri görev kilidini, diğeri rutin mühürlemesini sınırlar.
+**Dokunulmayanlar (bilinçli):**
+
+- **YDS aynası** — `yds_days` ve `source_key LIKE 'yds:%'` olan
+  `daily_questions`. Bunlar yds.obs'un **gerçek çalışma geçmişinin** aynası,
+  bu uygulamanın kaydı değil. Silinseler senkron 5 dakika içinde geri yazardı;
+  üstelik başka bir uygulamanın verisini yok etmek olurdu.
+- **Tekrarlı görevler** (`repeat_type <> 'once'`) — `start_date`'i eski olan
+  aktif bir görev silinmemeli. Taban öncesi örnekleri zaten `task_statuses`
+  ile gidiyor.
+- `users`, `categories`, `class_schedule`, ayar tabloları — tarihe bağlı değil.
+
+`SYSTEM_PURGE=off` ile temizlik kapatılabilir.
+
+> ⚠️ **Silme ile mühürleme birbiriyle savaşabilir.** İlk sürümde temizlik
+> çalışıyor, hemen ardından `sealOverdueTaskStatuses` silinen günlere yeniden
+> satır yazıyordu — ölçüldü: 06-13 Eylül için **9 satır geri geldi**. Çünkü
+> mühürleme penceresi yalnızca `AUTO_LOCK_START_DATE`'e (2026-09-06) bakıyordu.
+> Bu yüzden pencere artık `SYSTEM_START_DATE`'i de hesaba katıyor. Yeni bir
+> otomatik yazıcı eklenirse aynı tabanı uygulamalı, yoksa temizlik boşa gider.
+
+> ⚠️ **Tek pg bağlantısında eşzamanlı sorgu çalıştırılmaz.** Silmeler önce
+> `Promise.all` ile yazılmıştı; `client.query()` kuyruğa alıyor ama pg 9'da
+> kaldırılacak ve uyarı basıyor. Silmeler **sıralı** çalışır.
+
+Doğrulandı (cutoff'un iki yanına serpiştirilmiş veriyle): 14 Eylül öncesi
+`tasks`, `task_statuses`, `wake_logs`, `sport_logs`, elle girilen soru
+kayıtları, `lesson_topics` ve Ağustos hedefi **tamamen silindi (hepsi 0)**;
+YDS ayna soru kaydı, `yds_days`, tekrarlı görev, 14 Eylül sonrası görev ve
+Eylül hedefi **korundu**. İkinci açılışta hiçbir şey silinmedi, mesaj çıkmadı,
+deprecation uyarısı yok. Tüm öğrenci ve admin sayfaları 200.
 
 ## Güncellemeler ve veri korunumu
 
