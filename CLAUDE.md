@@ -421,14 +421,28 @@ kullanılamaz. Şu an dosyanın sahibi bu betik. `yds-program-uret.js`'i
   başlıkları hâlâ **yer tutucu** — Ankara Dil setinin gerçek adları
   `yds-yokdil-app` deposunda yok, kaynak PDF'ler yereldeki
   `../ankaradilydspdf/`. Başlıklar girilince yalnızca bu dosya değişir.
-- **40 uygulama**, `src/data/ydsUygulamalar.json` — yds.obs'un gerçek içeriği:
-  2 preposition + 9 dilbilgisi testi, 25 kelime destesi, 4 okuma ünitesi.
-  `yds-yokdil-app/content/*.json` içinden çıkarıldı; içerik büyüyünce yeniden
-  çıkarılmalı. Görev başlığı gerçek ekranı gösterir
-  (*"Dilbilgisi Testi 7 — Dilbilgisi → Testler (06. ders sonrası)"*).
-- Uygulamalar uygulama günlerine **eşit dağıtılır**: 40 parça 28 güne
-  bölünmediği için bazı günler 2 parça alır. Havuz bitmişse o gün
-  "yds.obs'ta serbest çalışma" görevi açılır — konu uydurulmaz.
+- **56 uygulama**, `src/data/ydsUygulamalar.json` — yds.obs'un gerçek içeriği:
+  8 konu anlatımı bölümü, 25 kelime destesi, 12 okuma oturumu, 11 test.
+  **Üretimi:** `node scripts/yds-uygulama-cikar.js --yds /yol/yds-yokdil-app`.
+  Çıkarım kuralları `src/ydsIcerik.js` içinde ve `yds-program-uret.js` ile
+  **ortaktır**: dersler bölümlere, okumalar oturumlara ayrılır. Her parçanın
+  **kendi süresi** vardır (konu 15, kelime 12, okuma 20, test 25 dk); gün
+  süresi bunların toplamıdır (24-50 dk, ort. 33).
+- Görev başlığı gerçek ekranı gösterir:
+  *"Dilbilgisi Testi 7 (25 soru) — Dilbilgisi → Testler (06. ders sonrası)"*.
+- **Türler zamana yayılır** (`turlereGoreYay`). Havuz dosyada tür tür sıralı
+  geliyor; olduğu gibi kullanılsa ilk günler baştan sona konu anlatımı,
+  **testler Kasım'a** kalırdı — oysa test geri bildirim veren en değerli
+  içerik ve erken başlamalı. Her parçaya kendi türü içindeki göreli konumu
+  verilip ona göre sıralanır. Sonuç: 11 test 17 Eylül - 13 Kasım arasına
+  yayıldı, her uygulama günü iki **farklı** türden geliyor.
+- Havuz bitmişse o gün "yds.obs'ta serbest çalışma" görevi açılır — konu
+  uydurulmaz.
+
+> ⚠️ İlk sürümde sınav üreticisi içeriği kendi **kaba** kopyasıyla çıkarıyordu
+> (bütün deste/okuma/test = 40 parça) ve `yds-program-uret.js`'teki ince
+> kırılım kayboluyordu. Aynı kurallar iki yerde durmasın diye `ydsIcerik.js`'e
+> taşındı; iki üretici de aynı kaynağı kullanıyor.
 - **Ders günleri kutsaldır.** Üretici sonunda **denetler**: son hafta dışında
   seçili günler dışına ders düşmüşse hata verip çıkar.
 - **Son hafta istisna** (kullanıcı izin verdi): 40 ders 38 ders gününe
@@ -448,9 +462,10 @@ dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
 → Çalışma Günleri **"Her Gün" + 180 dk** olmalı; farklı olursa aktarım
 programı *yeniden yayar* ve bu takvim bozulur.
 
-Doğrulandı (temiz veritabanı, 16 Eylül saatiyle): **81 görev** aktarıldı —
-30 video ders, 10 deneme analizi (7-20 Kasım), 40 yds.obs uygulaması (28 güne
-yayılmış, **hepsi birer kez**, kopya yok), 1 hafif gün; 69 gün, 150 saat.
+Doğrulandı (temiz veritabanı, 16 Eylül saatiyle): **97 görev** aktarıldı —
+30 video ders, 10 deneme analizi (7-20 Kasım), 56 yds.obs uygulaması (8 konu
+anlatımı + 25 kelime + 12 okuma + 11 test; 28 güne yayılmış, **hepsi birer
+kez**, kopya yok), 1 hafif gün; 69 gün, 137 saat.
 Ders gününe uygulama düşmedi, uygulama gününe ders düşmedi (son hafta hariç).
 İkinci aktarım 0 görev ekledi. Tüm öğrenci ve admin sayfaları 200.
 

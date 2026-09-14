@@ -8,9 +8,9 @@
  "gunDuzeni": "her-gun",
  "gunSet": "0,1,2,3,4,5,6",
  "dersGunleri": "0,1,3,6",
- "toplamParca": 80,
+ "toplamParca": 96,
  "dersSayisi": 40,
- "uygulamaSayisi": 40,
+ "uygulamaSayisi": 56,
  "calismaGunu": 69,
  "doluGun": 69,
  "bekleyenGun": 0,
@@ -35,14 +35,22 @@
    "tarih": "2026-09-15",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-test-prep-test-1",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Preposition Testi 1 — Dilbilgisi → Testler (01. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-kelime:vocab-verbs-1",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 1 (6 kart) — Kelime → Desteler (01. ders sonrası)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-1:1",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Trees From The Wood — Metin ve sözlük — Reading (01. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -67,14 +75,22 @@
    "tarih": "2026-09-17",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-test-prep-test-2",
+     "id": "uyg-test:prep-test-1",
      "tur": "test",
      "turAdi": "yds.obs · Test",
-     "baslik": "Preposition Testi 2 — Dilbilgisi → Testler (02. ders sonrası)",
-     "sure": 60,
+     "baslik": "Preposition Testi 1 (25 soru, puanlı) — Dilbilgisi → Testler (02. ders sonrası)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime:vocab-verbs-2",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 2 (6 kart) — Kelime → Desteler (02. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -83,22 +99,22 @@
    "tarih": "2026-09-18",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 27,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-5",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 5 — Dilbilgisi → Testler (02. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-konu:if-clauses:1",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 1/5 — Dilbilgisi → Konu Anlatımı (02. ders sonrası)",
+     "sure": 15,
      "tekrar": 0
     },
     {
-     "id": "uyg-test-grammar-test-6",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 6 — Dilbilgisi → Testler (02. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-kelime:vocab-verbs-3",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 3 (6 kart) — Kelime → Desteler (02. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -155,14 +171,22 @@
    "tarih": "2026-09-22",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 45,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-7",
+     "id": "uyg-okuma:reading-1:2",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 1 — Reading (05. ders sonrası)",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-test:prep-test-2",
      "tur": "test",
      "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 7 — Dilbilgisi → Testler (05. ders sonrası)",
-     "sure": 60,
+     "baslik": "Preposition Testi 2 (23 soru, puanlı) — Dilbilgisi → Testler (05. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     }
    ]
@@ -187,22 +211,22 @@
    "tarih": "2026-09-24",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 24,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-8",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 8 — Dilbilgisi → Testler (06. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-kelime:vocab-verbs-4",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 4 (6 kart) — Kelime → Desteler (06. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-test-grammar-test-9",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 9 — Dilbilgisi → Testler (06. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-kelime:vocab-verbs-5",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 5 (6 kart) — Kelime → Desteler (06. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -211,14 +235,22 @@
    "tarih": "2026-09-25",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 35,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-10",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 10 — Dilbilgisi → Testler (06. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-konu:if-clauses:2",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 2/5 — Dilbilgisi → Konu Anlatımı (06. ders sonrası)",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-1:3",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Trees From The Wood — Cümle analizi 2 — Reading (06. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -275,22 +307,22 @@
    "tarih": "2026-09-29",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-11",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 11 — Dilbilgisi → Testler (09. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-kelime:vocab-verbs-6",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 6 (2 kart) — Kelime → Desteler (09. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-test-grammar-test-12",
+     "id": "uyg-test:grammar-test-5",
      "tur": "test",
      "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 12 — Dilbilgisi → Testler (09. ders sonrası)",
-     "sure": 30,
+     "baslik": "Dilbilgisi Testi 5 (25 soru) — Dilbilgisi → Testler (09. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     }
    ]
@@ -315,14 +347,22 @@
    "tarih": "2026-10-01",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-test-grammar-test-13",
-     "tur": "test",
-     "turAdi": "yds.obs · Test",
-     "baslik": "Dilbilgisi Testi 13 — Dilbilgisi → Testler (10. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-kelime:phrasal-1",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 1 (8 kart) — Kelime → Desteler (10. ders sonrası)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-2:1",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Metin ve sözlük — Reading (10. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -331,14 +371,22 @@
    "tarih": "2026-10-02",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 27,
    "parcalar": [
     {
-     "id": "uyg-kelime-vocab-verbs-1",
+     "id": "uyg-kelime:phrasal-2",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 1 — Kelime → Desteler (10. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 2 (8 kart) — Kelime → Desteler (10. ders sonrası)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-konu:if-clauses:3",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 3/5 — Dilbilgisi → Konu Anlatımı (10. ders sonrası)",
+     "sure": 15,
      "tekrar": 0
     }
    ]
@@ -395,22 +443,22 @@
    "tarih": "2026-10-06",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-vocab-verbs-2",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 2 — Kelime → Desteler (13. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-test:grammar-test-6",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 6 (25 soru) — Dilbilgisi → Testler (13. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-vocab-verbs-3",
+     "id": "uyg-kelime:phrasal-3",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 3 — Kelime → Desteler (13. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 3 (8 kart) — Kelime → Desteler (13. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -435,14 +483,22 @@
    "tarih": "2026-10-08",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-kelime-vocab-verbs-4",
+     "id": "uyg-okuma:reading-2:2",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 1 — Reading (14. ders sonrası)",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime:phrasal-4",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 4 — Kelime → Desteler (14. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 4 (8 kart) — Kelime → Desteler (14. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -451,22 +507,22 @@
    "tarih": "2026-10-09",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-vocab-verbs-5",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 5 — Kelime → Desteler (14. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-test:grammar-test-7",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 7 (25 soru) — Dilbilgisi → Testler (14. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-vocab-verbs-6",
+     "id": "uyg-kelime:phrasal-5",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Eş Anlamlı Fiiller — Grup 6 — Kelime → Desteler (14. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 5 (8 kart) — Kelime → Desteler (14. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -523,14 +579,22 @@
    "tarih": "2026-10-13",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 35,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-1",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 1 — Kelime → Desteler (17. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-konu:if-clauses:4",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 4/5 — Dilbilgisi → Konu Anlatımı (17. ders sonrası)",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-2:3",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Cümle analizi 2 — Reading (17. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -555,22 +619,22 @@
    "tarih": "2026-10-15",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 24,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-2",
+     "id": "uyg-kelime:phrasal-6",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 2 — Kelime → Desteler (18. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 6 (8 kart) — Kelime → Desteler (18. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-phrasal-3",
+     "id": "uyg-kelime:phrasal-7",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 3 — Kelime → Desteler (18. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 7 (8 kart) — Kelime → Desteler (18. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -579,14 +643,22 @@
    "tarih": "2026-10-16",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-4",
+     "id": "uyg-test:grammar-test-8",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 8 (24 soru) — Dilbilgisi → Testler (18. ders sonrası)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime:phrasal-8",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 4 — Kelime → Desteler (18. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 8 (8 kart) — Kelime → Desteler (18. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -643,14 +715,22 @@
    "tarih": "2026-10-20",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 35,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-5",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 5 — Kelime → Desteler (21. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-okuma:reading-3:1",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Metin ve sözlük — Reading (21. ders sonrası)",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-konu:if-clauses:5",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "If Clauses (Koşul Cümleleri) — Bölüm 5/5 — Dilbilgisi → Konu Anlatımı (21. ders sonrası)",
+     "sure": 15,
      "tekrar": 0
     }
    ]
@@ -675,22 +755,22 @@
    "tarih": "2026-10-22",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-6",
+     "id": "uyg-kelime:phrasal-9",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 6 — Kelime → Desteler (22. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 9 (8 kart) — Kelime → Desteler (22. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-phrasal-7",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 7 — Kelime → Desteler (22. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-test:grammar-test-9",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 9 (25 soru) — Dilbilgisi → Testler (22. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     }
    ]
@@ -699,14 +779,22 @@
    "tarih": "2026-10-23",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-8",
+     "id": "uyg-kelime:phrasal-10",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 8 — Kelime → Desteler (22. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 10 (8 kart) — Kelime → Desteler (22. ders sonrası)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-3:2",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 1 — Reading (22. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -763,22 +851,22 @@
    "tarih": "2026-10-27",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-9",
+     "id": "uyg-kelime:phrasal-11",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 9 — Kelime → Desteler (25. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 11 (8 kart) — Kelime → Desteler (25. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-phrasal-10",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 10 — Kelime → Desteler (25. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-test:grammar-test-10",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 10 (25 soru) — Dilbilgisi → Testler (25. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     }
    ]
@@ -803,14 +891,22 @@
    "tarih": "2026-10-29",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 27,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-11",
+     "id": "uyg-konu:conjunctions:1",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 1/3 — Dilbilgisi → Konu Anlatımı (26. ders sonrası)",
+     "sure": 15,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime:phrasal-12",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 11 — Kelime → Desteler (26. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 12 (8 kart) — Kelime → Desteler (26. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -819,22 +915,22 @@
    "tarih": "2026-10-30",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-12",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 12 — Kelime → Desteler (26. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-okuma:reading-3:3",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Cümle analizi 2 — Reading (26. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-phrasal-13",
+     "id": "uyg-kelime:phrasal-13",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 13 — Kelime → Desteler (26. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 13 (8 kart) — Kelime → Desteler (26. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -891,14 +987,22 @@
    "tarih": "2026-11-03",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-14",
+     "id": "uyg-test:grammar-test-11",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 11 (25 soru) — Dilbilgisi → Testler (29. ders sonrası)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime:phrasal-14",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 14 — Kelime → Desteler (29. ders sonrası)",
-     "sure": 60,
+     "baslik": "Phrasal Verbs — Grup 14 (8 kart) — Kelime → Desteler (29. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -923,14 +1027,22 @@
    "tarih": "2026-11-05",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 35,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-15",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 15 — Kelime → Desteler (30. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-okuma:reading-4:1",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Metin ve sözlük — Reading (30. ders sonrası)",
+     "sure": 20,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-konu:conjunctions:2",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 2/3 — Dilbilgisi → Konu Anlatımı (30. ders sonrası)",
+     "sure": 15,
      "tekrar": 0
     }
    ]
@@ -939,22 +1051,22 @@
    "tarih": "2026-11-06",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 24,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-16",
+     "id": "uyg-kelime:phrasal-15",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 16 — Kelime → Desteler (30. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 15 (8 kart) — Kelime → Desteler (30. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-kelime-phrasal-17",
+     "id": "uyg-kelime:phrasal-16",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 17 — Kelime → Desteler (30. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 16 (8 kart) — Kelime → Desteler (30. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
@@ -1011,14 +1123,22 @@
    "tarih": "2026-11-10",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 45,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-18",
-     "tur": "kelime",
-     "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 18 — Kelime → Desteler (33. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-test:grammar-test-12",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 12 (25 soru) — Dilbilgisi → Testler (33. ders sonrası)",
+     "sure": 25,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma:reading-4:2",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 1 — Reading (33. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     }
    ]
@@ -1043,22 +1163,22 @@
    "tarih": "2026-11-12",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 27,
    "parcalar": [
     {
-     "id": "uyg-kelime-phrasal-19",
+     "id": "uyg-kelime:phrasal-17",
      "tur": "kelime",
      "turAdi": "yds.obs · Kelime",
-     "baslik": "Phrasal Verbs — Grup 19 — Kelime → Desteler (34. ders sonrası)",
-     "sure": 30,
+     "baslik": "Phrasal Verbs — Grup 17 (8 kart) — Kelime → Desteler (34. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     },
     {
-     "id": "uyg-okuma-reading-1",
-     "tur": "okuma",
-     "turAdi": "yds.obs · Okuma",
-     "baslik": "Trees From The Wood — Reading (34. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-konu:conjunctions:3",
+     "tur": "konu",
+     "turAdi": "yds.obs · Konu Anlatımı",
+     "baslik": "Bağlaçlar (Conjunctions) — Bölüm 3/3 — Dilbilgisi → Konu Anlatımı (34. ders sonrası)",
+     "sure": 15,
      "tekrar": 0
     }
    ]
@@ -1067,14 +1187,22 @@
    "tarih": "2026-11-13",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 37,
    "parcalar": [
     {
-     "id": "uyg-okuma-reading-2",
-     "tur": "okuma",
-     "turAdi": "yds.obs · Okuma",
-     "baslik": "Why Smoking Rates Aren't Falling — Reading (34. ders sonrası)",
-     "sure": 60,
+     "id": "uyg-kelime:phrasal-18",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 18 (8 kart) — Kelime → Desteler (34. ders sonrası)",
+     "sure": 12,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-test:grammar-test-13",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 13 (24 soru) — Dilbilgisi → Testler (34. ders sonrası)",
+     "sure": 25,
      "tekrar": 0
     }
    ]
@@ -1131,22 +1259,22 @@
    "tarih": "2026-11-17",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 60,
+   "toplamSure": 32,
    "parcalar": [
     {
-     "id": "uyg-okuma-reading-3",
+     "id": "uyg-okuma:reading-4:3",
      "tur": "okuma",
      "turAdi": "yds.obs · Okuma",
-     "baslik": "A 'Mini Ice Age' Is Coming — Reading (37. ders sonrası)",
-     "sure": 30,
+     "baslik": "Deadlier Than Sharks: Selfies — Cümle analizi 2 — Reading (37. ders sonrası)",
+     "sure": 20,
      "tekrar": 0
     },
     {
-     "id": "uyg-okuma-reading-4",
-     "tur": "okuma",
-     "turAdi": "yds.obs · Okuma",
-     "baslik": "Deadlier Than Sharks: Selfies — Reading (37. ders sonrası)",
-     "sure": 30,
+     "id": "uyg-kelime:phrasal-19",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 19 (7 kart) — Kelime → Desteler (37. ders sonrası)",
+     "sure": 12,
      "tekrar": 0
     }
    ]
