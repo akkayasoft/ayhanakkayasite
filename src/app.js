@@ -239,17 +239,26 @@ function isTaskLockedNow(task, today, nowHm) {
 // "yapilmadi" saymak bu bilgiyi yok eder. Hic basilmayan gunler ertesi gun
 // otomatik "missed" muhurlenir.
 
-// Rutinler icin TABAN TARIH: bu tarihten onceki gunler hic degerlendirilmez.
+// SISTEM TABAN TARIHI: uygulamanin kaydi bu gunde baslar.
 //
-// Uyanma ve spor rutini "kuruldugu gunden" itibaren geriye muhurluyordu. Rutin
-// ogretim yili baslamadan once acilinca aradaki gunler (12-13 Eylul gibi)
-// "kacirildi" yazilip kayda ve haftalik analize giriyordu — oysa o gunlerde
-// ortada bir rutin yoktu. Taban tarih bu gurultuyu keser.
+// 2026-09-14 ogretim yilinin ilk gunu. Sistem bu tarihten once kurulup
+// denendigi icin oncesinde anlamsiz kayitlar olusmustu: rutinler "kuruldugu
+// gunden" geriye muhurledigi icin 11-13 Eylul "kacirildi" yaziyordu, deneme
+// gorevleri ve durumlari duruyordu. Bunlar gercek bir gecmis degil, kurulum
+// artigi.
 //
-// Muhurleme bu tarihten once calismaz ve acilista bu tarihten onceki OTOMATIK
-// kayitlar temizlenir. Temizlik yalnizca 'missed' satirlari siler; 'on_time'
-// ve 'late' satirlari GERCEK BASISTIR, asla silinmez.
-const ROUTINE_START_DATE = normalizeText(process.env.ROUTINE_START_DATE) || '2026-09-14';
+// Iki sey yapar:
+//   1. Muhurleme (uyanma/spor) bu tarihten oncesine hic inmez; rutin gorunumu
+//      de gun listesini burada keser.
+//   2. Acilista bu tarihten onceki kayitlar SILINIR (purgeBeforeSystemStart).
+//
+// YDS aynasina DOKUNULMAZ: yds_days ve source_key'i 'yds:' ile baslayan soru
+// kayitlari baska bir uygulamanin (yds.obs) gercek calisma gecmisidir; burada
+// yalnizca yansitilir, bu uygulamanin kaydi degildir.
+const SYSTEM_START_DATE = normalizeText(process.env.SYSTEM_START_DATE) || '2026-09-14';
+
+// Temizlik istenmezse kapatilabilir (SYSTEM_PURGE=off).
+const SYSTEM_PURGE_ENABLED = normalizeText(process.env.SYSTEM_PURGE).toLowerCase() !== 'off';
 
 const WAKE_MAX_TOLERANCE = 240;
 // Muhurleme penceresi: bugunden geriye en fazla bu kadar gun taranir.
@@ -409,7 +418,7 @@ async function sealMissedSportLogs() {
   let sealed = 0;
   for (const routine of routines.rows) {
     const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > ROUTINE_START_DATE ? kuruldu : ROUTINE_START_DATE;
+    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
     for (let i = 1; i <= SPORT_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -455,7 +464,7 @@ async function buildSportView(studentId, gunSayisi = 14) {
   for (let i = 0; i < gunSayisi; i += 1) {
     const gun = shiftDate(today, -i);
     // Taban tarihten onceki gunler takvimde hic gosterilmez.
-    if (gun < ROUTINE_START_DATE) break;
+    if (gun < SYSTEM_START_DATE) break;
     rows.push(
       logByDay.get(gun) || {
         day: gun,
@@ -528,9 +537,9 @@ async function sealMissedWakeLogs() {
   let sealed = 0;
   for (const routine of routines.rows) {
     // Rutin kurulmadan onceki gunler geriye donuk muhurlenmez; ayrica
-    // ROUTINE_START_DATE'ten onceye hic inilmez.
+    // SYSTEM_START_DATE'ten onceye hic inilmez.
     const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > ROUTINE_START_DATE ? kuruldu : ROUTINE_START_DATE;
+    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
     for (let i = 1; i <= WAKE_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -581,7 +590,7 @@ async function buildWakeView(studentId, gunSayisi = 14) {
   for (let i = 0; i < gunSayisi; i += 1) {
     const gun = shiftDate(today, -i);
     // Taban tarihten onceki gunler takvimde hic gosterilmez.
-    if (gun < ROUTINE_START_DATE) break;
+    if (gun < SYSTEM_START_DATE) break;
     const log = logByDay.get(gun);
     rows.push(
       log || {
@@ -1265,7 +1274,11 @@ async function sealOverdueTaskStatuses() {
   const today = todayDateString();
   const nowHm = timeStringInTimeZone();
   const lookbackStart = shiftDate(today, -AUTO_LOCK_LOOKBACK_DAYS);
-  const windowStart = AUTO_LOCK_START_DATE > lookbackStart ? AUTO_LOCK_START_DATE : lookbackStart;
+  // Pencere tabani: geriye bakis, AUTO_LOCK_START_DATE ve SISTEM TABAN TARIHI
+  // icinde EN GEC olani. Sistem tabani olmadan muhurleyici, temizligin sildigi
+  // gunlere aninda yeniden satir yaziyordu (olculdu: 06-13 Eylul icin 9 satir
+  // geri geldi) — silme ve muhurleme birbiriyle savasiyordu.
+  const windowStart = [lookbackStart, AUTO_LOCK_START_DATE, SYSTEM_START_DATE].sort().pop();
 
   if (windowStart > today) return { inserted: 0 };
 
@@ -6439,36 +6452,93 @@ app.use((err, req, res, _next) => {
 const AUTO_LOCK_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
- * Taban tarihten ONCEKI otomatik rutin kayitlarini temizler.
+ * SISTEM_START_DATE oncesindeki kayitlari siler.
  *
- * Rutin ogretim yili baslamadan once acildigi icin muhurleyici 12-13 Eylul gibi
- * gunlere "kacirildi" yazmisti; bunlar gercek bir ihmal degil, rutinin
- * olmadigi gunlerdi. Acilista bir kez temizlenir, sonra idempotenttir.
+ * Sistem ogretim yilindan once kurulup denendi; oncesinde kalan gorevler,
+ * durumlar, rutin kayitlari ve defter satirlari gercek bir gecmis degil
+ * kurulum artigi. Kullanici bunlarin tamamen kaldirilmasini istedi.
  *
- * GUVENLIK: yalnizca status = 'missed' satirlari silinir. 'on_time' ve 'late'
- * satirlari gercek basistir — o gun gercekten kalkilmis/spor yapilmistir — ve
- * asla silinmez. Yani bu temizlik veri kaybettirmez, gurultu siler.
+ * DOKUNULMAYANLAR (bilincli):
+ *   - yds_days ve source_key LIKE 'yds:%' olan daily_questions — bunlar
+ *     yds.obs'un GERCEK calisma gecmisinin aynasi, bu uygulamanin kaydi degil.
+ *     Silinseler senkron 5 dakika icinde geri yazardi; ustelik baska bir
+ *     uygulamanin verisini yok etmek olurdu.
+ *   - Tekrarli gorevler (repeat_type <> 'once'): start_date'i eski olan aktif
+ *     bir gorev silinmemeli. Onlarin taban oncesi ORNEKLERI zaten
+ *     task_statuses ile gidiyor.
+ *   - users, categories, class_schedule, ayarlar — tarihe bagli degiller.
+ *
+ * Tek islemde calisir (hepsi ya da hicbiri) ve idempotenttir: ikinci calisma
+ * hicbir sey silmez.
  */
-async function pruneRoutineLogsBeforeStart() {
-  const [wake, sport] = await Promise.all([
-    query(`DELETE FROM wake_logs WHERE day < $1::date AND status = 'missed'`, [ROUTINE_START_DATE]),
-    query(`DELETE FROM sport_logs WHERE day < $1::date AND status = 'missed'`, [ROUTINE_START_DATE])
-  ]);
-  return { wake: wake.rowCount || 0, sport: sport.rowCount || 0 };
+async function purgeBeforeSystemStart() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const sil = async (etiket, sql, params = [SYSTEM_START_DATE]) => {
+      const r = await client.query(sql, params);
+      return [etiket, r.rowCount || 0];
+    };
+
+    // SIRALI calisir: tek bir pg baglantisinda es zamanli sorgu yasak
+    // (client.query kuyruga alinir ama surum 9'da kaldirilacak).
+    const isler = [
+      ['uyanma', `DELETE FROM wake_logs WHERE day < $1::date`],
+      ['spor', `DELETE FROM sport_logs WHERE day < $1::date`],
+      ['görev durumu', `DELETE FROM task_statuses WHERE day < $1::date`],
+      ['görev notu', `DELETE FROM task_detail_notes WHERE day < $1::date`],
+      // YDS aynasi haric: yalnizca elle girilen / baska kaynakli satirlar.
+      [
+        'soru kaydı',
+        `DELETE FROM daily_questions
+           WHERE day < $1::date
+             AND (source_key IS NULL OR source_key NOT LIKE 'yds:%')`
+      ],
+      ['defter satırı', `DELETE FROM lesson_topics WHERE week_start < $1::date`],
+      // Ayin tamami taban ayindan onceyse silinir; icinde bulunulan ay durur.
+      [
+        'aylık hedef',
+        `DELETE FROM monthly_goals WHERE month_start < date_trunc('month', $1::date)`
+      ],
+      // Tek seferlik gorevler; durum ve notlari ON DELETE CASCADE ile gider.
+      ['görev', `DELETE FROM tasks WHERE repeat_type = 'once' AND single_date < $1::date`]
+    ];
+
+    const sonuc = {};
+    for (const [etiket, sql] of isler) {
+      const [, adet] = await sil(etiket, sql);
+      sonuc[etiket] = adet;
+    }
+
+    await client.query('COMMIT');
+    return sonuc;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 async function runSealSafely() {
-  // Taban tarih oncesi gurultu, muhurlemeden ONCE temizlenir.
-  try {
-    const { wake, sport } = await pruneRoutineLogsBeforeStart();
-    if (wake + sport > 0) {
-      console.log(
-        `${ROUTINE_START_DATE} öncesi otomatik rutin kaydı temizlendi: ` +
-          `${wake} uyanma, ${sport} spor (gerçek basışlara dokunulmadı).`
-      );
+  // Taban tarih oncesi kayitlar, muhurlemeden ONCE temizlenir; yoksa
+  // muhurleyici sildigimiz gunlere yeniden satir yazardi.
+  if (SYSTEM_PURGE_ENABLED) {
+    try {
+      const sonuc = await purgeBeforeSystemStart();
+      const ozet = Object.entries(sonuc)
+        .filter(([, n]) => n > 0)
+        .map(([ad, n]) => `${n} ${ad}`)
+        .join(', ');
+      if (ozet) {
+        console.log(
+          `${SYSTEM_START_DATE} öncesi silindi: ${ozet}. ` +
+            `(YDS aynası korundu.)`
+        );
+      }
+    } catch (err) {
+      console.error('Taban tarih öncesi temizleme hatası:', err);
     }
-  } catch (err) {
-    console.error('Rutin kaydı temizleme hatası:', err);
   }
 
   // Defter tamamlamasi otomatik kilitten ONCE calisir: kilit once calissa
