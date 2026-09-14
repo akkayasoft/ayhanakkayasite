@@ -1,205 +1,245 @@
 {
  "kaynak": "Ankara Dil Akademisi · 40 ders video seti",
- "not": "Basliklari kendi ders sirana gore doldur, sonra: node scripts/yds-sinav-programi-uret.js",
+ "not": "Ilk 30 ders video, son 10 ders deneme analizi videosudur. Video derslerin gercek basliklarini doldur, sonra: node scripts/yds-sinav-programi-uret.js",
  "dersler": [
   {
    "no": 1,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 2,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 3,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 4,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 5,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 6,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 7,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 8,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 9,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 10,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 11,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 12,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 13,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 14,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 15,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 16,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 17,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 18,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 19,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 20,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 21,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 22,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 23,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 24,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 25,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 26,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 27,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 28,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 29,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 30,
+   "tur": "video",
    "baslik": "(ders başlığı girilmedi)",
    "sure": 180
   },
   {
    "no": 31,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 1",
    "sure": 180
   },
   {
    "no": 32,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 2",
    "sure": 180
   },
   {
    "no": 33,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 3",
    "sure": 180
   },
   {
    "no": 34,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 4",
    "sure": 180
   },
   {
    "no": 35,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 5",
    "sure": 180
   },
   {
    "no": 36,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 6",
    "sure": 180
   },
   {
    "no": 37,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 7",
    "sure": 180
   },
   {
    "no": 38,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 8",
    "sure": 180
   },
   {
    "no": 39,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 9",
    "sure": 180
   },
   {
    "no": 40,
-   "baslik": "(ders başlığı girilmedi)",
+   "tur": "deneme-analizi",
+   "baslik": "Deneme Analizi 10",
    "sure": 180
   }
  ]
