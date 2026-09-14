@@ -158,6 +158,45 @@ nesneyi güncellemek** yeterlidir, gerisi tarihlerden türetilir.
 
 ## Görev süresi ve otomatik kilit
 
+Bir görev örneği (görev + gün) **iki sebepten** kilitlenir; ikisi de kalıcıdır:
+
+1. **İşaretlendi** — `done` ya da `not_done` yazıldığı anda görev **pasif**
+   olur. Uyanma ve spor rutinindeki *"ilk basış geçerli"* kuralının görev
+   tarafındaki karşılığı.
+2. **Süresi doldu** — kendi son saatini geçti (aşağıdaki bölüm).
+
+Kilitlenince öğrenci o görevin **durumunu değiştiremez, alanlarını
+düzenleyemez ve silemez**. Arayüz sebebi ayırt eder: rozette *"İşaretlendi"*
+ya da *"Süresi doldu"* yazar, hata mesajları da (`kilitMesaji`) buna göre
+gelir.
+
+### İşaretleme kalıcıdır
+
+- Öğrenci durum rotası artık `ON CONFLICT ... DO NOTHING` kullanır (eskiden
+  `DO UPDATE` ile üzerine yazıyordu). Yazma öncesi kontrol var; yarış
+  durumunda ikinci istek `rowCount === 0`'a düşer ve yine ilk işaret korunur.
+- `isTaskInstanceMarked(taskId, studentId, repeatType, gün)` — **tek seferlik**
+  görevde *herhangi* bir durum satırı sayılır (o görevin tek örneği vardır;
+  tarihi sonradan değiştiyse satır başka güne yazılmış olabilir). **Tekrarlı**
+  görevde yalnızca **ilgili günün** satırı sayılır — dünkü işaret bugünkü
+  örneği kilitlemez.
+- Sistem yazıcıları (`sealOverdueTaskStatuses`, `completeLessonLogTasks`)
+  zaten `DO NOTHING` kullanıyordu; artık üç yazıcı da aynı kuralda.
+
+> ⚠️ **Yanlış işaretlemenin geri dönüşü yok.** Admin'in durum değiştirme
+> rotası zaten yoktu; işaretleme de kalıcı olunca kazara basılan bir düğme
+> veritabanına elle müdahale etmeden düzeltilemez. Bilinçli tercih — düzeltme
+> istenirse admin tarafına bir "işareti kaldır" rotası gerekir.
+
+Doğrulandı: `done` işaretlendikten sonra `not_done`'a çevirme **reddedildi**
+ve satır değişmedi; aynı durumu tekrar göndermek de reddedildi; işaretli
+görevde açıklama ve saat **403**, silme reddedildi (görev duruyor);
+öğrencinin **kendi açtığı** işaretli görev de silinemedi; işaretsiz görevde
+aynı alanlar **200**. Panoda işaretli görev *"İşaretlendi"*, süresi dolmuş
+görev *"Süresi doldu"* rozeti taşıyor.
+
+### Son saat ve otomatik mühürleme
+
 Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir**:
 
 - Son saat = görevin `estimated_time`'ı; girilmemişse **gün sonu (23:59)**.

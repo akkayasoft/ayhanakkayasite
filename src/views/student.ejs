@@ -316,11 +316,15 @@
                   <td data-label="İşlem">
                     <div class="task-table-actions">
                       <% if (task.isLocked) { %>
-                      <span class="lock-note" title="Süresi doldu, işaret değiştirilemez.">
+                      <%# Kilit iki sebepten olabilir; etiket hangisiyse onu söylesin. %>
+                      <span
+                        class="lock-note"
+                        title="<%= task.isMarked ? 'İşaretlendi, değiştirilemez.' : 'Süresi doldu, işaret değiştirilemez.' %>"
+                      >
                         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                           <path d="M7 11V8a5 5 0 0 1 10 0v3m-11 0h12v9H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
-                        Süresi doldu
+                        <%= task.isMarked ? 'İşaretlendi' : 'Süresi doldu' %>
                       </span>
                       <% } else { %>
                       <form method="post" action="/student/tasks/<%= task.id %>/status">
