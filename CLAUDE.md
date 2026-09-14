@@ -183,10 +183,61 @@ gelir.
 - Sistem yazıcıları (`sealOverdueTaskStatuses`, `completeLessonLogTasks`)
   zaten `DO NOTHING` kullanıyordu; artık üç yazıcı da aynı kuralda.
 
-> ⚠️ **Yanlış işaretlemenin geri dönüşü yok.** Admin'in durum değiştirme
-> rotası zaten yoktu; işaretleme de kalıcı olunca kazara basılan bir düğme
-> veritabanına elle müdahale etmeden düzeltilemez. Bilinçli tercih — düzeltme
-> istenirse admin tarafına bir "işareti kaldır" rotası gerekir.
+> ⚠️ **Öğrenci için geri dönüşü yok — düzeltme yalnızca adminde.** Kazara
+> basılan bir düğmeyi ya da unutulmuş bir işareti öğrenci düzeltemez; admin
+> **Durum Düzelt** sayfasından düzeltir (aşağıya bakın). Uzun süre bu kapı da
+> yoktu ve veritabanına elle müdahale gerekiyordu.
+
+#### Durum Düzelt (admin) — işaretlemenin tek geri dönüşü
+
+`/admin/tasks/status` → **Durum Düzelt**. Öğrenci işaretlemeyi unutunca
+mühürleyici `not_done` yazıyor; yapılmış bir iş kalıcı olarak "yapılmadı"
+görünüyordu. Kural esnetilmedi — **öğrenci tarafı aynen kilitli**; yalnızca
+admin'e bir kapı açıldı.
+
+- Düzeltilen şey görev değil **görev örneğidir** (görev + gün), çünkü durum da
+  o seviyede tutulur. Panel bu yüzden **gün bazlıdır**: öğrenci + gün seçilir,
+  o gün vadesi gelen görevler durumlarıyla listelenir, her satırda
+  *Yapıldı* / *Yapılmadı* / *İşareti Kaldır* düğmeleri vardır.
+- Rota `POST /admin/tasks/:taskId/status-fix` (`requireRole('admin')`;
+  doğrulandı: öğrenci **403**, oturumsuz **302**).
+- **Kapı sessiz değil.** Her düzeltme satırın içine yazılır:
+  `task_statuses.corrected_by` / `corrected_at` / `previous_status` /
+  `correction_note`. Panel bunu satırda gösterir:
+  *"Düzeltildi · Sistem Yöneticisi (Yapılmadı → Yapıldı) · gerekçe"*.
+  Gerekçe **opsiyoneldir**: kim, ne zaman ve neyin üzerine yazdığı zaten
+  otomatik kaydedildiği için kayıt gerekçesiz de eksik değil. (Aylık
+  hedeflerdeki zorunlu "kanıt" ile arasındaki fark bilinçli: orada kanıt
+  iddianın tek dayanağı, burada değil.)
+- **Yalnızca gerçekten vadesi gelen güne yazılır** (`isTaskDueOnDate`);
+  formdan gelen beklenmedik bir gün kayıt açamaz. Arşivlenmiş görevin geçmiş
+  örneği de düzeltilebilir — arşiv "yeni örnek açılmasın" demektir, geçmişi
+  yok saymaz.
+- **Sistem taban tarihinden önceye yazılamaz** — `purgeBeforeSystemStart` o
+  kayıtları her açılışta silerdi. Panelde o günlerde düğme yerine *"Yazılamaz"*
+  yazar; ölü bir kontrol bırakılmadı.
+- **"İşareti Kaldır" yalnızca kalıcı olduğunda açıktır.** Süresi dolmuş bir
+  örneğin işareti silinse `sealOverdueTaskStatuses` 5 dakika içinde yeniden
+  `not_done` yazardı; "temizlendi" demek yalan olurdu. Rota bu durumu
+  reddediyor ve *"bunun yerine Yapıldı olarak düzeltin"* diyor, panel de
+  düğmeyi göstermiyor.
+
+> Mühürleyici `ON CONFLICT DO NOTHING` kullandığı için admin'in yazdığı `done`
+> **ezilmez**. Doğrulandı: düzeltmeden sonra uygulama yeniden başlatıldı,
+> satır `done` + düzeltme izi olduğu gibi kaldı.
+
+Doğrulandı (temiz veritabanı, 2026-09-17 13:00 sahte saatiyle; 12:00 son
+saatli görev mühürleyici tarafından `not_done` yazılmış): düzeltme
+`not_done → done` yazdı ve `previous_status='not_done'`, `corrected_by=admin`,
+`corrected_at`, gerekçe kaydedildi; aynı durumu tekrar göndermek **reddedildi**;
+süresi dolmuş örnekte *İşareti Kaldır* **reddedildi** ve satır değişmedi;
+süresi dolmamış örnekte kaldırma **çalıştı** ve yeniden açılışta geri gelmedi;
+görevin tanımlı olmadığı gün, taban öncesi gün, geçersiz işlem/gün ve olmayan
+görev **reddedildi**. Öğrenci tarafında görev *"İşaretlendi"* rozetiyle
+**Yapıldı** görünüyor; öğrencinin durum değiştirmesi, açıklama yazması (**403**)
+ve silmesi hâlâ reddediliyor. Düzeltme günlük panoya (3 görevin 1'i yapıldı) ve
+raporlara normal bir durum satırı olarak işliyor. Üç genişlikte (1440 / 1180 /
+390px) taşma **0**.
 
 Doğrulandı: `done` işaretlendikten sonra `not_done`'a çevirme **reddedildi**
 ve satır değişmedi; aynı durumu tekrar göndermek de reddedildi; işaretli
@@ -1000,6 +1051,7 @@ yalnızca gelecek yeniden düzenlenir.*
 | YZ / YDS / defter programı yeniden aktarılır | Yeni görev eklenir, **işaretlenmemiş ve günü gelmemiş** görevler tazelenir/silinir | ✅ geçmiş ve işaretli hiç oynamıyor |
 | Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
 | YDS uygulamasında "ilerlemeyi sıfırla" | Yalnızca `yds:` kaynaklı ayna satırları silinir | ✅ elle girilen soru kaydı korundu |
+| Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
 
 > Tek istisna bilinçli: aylık hedefte "Başarılamadı" işaretlerken kanıt alanı
 > boş gönderilirse eski kanıt silinir (bkz. Aylık hedefler).

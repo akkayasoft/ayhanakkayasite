@@ -20,7 +20,7 @@
           <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Öğrenciler</a>
           <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanıcı Yönetimi</a>
           <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
-          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
+          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active', 'tasks-status'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
           <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
           <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
           <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
@@ -218,8 +218,8 @@
         </section>
         <% } %>
 
-        <% if (['tasks', 'tasks-create', 'tasks-update', 'tasks-active'].includes(currentPage)) { %>
-        <% const taskSection = currentPage === 'tasks-create' ? 'create' : currentPage === 'tasks-update' ? 'update' : 'active'; %>
+        <% if (['tasks', 'tasks-create', 'tasks-update', 'tasks-active', 'tasks-status'].includes(currentPage)) { %>
+        <% const taskSection = currentPage === 'tasks-create' ? 'create' : currentPage === 'tasks-update' ? 'update' : currentPage === 'tasks-status' ? 'status' : 'active'; %>
         <% const tasksPagePath = activeTaskFilters.studentId ? `/admin/tasks/${taskSection}?activeTaskStudentId=${activeTaskFilters.studentId}` : `/admin/tasks/${taskSection}`; %>
         <% const isUpdatePage = taskSection === 'update'; %>
         <% const isActivePage = taskSection === 'active'; %>
@@ -231,8 +231,127 @@
             <a href="/admin/tasks/create" class="button-link <%= taskSection === 'create' ? 'active' : '' %>">Görev Oluştur</a>
             <a href="/admin/tasks/update" class="button-link <%= taskSection === 'update' ? 'active' : '' %>">Görev Güncelle</a>
             <a href="/admin/tasks/active" class="button-link <%= taskSection === 'active' ? 'active' : '' %>">Tüm Görevler</a>
+            <a href="/admin/tasks/status" class="button-link <%= taskSection === 'status' ? 'active' : '' %>">Durum Düzelt</a>
           </div>
         </header>
+
+        <%# ISARETLEMENIN TEK GERI DONUSU. Duzeltilen sey gorev degil GOREV
+            ORNEGIDIR (gorev + gun), cunku durum da o seviyede tutulur; panel
+            bu yuzden gun bazli. %>
+        <% if (taskSection === 'status') { %>
+        <% const fix = taskStatusFixView || { students: [], rows: [], day: today, student: null }; %>
+        <% const fixPagePath = `/admin/tasks/status?fixStudentId=${fix.student ? fix.student.id : ''}&fixDay=${fix.day}`; %>
+        <section class="panel">
+          <h3>Durum Düzelt</h3>
+          <p class="muted">
+            Öğrenci işaretlemeyi unuttuğunda otomatik mühürleme o görevi
+            <strong>Yapılmadı</strong> yazar ve öğrenci tarafında bu geri
+            alınamaz. Buradan günü seçip düzeltebilirsiniz. Her düzeltme
+            <strong>kim yaptı, ne zaman ve neyin üzerine yazıldı</strong>
+            bilgisiyle birlikte kaydedilir.
+          </p>
+
+          <div class="datatable-toolbar">
+            <form method="get" action="/admin/tasks/status" class="row center status-fix-filter">
+              <label for="fixStudentId">Öğrenci</label>
+              <select id="fixStudentId" name="fixStudentId">
+                <% fix.students.forEach((s) => { %>
+                <option value="<%= s.id %>" <%= fix.student && fix.student.id === s.id ? 'selected' : '' %>><%= s.name %></option>
+                <% }) %>
+              </select>
+              <label for="fixDay">Gün</label>
+              <input id="fixDay" type="date" name="fixDay" value="<%= fix.day %>" />
+              <button type="submit">Göster</button>
+            </form>
+            <div class="row center">
+              <a class="button-link" href="/admin/tasks/status?fixStudentId=<%= fix.student ? fix.student.id : '' %>&amp;fixDay=<%= fix.prevDay %>">← Önceki gün</a>
+              <a class="button-link" href="/admin/tasks/status?fixStudentId=<%= fix.student ? fix.student.id : '' %>&amp;fixDay=<%= fix.today %>">Bugün</a>
+              <a class="button-link" href="/admin/tasks/status?fixStudentId=<%= fix.student ? fix.student.id : '' %>&amp;fixDay=<%= fix.nextDay %>">Sonraki gün →</a>
+            </div>
+          </div>
+
+          <% if (fix.beforeSystemStart) { %>
+          <p class="muted">
+            <strong>Uyarı:</strong> <%= fix.day %>, sistem taban tarihinden
+            (<%= fix.systemStartDate %>) önce. O günlere durum yazılamaz —
+            açılıştaki temizlik bu kayıtları zaten siliyor.
+          </p>
+          <% } %>
+
+          <% if (!fix.student) { %>
+          <p class="muted">Öğrenci yok.</p>
+          <% } else if (!fix.rows.length) { %>
+          <p class="muted"><%= fix.day %> günü <%= fix.student.name %> için görev yok.</p>
+          <% } else { %>
+          <p class="muted">
+            <%= fix.day %> · <%= fix.student.name %> — <%= fix.rows.length %> görev,
+            <%= fix.doneCount %> tanesi yapıldı.
+          </p>
+          <div class="table-wrap">
+            <table class="task-table stack-mobile">
+              <thead>
+                <tr>
+                  <th>Son Saat</th>
+                  <th>Görev</th>
+                  <th>Kategori</th>
+                  <th>Durum</th>
+                  <th>Düzelt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% fix.rows.forEach((r) => { %>
+                <tr>
+                  <td class="single-line-cell"><%= r.deadline %></td>
+                  <td><strong><%= r.task.title %></strong></td>
+                  <td class="single-line-cell"><%= r.task.category ? r.task.category.name : '-' %></td>
+                  <td>
+                    <span class="task-state-icon <%= r.status === 'done' ? 'ok' : r.status === 'not_done' ? 'bad' : 'idle' %>">
+                      <%= r.status === 'done' ? '✓' : r.status === 'not_done' ? '✕' : '○' %>
+                    </span>
+                    <%= r.statusText %>
+                    <% if (r.correctedAt) { %>
+                    <small class="muted status-fix-trace">
+                      Düzeltildi<%= r.correctedByName ? ` · ${r.correctedByName}` : '' %>
+                      (<%= r.previousStatusText %> → <%= r.statusText %>)<%= r.correctionNote ? ` · ${r.correctionNote}` : '' %>
+                    </small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <%# Taban tarihinden onceki gunlere rota zaten yazmiyor
+                        (acilistaki temizlik siler); dugmeyi de gostermeyelim,
+                        yoksa basilip hata donen olu bir kontrol olurdu. %>
+                    <% if (fix.beforeSystemStart) { %>
+                    <span class="muted">Yazılamaz</span>
+                    <% } else { %>
+                    <form method="post" action="/admin/tasks/<%= r.task.id %>/status-fix" class="status-fix-form">
+                      <input type="hidden" name="next" value="<%= fixPagePath %>" />
+                      <input type="hidden" name="day" value="<%= fix.day %>" />
+                      <input type="text" name="note" maxlength="300" placeholder="Gerekçe (opsiyonel)" />
+                      <div class="task-table-actions">
+                        <% if (r.status !== 'done') { %>
+                        <button type="submit" name="action" value="done">Yapıldı</button>
+                        <% } %>
+                        <% if (r.status !== 'not_done') { %>
+                        <button type="submit" name="action" value="not_done">Yapılmadı</button>
+                        <% } %>
+                        <%# Temizleme yalnizca KALICI oldugunda acik: suresi dolmus
+                            bir ornekte muhurleyici 5 dakika icinde yeniden
+                            'not_done' yazardi. %>
+                        <% if (r.canClear) { %>
+                        <button type="submit" name="action" value="clear" class="danger">İşareti Kaldır</button>
+                        <% } %>
+                      </div>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </section>
+        <% } %>
 
         <% if (taskSection === 'create') { %>
         <section class="panel">

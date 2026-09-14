@@ -135,6 +135,20 @@ async function initDb() {
     )
   `);
 
+  // ADMIN DUZELTMESININ IZI. Isaretleme kalicidir ("ilk isaret gecerli"), ama
+  // ogrenci isaretlemeyi unuttugunda muhurleyici 'not_done' yaziyor ve geri
+  // donusu yoktu. Admin duzeltme rotasi bu kurala acilan TEK kapi; kapi
+  // sessiz olmasin diye her duzeltme kimin, ne zaman ve NEYIN uzerine
+  // yazdigiyla birlikte satirin icinde durur.
+  await query(
+    `ALTER TABLE task_statuses ADD COLUMN IF NOT EXISTS corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL`
+  );
+  await query(`ALTER TABLE task_statuses ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE task_statuses ADD COLUMN IF NOT EXISTS previous_status TEXT`);
+  await query(
+    `ALTER TABLE task_statuses ADD COLUMN IF NOT EXISTS correction_note TEXT NOT NULL DEFAULT ''`
+  );
+
   await query(`
     CREATE TABLE IF NOT EXISTS task_detail_notes (
       id TEXT PRIMARY KEY,
