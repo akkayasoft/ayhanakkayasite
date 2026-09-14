@@ -296,6 +296,7 @@
                 <tr
                   class="student-task-row <%= task.displayStatus?.status === 'done' ? 'task-row-success' : task.displayStatus?.status === 'not_done' ? 'task-row-error' : '' %>"
                   data-task-id="<%= task.id %>"
+                  <% if (task.cellEndpoint) { %>data-cell-endpoint="<%= task.cellEndpoint %>"<% } %>
                   data-title="<%= (task.title || '').toLowerCase() %>"
                   data-category="<%= (task.categoryName || '').toLowerCase() %>"
                   data-date="<%= (task.scheduleText || '').toLowerCase() %>"
@@ -309,13 +310,33 @@
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.displayStatus?.status === 'done' ? '✓' : task.displayStatus?.status === 'not_done' ? '✕' : '○' %>
                     </span>
-                    <% if (task.displayStatus && !task.displayStatusIsToday) { %>
+                    <% if (task.isRoutine && task.routineDoneAt) { %>
+                    <small class="muted"><%= task.routineDoneAt %><% if (task.routineDelay) { %> · <%= task.routineDelay %> dk gecikme<% } %></small>
+                    <% } else if (task.displayStatus && !task.displayStatusIsToday) { %>
                     <small class="muted"><%= task.displayStatusDay %></small>
                     <% } %>
                   </td>
                   <td data-label="İşlem">
                     <div class="task-table-actions">
-                      <% if (task.isLocked) { %>
+                      <% if (task.isRoutine) { %>
+                      <%# Rutinin tek eylemi var: isaretle. Ilk basis gecerli. %>
+                      <% if (task.isMarked) { %>
+                      <span class="lock-note" title="<%= task.routineStatusText %> · değiştirilemez">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <%= task.routineStatusText %>
+                      </span>
+                      <% } else { %>
+                      <form method="post" action="<%= task.routineEndpoint %>">
+                        <button type="submit" class="icon-btn ok" title="İşaretle" aria-label="İşaretle">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                          </svg>
+                        </button>
+                      </form>
+                      <% } %>
+                      <% } else if (task.isLocked) { %>
                       <%# Kilit iki sebepten olabilir; etiket hangisiyse onu söylesin. %>
                       <span
                         class="lock-note"
@@ -434,7 +455,10 @@
                 cell.classList.add('is-saving');
                 try {
                   const body = new URLSearchParams({ field, value: normalized });
-                  const response = await fetch(`/student/tasks/${taskId}/cell-update`, {
+                  // Rutin satirlari kendi rotasina yazar (data-cell-endpoint).
+                  const endpoint =
+                    row.getAttribute('data-cell-endpoint') || `/student/tasks/${taskId}/cell-update`;
+                  const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
                     body

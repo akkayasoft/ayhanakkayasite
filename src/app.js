@@ -310,6 +310,7 @@ function mapWakeLog(row) {
     status: row.status,
     statusText: wakeStatusText(row.status),
     delayMinutes: Number(row.delayMinutes) || 0,
+    note: row.note || '',
     gunAdi: getDayName(toDateOnly(row.day))
   };
 }
@@ -379,6 +380,7 @@ function mapSportLog(row) {
     status: row.status,
     statusText: sportStatusText(row.status),
     delayMinutes: Number(row.delayMinutes) || 0,
+    note: row.note || '',
     gunAdi: getDayName(toDateOnly(row.day))
   };
 }
@@ -448,7 +450,7 @@ async function buildSportView(studentId, gunSayisi = 14) {
   const res = await query(
     `
       SELECT day, start_time AS "startTime", end_time AS "endTime",
-             done_at AS "doneAt", status, delay_minutes AS "delayMinutes"
+             done_at AS "doneAt", status, delay_minutes AS "delayMinutes", note
       FROM sport_logs
       WHERE student_id = $1 AND day >= $2
       ORDER BY day DESC
@@ -573,7 +575,7 @@ async function buildWakeView(studentId, gunSayisi = 14) {
   const res = await query(
     `
       SELECT day, target_time AS "targetTime", tolerance_minutes AS "toleranceMinutes",
-             woke_at AS "wokeAt", status, delay_minutes AS "delayMinutes"
+             woke_at AS "wokeAt", status, delay_minutes AS "delayMinutes", note
       FROM wake_logs
       WHERE student_id = $1 AND day >= $2
       ORDER BY day DESC
@@ -5723,6 +5725,56 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildSportView(req.currentUser.id, currentPage === 'sport' ? 14 : 7)
       : null;
 
+  // Rutinler gorev listesinde de AYNI BICIMDE gorunur: gorev satirlarindan
+  // birer sahte satir uretilir. Tek gun (bugun) gosterilir — rutin gunluktur,
+  // gecmis gunleri listeye doldurmak gunluk gorevleri bogardi.
+  //
+  // Farklari iki sutunda: Durum rozetleri (zamaninda / gec / kacirildi) ve
+  // Islem (tek "Isaretle" dugmesi, gorevlerdeki iki dugme degil).
+  const rutinSatirlari = [];
+  for (const [tur, gorunum, baslik, endpoint] of [
+    ['wake', wake, 'Uyanma Rutini', '/student/wake'],
+    ['sport', sport, 'Spor Rutini', '/student/sport']
+  ]) {
+    if (currentPage !== 'dashboard' || !gorunum || !gorunum.routine) continue;
+    const log = gorunum.todayLog;
+    const hedef =
+      tur === 'wake'
+        ? `${gorunum.routine.targetTime}${gorunum.routine.toleranceMinutes ? ` (+${gorunum.routine.toleranceMinutes} dk)` : ''}`
+        : `${gorunum.routine.startTime} - ${gorunum.routine.endTime}`;
+    rutinSatirlari.push({
+      id: `routine-${tur}`,
+      isRoutine: true,
+      routineTur: tur,
+      routineEndpoint: endpoint,
+      // Not yazma gorev rotasina degil rutin rotasina gider.
+      cellEndpoint: `/student/routines/${tur}/note`,
+      title: baslik,
+      categoryName: 'Rutin',
+      scheduleText: `${today} · Bugün`,
+      singleDate: today,
+      estimatedTime: hedef,
+      description: log ? log.note : '',
+      // Isaretlenince not hala yazilabilir: rutin sabah basilir, not sonra
+      // yazilir. Basilmadan once yazacak kayit yok.
+      canEditDescription: Boolean(log),
+      canEditTime: false,
+      canManage: false,
+      isMarked: Boolean(log),
+      isLocked: Boolean(log),
+      routineDoneAt: log ? (tur === 'wake' ? log.wokeAt : log.doneAt) : null,
+      routineStatus: log ? log.status : null,
+      routineStatusText: log ? log.statusText : 'Bekliyor',
+      routineDelay: log ? log.delayMinutes : 0,
+      displayStatus: log
+        ? { status: log.status === 'missed' ? 'not_done' : 'done', day: today }
+        : null,
+      displayStatusIsToday: Boolean(log),
+      displayStatusDay: today,
+      todayStatus: log ? { status: log.status } : null
+    });
+  }
+
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
   // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
@@ -5736,7 +5788,7 @@ async function getStudentViewModel(req, currentPage) {
     currentPage,
     today,
     categories,
-    activeTasks,
+    activeTasks: [...rutinSatirlari, ...activeTasks],
     doneCount,
     questionEntry: null,
     questionHistory,
@@ -6435,6 +6487,42 @@ app.post(
     }
 
     return res.redirect(`/student/dashboard?message=${encodeURIComponent('Görev işaretlendi.')}`);
+  })
+);
+
+app.post(
+  '/student/routines/:tur/note',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const tur = normalizeText(req.params.tur);
+    if (!['wake', 'sport'].includes(tur)) {
+      return res.status(404).json({ ok: false, error: 'Rutin bulunamadı.' });
+    }
+
+    const dogrulama = validateTaskDescription(normalizeText(req.body.value));
+    if (!dogrulama.ok) {
+      return res.status(400).json({ ok: false, error: dogrulama.error });
+    }
+
+    // Yalnizca BUGUNUN satiri yazilabilir; gecmis gunler muhurludur.
+    // Not gorevlerdeki gibi isaretlemeyle KILITLENMEZ: rutin sabah basilir,
+    // not ise cogu zaman sonra yazilir ("3 km kostum"). Isaretle kilitlemek
+    // alani kullanilamaz hale getirirdi.
+    const gun = todayDateString();
+    const tablo = tur === 'wake' ? 'wake_logs' : 'sport_logs';
+    const sonuc = await query(
+      `UPDATE ${tablo} SET note = $1 WHERE student_id = $2 AND day = $3::date`,
+      [dogrulama.value, req.currentUser.id, gun]
+    );
+
+    if (sonuc.rowCount === 0) {
+      return res.status(409).json({
+        ok: false,
+        error: 'Önce rutini işaretle; not o günün kaydına yazılır.'
+      });
+    }
+
+    return res.json({ ok: true, value: dogrulama.value, display: dogrulama.value || '-' });
   })
 );
 
