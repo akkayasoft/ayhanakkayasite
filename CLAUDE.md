@@ -650,9 +650,64 @@ arkasında (doğrulandı: öğrenci rolüyle beş POST rotası ve `/admin/schedu
 
 - `school_settings` (tek satır, id `default`): başlangıç saati, ders/teneffüs
   süresi, günlük ders saati sayısı, öğle arası (hangi dersten sonra, kaç dk).
-- `class_schedule`: `term` (0 = yıl boyu, 1/2 = dönem), `day_of_week` (1-5),
-  `period`, `subject`, `class_name`, `room`, `kind` (`lesson` | `duty`).
-  `UNIQUE (term, day_of_week, period)` — aynı hücre iki kez dolamaz.
+- `class_schedule`: `term` (0 = yıl boyu, 1/2 = dönem), `day_of_week` (**1-7**,
+  ISO: 1 = Pazartesi … 7 = Pazar), `period`, `subject`, `class_name`, `room`,
+  `kind` (`lesson` | `duty`). `UNIQUE (term, day_of_week, period)` — aynı hücre
+  iki kez dolamaz.
+
+### Çizelge 7 günlük (hafta sonu dahil)
+
+Program önce **Pzt-Cum** idi; hafta sonuna ders koyan bir düzen (DYK, ek ders,
+hafta sonu kursu) programa hiç girilemiyordu. Artık çizelge **7 gündür**.
+
+- Gün numaraları **ISO**: 1 = Pazartesi … **6 = Cumartesi, 7 = Pazar**.
+  `schedule.GUNLER` tek kaynaktır; izgara, gün özeti ve görünümler onu kullanır.
+- `schedule.dayOfWeek(tarih)` artık hafta sonunda **0 değil 6/7** döner. Eskiden
+  0 dönüyordu ve çağıranlar bunu "ders yok" diye okuyordu; "ders işlenir mi"
+  sorusunu artık **takvim** yanıtlar, gün numarası değil.
+- İki tablonun `day_of_week` kontrolü 1-5'ten **1-7**'ye genişletildi.
+  `CREATE TABLE IF NOT EXISTS` var olan tabloyu değiştirmediği için kısıt
+  `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` ile elle genişletilir
+  (daraltma değil genişletme olduğundan mevcut satırların hepsi geçerli kalır).
+  Doğrulandı: 1-5 kısıtlı eski bir veritabanı açılışta 1-7'ye geçti, eski
+  çizelge ve defter satırları korundu, ardından cumartesi kaydı kabul edildi.
+- Toplu yapıştırma `Cumartesi` / `Cmt` / `Pazar` / `Paz` kısaltmalarını da tanır.
+
+> ⚠️ **Asıl mesele kısıt değil, "ders işlenir mi" kuralıydı.** Defter yazımı,
+> haftalık takvim ve defter görevi `getDayInfo().isSchoolDay`'e bakıyordu ve
+> hafta sonu `false` döner. Kural değişmeseydi cumartesiye konan ders ekranda
+> görünür ama **deftere yazılamaz, takvimde çıkmaz, defter görevine sayılmazdı**
+> — yarım bir özellik. Bu yüzden tek bir yardımcı eklendi:
+> `scheduleAppliesOn(tarih)` = `isSchoolDay || type === 'weekend'`.
+> **Bayram, ara tatil, yarıyıl tatili ve öğretim yılı dışı hâlâ sayılmaz** —
+> okul kapalıyken hafta sonu da ders işlenmez. Kullanan yerler: haftalık takvim
+> (ders listesi + "N ders / M boş"), defter ızgarası (yazılabilirlik + sayaç),
+> `buildLessonLogWeeks`, `completeLessonLogTasks` ve `saveLessonTopics`.
+>
+> `getDayInfo` tatil dönemini hafta sonundan **önce** döndürdüğü için ara
+> tatildeki cumartesi `break` gelir ve doğru şekilde elenir. Ara tatil Pzt-Cum
+> tanımlı olduğundan **onu çevreleyen hafta sonu normal hafta sonudur** ve
+> oraya ders yazılabilir; istenmiyorsa o hafta boş bırakılır.
+
+Rozetler takvimin doğrusunu söylemeye devam eder: haftalık takvimde cumartesi
+hâlâ *"Hafta sonu"* rozeti taşır, yalnızca ders sayacı ve defter alanı açılır.
+Defter ızgarasında kapalı gün rozeti (*"1. Ara Tatil"*, *"Cumhuriyet Bayramı"*)
+artık **yazılamayan** günü işaretler — hafta sonu normal bir sütundur.
+
+Doğrulandı (temiz veritabanı, 21 Eylül 2026 saatiyle; Pzt-Cum + Cmt 2 ders +
+Paz 1 ders yapıştırıldı): çizelge 7 sütun, gün özeti 7 satır; defter ızgarasında
+21 Eylül haftasında **9 hücrenin 9'u** yazılabilir (6-1, 6-2, 7-1 dahil);
+29 Ekim haftasında perşembe *Cumhuriyet Bayramı* ile kapalı (8 hücre),
+16 Kasım haftasında Pzt-Cum *1. Ara Tatil* ile kapalı, **yalnız hafta sonu**
+yazılabilir (3 hücre). Öğrenci takviminde cumartesi *"Hafta sonu"* rozetiyle
+**2 ders**, pazar **1 ders** görünüyor. Defter görevi hafta içi 6 hücre dolunca
+**tamamlanmadı**, hafta sonu da dolunca `done` oldu — hafta sonu gerçekten
+sayılıyor. Rota `dayOfWeek` 6 ve 7'yi kabul, 0 ve 8'i **reddediyor**. Excel
+çıktısında 26-27 Eylül satırları doğru tarih ve gün adıyla var. Üç genişlikte
+(1440 / 1180 / 390px) **sayfa taşması 0**; `.board` 1440'ta ve telefonda tam
+sığıyor, 1180'de kapsayıcı içinde 160px yatay kaydırma kalıyor (analiz
+tablolarındaki kabul edilen desenin aynısı). Telefonda ızgara gün gün listeye
+dönüyor ve Cumartesi/Pazar blokları da çıkıyor.
 
 > `term` NULL değil **0** varsayılanlı: Postgres'te NULL'lar birbirinden farklı
 > sayıldığı için NULL'lu bir UNIQUE kısıtı aynı hücrenin iki kez girilmesini
@@ -682,9 +737,10 @@ gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 4
 - Günlük ders saati sayısı küçültülürse kapsam dışı kalan kayıtlar silinir ve
   kaç tanesi silindiği mesajda bildirilir — yoksa öksüz satır kalırdı.
 - Çizelge **Haftalık Takvim'e** de işlenir: gün kartlarında o günün dersleri
-  saatleriyle, özet tablosunda "N ders / M boş" sütunu. Ders yalnızca gerçek
-  okul gününde gösterilir — hafta sonu, ara tatil, yarıyıl ve bayramda
-  `academicCalendar` devreye girer ve çizelge işlemez.
+  saatleriyle, özet tablosunda "N ders / M boş" sütunu. Ders, çizelgenin
+  **işlediği** günde gösterilir (`scheduleAppliesOn`): hafta sonu artık dahil,
+  ara tatil / yarıyıl / bayramda `academicCalendar` devreye girer ve çizelge
+  işlemez.
 
 ### İşlenen konular (ders defteri)
 
@@ -698,8 +754,9 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
   çizelge sonradan değişse bile geçmiş defter okunabilir kalır — doğrulandı:
   bir ders silinip diğeri başka derse çevrildikten sonra defter satırları
   olduğu gibi durdu.
-- Sunucu tarafı yalnızca **çizelgede dersi olan** ve o gün **okul günü olan**
-  hücreleri yazar; formdan gelen beklenmedik anahtar kayıt açamaz.
+- Sunucu tarafı yalnızca **çizelgede dersi olan** ve o gün **çizelgenin
+  işlediği** (`scheduleAppliesOn` — hafta sonu dahil, tatil hariç) hücreleri
+  yazar; formdan gelen beklenmedik anahtar kayıt açamaz.
 - Boş bırakılan alanın kaydı silinir (boş satır birikmez).
 - Dolu olmayan hücrede geçen haftanın konusu ipucu olarak gösterilir.
 - Sayaç paydası **tüm dolu hücreleri** sayar (nöbet dahil); yalnızca dersleri
@@ -734,14 +791,15 @@ işaretlenir.
   için açılır (çizelgede o hafta hiç dolu hücre yoksa görev de yok).
 - **Son tarih hafta sonu (Pazar)**, cuma değil: defteri cumartesi doldurmak
   hâlâ zamanında sayılsın diye. Cuma verilseydi otomatik kilit hafta biter
-  bitmez `not_done` mühürlerdi.
+  bitmez `not_done` mühürlerdi. (Çizelge 7 güne çıkınca bu tarih aynı kaldı —
+  hafta sonu dersi olan bir hafta da pazar akşamına kadar yazılabilir.)
 - `completeLessonLogTasks()` `runSealSafely` içinde (açılışta + 5 dakikada
   bir) **`sealOverdueTaskStatuses`'tan önce** çalışır. Sıra önemli: aynı turda
   hem defter tamamlanıp hem süre dolmuşsa görev "yapıldı" olmalı, "yapılmadı"
   değil. (Doğrulandı: geçmiş tarihli görev + dolu defter → `done`; geçmiş
   tarihli görev + eksik defter → `not_done`.)
 - Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
-  dahil).
+  ve **hafta sonu dersleri** dahil).
 - **Öğrenci listesinde yalnızca içinde bulunulan haftanın defter görevi
   görünür.** Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
   dursaydı günlük görevleri (YZ, YDS, kişisel) boğardı — doğrulandı: liste

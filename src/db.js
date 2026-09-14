@@ -236,7 +236,7 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS class_schedule (
       id TEXT PRIMARY KEY,
       term INTEGER NOT NULL DEFAULT 0 CHECK (term IN (0, 1, 2)),
-      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),
+      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
       period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
       subject TEXT NOT NULL,
       class_name TEXT NOT NULL DEFAULT '',
@@ -257,7 +257,7 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS lesson_topics (
       id TEXT PRIMARY KEY,
       week_start DATE NOT NULL,
-      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),
+      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
       period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
       subject TEXT NOT NULL DEFAULT '',
       class_name TEXT NOT NULL DEFAULT '',
@@ -267,6 +267,24 @@ async function initDb() {
     )
   `);
   await query(`CREATE INDEX IF NOT EXISTS lesson_topics_week_idx ON lesson_topics (week_start DESC)`);
+
+  // CIZELGE 7 GUNLUK OLDU. Iki tablonun da gun kontrolu 1-5 idi (Pzt-Cum);
+  // hafta sonuna ders koyan bir duzen (DYK, ek ders, kurs) programa hic
+  // girilemiyordu. CREATE TABLE IF NOT EXISTS var olan tabloyu degistirmedigi
+  // icin kisit elle genisletilir. Daraltma degil genisletme oldugundan mevcut
+  // satirlarin hepsi yeni kisiti saglar.
+  await query(`ALTER TABLE class_schedule DROP CONSTRAINT IF EXISTS class_schedule_day_of_week_check`);
+  await query(`
+    ALTER TABLE class_schedule
+    ADD CONSTRAINT class_schedule_day_of_week_check
+    CHECK (day_of_week BETWEEN 1 AND 7)
+  `);
+  await query(`ALTER TABLE lesson_topics DROP CONSTRAINT IF EXISTS lesson_topics_day_of_week_check`);
+  await query(`
+    ALTER TABLE lesson_topics
+    ADD CONSTRAINT lesson_topics_day_of_week_check
+    CHECK (day_of_week BETWEEN 1 AND 7)
+  `);
 
   // --- YDS / YOKDIL takibi -----------------------------------------------
   //

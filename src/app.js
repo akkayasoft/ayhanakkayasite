@@ -739,13 +739,13 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
 
     const dayInfo = academicCalendar.getDayInfo(day);
 
-    // Ders yalnizca gercek okul gununde gosterilir: hafta sonu, ara tatil,
-    // yariyil ve bayramda cizelge islemez.
+    // Ders, cizelgenin ISLEDIGI gunde gosterilir: hafta sonu artik cizelgede
+    // bir sutun oldugu icin dahil; ara tatil, yariyil ve bayramda degil.
     const haftaninGunu = schedule.dayOfWeek(day);
-    const dersler =
-      dayInfo.isSchoolDay && haftaninGunu
-        ? schedule.lessonsForDay(scheduleEntries, haftaninGunu, scheduleSettings)
-        : [];
+    const cizelgeIsler = scheduleAppliesOn(day);
+    const dersler = cizelgeIsler
+      ? schedule.lessonsForDay(scheduleEntries, haftaninGunu, scheduleSettings)
+      : [];
 
     return {
       date: day,
@@ -753,9 +753,12 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
       dayType: dayInfo.type,
       dayLabel: dayInfo.label,
       isSchoolDay: dayInfo.isSchoolDay,
+      // Rozet takvimin dogrusunu soyler ("Hafta sonu"), ders sayaci ise
+      // cizelgenin isleyip islemedigini: hafta sonuna ders konmussa sayilir.
+      dersGunu: cizelgeIsler,
       lessons: dersler,
       lessonCount: dersler.filter((d) => d.kind === 'lesson').length,
-      freePeriods: dayInfo.isSchoolDay && haftaninGunu
+      freePeriods: cizelgeIsler
         ? Math.max(0, scheduleSettings.periodCount - dersler.length)
         : null,
       dueCount: dueTasks.length,
@@ -1215,6 +1218,25 @@ function compareTasksBySchedule(a, b) {
   if (aTime !== bTime) return aTime.localeCompare(bTime);
 
   return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+}
+
+/**
+ * Cizelge bu gunde ISLER mi?
+ *
+ * Once yalnizca `isSchoolDay` (yani takvimin 'school' gunu) sayiliyordu ve bu
+ * dogruydu: cizelge Pzt-Cum idi, hafta sonunda zaten ders olamazdi. Cizelge
+ * 7 gune cikinca hafta sonu da bir CALISMA gunu olabiliyor (DYK, ek ders,
+ * kurs); oraya konan bir ders islenmez sayilsaydi ne haftalik takvimde
+ * gorunur, ne deftere yazilabilir, ne de defter gorevine sayilirdi.
+ *
+ * Bayram, ara tatil, yariyil tatili ve ogretim yili disi HALA sayilmaz —
+ * okul kapaliyken hafta sonu da ders islenmez. (`getDayInfo` tatil donemini
+ * hafta sonundan ONCE dondurdugu icin ara tatildeki cumartesi 'break' gelir
+ * ve dogru sekilde elenir.)
+ */
+function scheduleAppliesOn(dateStr) {
+  const bilgi = academicCalendar.getDayInfo(dateStr);
+  return bilgi.isSchoolDay || bilgi.type === 'weekend';
 }
 
 function isTaskDueOnDate(task, dateObj, dateStr) {
@@ -2463,7 +2485,7 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
   const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
 
   // Gun basliklari: haftanin gercek tarihleri + takvim durumu.
-  const gunler = [1, 2, 3, 4, 5].map((gun) => {
+  const gunler = schedule.GUNLER.map((gun) => {
     const tarih = shiftDate(weekStart, gun - 1);
     const bilgi = academicCalendar.getDayInfo(tarih);
     return {
@@ -2471,6 +2493,9 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
       gunAdi: schedule.GUN_ADLARI[gun],
       tarih,
       isSchoolDay: bilgi.isSchoolDay,
+      // Yazilabilirligin olcusu 'okul gunu' degil 'cizelge isler mi': hafta
+      // sonuna konan ders de deftere yazilir, tatil gunu yazilmaz.
+      dersGunu: scheduleAppliesOn(tarih),
       dayLabel: bilgi.label
     };
   });
@@ -2494,11 +2519,11 @@ async function buildTopicWeekView(req, ayar, kayitlar) {
   // Nobet saatine de konu yazilabildigi icin payda TUM dolu hucreleri sayar;
   // yalnizca dersleri saysaydi hepsi doldugunda "15 / 14" gibi bir sayac cikardi.
   const yazilabilir = izgara.reduce(
-    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.isSchoolDay).length,
+    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.dersGunu).length,
     0
   );
   const dolu = izgara.reduce(
-    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.isSchoolDay && h.topic).length,
+    (t, satir) => t + satir.hucreler.filter((h) => h.entry && h.dersGunu && h.topic).length,
     0
   );
 
@@ -2577,10 +2602,10 @@ function buildLessonLogWeeks(entries, ayar) {
   let weekStart = startOfWeek(start);
   while (weekStart <= end) {
     let yazilabilir = 0;
-    for (let gun = 1; gun <= 5; gun += 1) {
+    for (const gun of schedule.GUNLER) {
       const tarih = shiftDate(weekStart, gun - 1);
       if (tarih < start || tarih > end) continue;
-      if (!academicCalendar.getDayInfo(tarih).isSchoolDay) continue;
+      if (!scheduleAppliesOn(tarih)) continue;
       yazilabilir += entries.filter((e) => e.dayOfWeek === gun).length;
     }
 
@@ -2759,7 +2784,7 @@ async function completeLessonLogTasks() {
       if (!kayit.topic) continue;
       const [gun, saat] = anahtar.split(':').map(Number);
       const tarih = shiftDate(hafta.weekStart, gun - 1);
-      if (!academicCalendar.getDayInfo(tarih).isSchoolDay) continue;
+      if (!scheduleAppliesOn(tarih)) continue;
       if (!kayitlar.some((k) => k.dayOfWeek === gun && k.period === saat)) continue;
       dolu += 1;
     }
@@ -2800,7 +2825,7 @@ async function buildStudentScheduleView(req) {
     bitisSaati: schedule.endOfDay(ayar),
     toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
     varMi: kayitlar.length > 0,
-    gunSayilari: [1, 2, 3, 4, 5].map((gun) => ({
+    gunSayilari: schedule.GUNLER.map((gun) => ({
       dayOfWeek: gun,
       gunAdi: schedule.GUN_ADLARI[gun],
       dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
@@ -3002,7 +3027,7 @@ async function buildScheduleView(req) {
     ? kayitlar.find((k) => k.id === normalizeText(req.query.duzenle)) || null
     : null;
 
-  const gunSayilari = [1, 2, 3, 4, 5].map((gun) => ({
+  const gunSayilari = schedule.GUNLER.map((gun) => ({
     dayOfWeek: gun,
     gunAdi: schedule.GUN_ADLARI[gun],
     dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
@@ -4516,13 +4541,13 @@ async function saveLessonTopics(body) {
     if (!eslesme) continue;
     const gun = Number(eslesme[1]);
     const saat = Number(eslesme[2]);
-    if (!(gun >= 1 && gun <= 5) || !(saat >= 1 && saat <= ayar.periodCount)) continue;
+    if (!(gun >= 1 && gun <= 7) || !(saat >= 1 && saat <= ayar.periodCount)) continue;
 
     const ders = kayitByKey.get(`${gun}:${saat}`);
     if (!ders) continue;
 
     const gunTarihi = shiftDate(weekStart, gun - 1);
-    if (!academicCalendar.getDayInfo(gunTarihi).isSchoolDay) continue;
+    if (!scheduleAppliesOn(gunTarihi)) continue;
 
     girdiler.push({
       gun,
@@ -4881,7 +4906,7 @@ app.post(
     const room = normalizeText(req.body.room);
     const kind = normalizeText(req.body.kind) === 'duty' ? 'duty' : 'lesson';
 
-    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 5) {
+    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) {
       return adminRedirect(req, res, { error: 'Gün seçilmedi.' });
     }
     if (!Number.isInteger(period) || period < 1 || period > ayar.periodCount) {

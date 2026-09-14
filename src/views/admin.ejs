@@ -2067,8 +2067,8 @@
               <label>Gün</label>
               <select name="dayOfWeek" required>
                 <option value="">Seçin</option>
-                <% [1,2,3,4,5].forEach((g) => { %>
-                <option value="<%= g %>" <%= String(scheduleView.form.dayOfWeek) === String(g) ? 'selected' : '' %>><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][g] %></option>
+                <% [1,2,3,4,5,6,7].forEach((g) => { %>
+                <option value="<%= g %>" <%= String(scheduleView.form.dayOfWeek) === String(g) ? 'selected' : '' %>><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'][g] %></option>
                 <% }) %>
               </select>
 
@@ -2151,7 +2151,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
 
             <ul class="clean-list muted paste-hints">
               <li><strong>Blok ders:</strong> <code>1-2</code> ya da <code>2/4</code> yazarsan her saate ayrı ayrı işlenir.</li>
-              <li><strong>Gün adı:</strong> tam ad ya da kısaltma (<code>Pzt</code>, <code>Sal</code>, <code>Çar</code>, <code>Per</code>, <code>Cum</code>).</li>
+              <li><strong>Gün adı:</strong> tam ad ya da kısaltma (<code>Pzt</code>, <code>Sal</code>, <code>Çar</code>, <code>Per</code>, <code>Cum</code>, <code>Cmt</code>, <code>Paz</code>) — hafta sonu da yazılabilir.</li>
               <li><strong>Nöbet:</strong> ders adına <code>Nöbet</code> yaz, otomatik nöbet olarak işaretlenir.</li>
               <li><code>#</code> ile başlayan satırlar not sayılır, atlanır.</li>
               <li>
@@ -2175,9 +2175,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <section class="panel">
           <h3>Haftalık Çizelge</h3>
           <p class="muted">Boş hücredeki <strong>+</strong> ile o gün/saate ders eklersin; dolu hücreye tıklayınca düzenlersin.</p>
-          <% const gunAdlari = ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma']; %>
+          <% const gunAdlari = ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar']; %>
           <div class="table-wrap">
-            <div class="board" style="--gun-sayisi: 5; --saat-sayisi: <%= scheduleView.izgara.length %>">
+            <div class="board" style="--gun-sayisi: 7; --saat-sayisi: <%= scheduleView.izgara.length %>">
               <div class="board-corner">Saat</div>
               <% scheduleView.izgara.forEach((satir, i) => { %>
               <div class="board-time <%= satir.lunchAfter ? 'lunch-after' : '' %>" style="--s: <%= i + 2 %>">
@@ -2186,7 +2186,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               </div>
               <% }) %>
 
-              <% [1,2,3,4,5].forEach((g) => { %>
+              <% [1,2,3,4,5,6,7].forEach((g) => { %>
               <h4 class="board-dayhead" style="--g: <%= g + 1 %>"><%= gunAdlari[g] %></h4>
               <% scheduleView.izgara.forEach((satir, i) => { const h = satir.hucreler[g - 1]; %>
               <div
@@ -2288,15 +2288,15 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                 <h4 class="board-dayhead" style="--g: <%= gi + 2 %>">
                   <%= g.gunAdi %>
                   <span class="th-sub"><%= g.tarih.slice(5) %></span>
-                  <% if (!g.isSchoolDay) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
+                  <% if (!g.dersGunu) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
                 </h4>
                 <% tw.izgara.forEach((satir, i) => { const h = satir.hucreler[gi]; %>
                 <div
-                  class="board-cell <%= h.entry && h.isSchoolDay ? 'filled' : 'empty' %> <%= h.entry && !h.isSchoolDay ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
+                  class="board-cell <%= h.entry && h.dersGunu ? 'filled' : 'empty' %> <%= h.entry && !h.dersGunu ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                   style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
                 >
                   <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
-                  <% if (h.entry && h.isSchoolDay) { %>
+                  <% if (h.entry && h.dersGunu) { %>
                   <p class="topic-head">
                     <strong><%= h.entry.subject %></strong>
                     <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
@@ -2309,7 +2309,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                   <% if (!h.topic && h.oncekiTopic) { %>
                   <p class="topic-prev muted">geçen hafta: <%= h.oncekiTopic %></p>
                   <% } %>
-                  <% } else if (h.entry && !h.isSchoolDay) { %>
+                  <% } else if (h.entry && !h.dersGunu) { %>
                   <p class="muted topic-off"><%= h.dayLabel %></p>
                   <% } %>
                 </div>

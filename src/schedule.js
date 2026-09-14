@@ -7,7 +7,14 @@
  * elle girilirken kaymaz.
  */
 
-const GUN_ADLARI = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+// Cizelge 7 GUNLUK. Once Pzt-Cum idi; hafta sonuna ders koyan bir duzen
+// (DYK, ek ders, kurs) programa hic girilemiyordu. Gun numaralari ISO:
+// 1 = Pazartesi ... 7 = Pazar.
+const GUN_ADLARI = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+// Tek kaynak: izgara, gun ozeti ve gorunumler bu listeyi kullanir; boylece
+// "kac gun" sorusu tek yerde yanitlanir.
+const GUNLER = [1, 2, 3, 4, 5, 6, 7];
 
 const VARSAYILAN_AYAR = {
   startTime: '08:00',
@@ -68,10 +75,16 @@ function endOfDay(ayar = VARSAYILAN_AYAR) {
   return saatler.length ? saatler[saatler.length - 1].end : ayar.startTime;
 }
 
-/** Bir tarihin haftanin kacinci gunu oldugu (1=Pzt ... 5=Cuma, hafta sonu 0). */
+/**
+ * Bir tarihin haftanin kacinci gunu oldugu — ISO: 1=Pzt ... 7=Pazar.
+ *
+ * Once hafta sonu 0 donuyordu ve cagiranlar bunu "ders yok" diye okuyordu.
+ * Cizelge 7 gune cikinca hafta sonunun da bir sutunu var; "ders islenir mi"
+ * sorusunu takvim (academicCalendar) yanitlar, gun numarasi degil.
+ */
 function dayOfWeek(dateStr) {
   const gun = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
-  return gun >= 1 && gun <= 5 ? gun : 0;
+  return gun === 0 ? 7 : gun;
 }
 
 /**
@@ -84,7 +97,7 @@ function buildGrid(entries, ayar = VARSAYILAN_AYAR) {
 
   return saatler.map((saat) => ({
     ...saat,
-    hucreler: [1, 2, 3, 4, 5].map((gun) => ({
+    hucreler: GUNLER.map((gun) => ({
       dayOfWeek: gun,
       gunAdi: GUN_ADLARI[gun],
       entry: kayitByKey.get(`${gun}:${saat.period}`) || null
@@ -135,7 +148,9 @@ const GUN_ESLEME = new Map();
   [2, ['sali', 'sal', 'sl', 'tue', 'tuesday']],
   [3, ['carsamba', 'car', 'crs', 'crsm', 'wed', 'wednesday']],
   [4, ['persembe', 'per', 'prs', 'prsm', 'thu', 'thursday']],
-  [5, ['cuma', 'cum', 'cm', 'fri', 'friday']]
+  [5, ['cuma', 'cum', 'cm', 'fri', 'friday']],
+  [6, ['cumartesi', 'cmt', 'cts', 'cmrt', 'sat', 'saturday']],
+  [7, ['pazar', 'paz', 'pz', 'sun', 'sunday']]
 ].forEach(([no, adlar]) => adlar.forEach((ad) => GUN_ESLEME.set(ad, no)));
 
 function parseGun(deger) {
@@ -258,6 +273,7 @@ function parseScheduleText(metin, periodCount = 16) {
 
 module.exports = {
   GUN_ADLARI,
+  GUNLER,
   parseScheduleText,
   parseGun,
   parseSaatler,
