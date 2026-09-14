@@ -786,6 +786,36 @@ kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
 > verisini taşımayı gerektirirdi. Bir üçüncü rutin gerekirse önce o soyutlama
 > yapılmalı; iki kopya sınırdır.
 
+### Rutinler görev listesinde de görünür
+
+Uyanma ve spor, panonun tepesindeki şeride **ek olarak** "Görevlerim"
+tablosunda da birer satır olur — aynı sütunlar, aynı satır içi düzenleme.
+
+- Satırlar `tasks` kaydı **değildir**; görünüm modelinde üretilen sahte
+  satırlardır (`isRoutine: true`, id `routine-wake` / `routine-sport`).
+  Yalnızca **bugün** gösterilir: rutin günlüktür, geçmiş günleri listeye
+  doldurmak günlük görevleri boğardı.
+- İki sütun farklı davranır: **Durum** rutinin kendi rozetini gösterir
+  (Zamanında / Geç / Kaçırıldı + basılan saat + gecikme), **İşlem** ise tek
+  bir "İşaretle" düğmesidir — görevlerdeki iki düğme değil.
+- **Açıklama** `wake_logs.note` / `sport_logs.note` sütunlarında tutulur ve
+  satır içi düzenlenir. Yazma rotası `POST /student/routines/:tur/note`;
+  satır kendi uç noktasını `data-cell-endpoint` ile taşır, düzenleme betiği
+  o varsa onu kullanır (yoksa görev rotası).
+
+> Görevlerden ayrılan bir kural: **not işaretlemeyle kilitlenmez.** Rutin
+> sabah basılır, not ise çoğu zaman sonra yazılır ("3 km koştum"). İşaretle
+> kilitlemek alanı kullanılamaz hale getirirdi. Buna karşılık **basılmadan
+> not yazılamaz** — yazılacak günlük kayıt henüz yoktur; rota 409 ile
+> "Önce rutini işaretle" der. Yalnızca **bugünün** satırı yazılabilir.
+
+Doğrulandı: işaretlemeden önce satırlar listede "İşaretle" düğmesiyle çıkıyor
+ve açıklama kapalı; işaretledikten sonra rozet *"Geç · değiştirilemez"*,
+basılan saat ve gecikme görünüyor, açıklama **açılıyor** ve yazılan not
+kaydediliyor. İşaretlemeden not 409; admin → rota **403**; oturumsuz 302;
+geçersiz tür 404; rutini olmayan başka öğrenci kendi kaydı olmadığı için
+yazamıyor ve mevcut not değişmiyor.
+
 
 ## Aylık hedefler
 

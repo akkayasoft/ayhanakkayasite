@@ -333,6 +333,10 @@ async function initDb() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS wake_logs_student_day_idx ON wake_logs (student_id, day DESC)`);
 
+  // Ogrencinin o gune yazdigi serbest not. Gorevlerdeki "aciklama" alaninin
+  // rutin karsiligi; rutin gorev listesinde ayni sutunda gosterilir.
+  await query(`ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT ''`);
+
   // --- Gunluk spor rutini ------------------------------------------------
   //
   // Uyanma rutininin kardesi. Fark: hedef saat + tolerans yerine bir ARALIK
@@ -365,6 +369,8 @@ async function initDb() {
     )
   `);
   await query(`CREATE INDEX IF NOT EXISTS sport_logs_student_day_idx ON sport_logs (student_id, day DESC)`);
+
+  await query(`ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT ''`);
 
   // --- Puan sistemi kaldirildi -------------------------------------------
   //
