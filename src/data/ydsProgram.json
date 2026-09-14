@@ -8,7 +8,9 @@
  "gunDuzeni": "her-gun",
  "gunSet": "0,1,2,3,4,5,6",
  "dersGunleri": "0,1,3,6",
- "toplamParca": 40,
+ "toplamParca": 80,
+ "dersSayisi": 40,
+ "uygulamaSayisi": 40,
  "calismaGunu": 69,
  "doluGun": 69,
  "bekleyenGun": 0,
@@ -22,7 +24,7 @@
     {
      "id": "ders-01",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "01. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -33,14 +35,14 @@
    "tarih": "2026-09-15",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-15",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 01. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-prep-test-1",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Preposition Testi 1 — Dilbilgisi → Testler (01. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -54,7 +56,7 @@
     {
      "id": "ders-02",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "02. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -65,14 +67,14 @@
    "tarih": "2026-09-17",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-17",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 02. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-prep-test-2",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Preposition Testi 2 — Dilbilgisi → Testler (02. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -81,14 +83,22 @@
    "tarih": "2026-09-18",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-18",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 02. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-5",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 5 — Dilbilgisi → Testler (02. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-test-grammar-test-6",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 6 — Dilbilgisi → Testler (02. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -102,7 +112,7 @@
     {
      "id": "ders-03",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "03. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -118,7 +128,7 @@
     {
      "id": "ders-04",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "04. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -134,7 +144,7 @@
     {
      "id": "ders-05",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "05. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -145,14 +155,14 @@
    "tarih": "2026-09-22",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-22",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 05. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-7",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 7 — Dilbilgisi → Testler (05. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -166,7 +176,7 @@
     {
      "id": "ders-06",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "06. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -177,14 +187,22 @@
    "tarih": "2026-09-24",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-24",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 06. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-8",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 8 — Dilbilgisi → Testler (06. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-test-grammar-test-9",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 9 — Dilbilgisi → Testler (06. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -193,14 +211,14 @@
    "tarih": "2026-09-25",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-25",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 06. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-10",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 10 — Dilbilgisi → Testler (06. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -214,7 +232,7 @@
     {
      "id": "ders-07",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "07. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -230,7 +248,7 @@
     {
      "id": "ders-08",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "08. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -246,7 +264,7 @@
     {
      "id": "ders-09",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "09. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -257,14 +275,22 @@
    "tarih": "2026-09-29",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-09-29",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 09. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-11",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 11 — Dilbilgisi → Testler (09. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-test-grammar-test-12",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 12 — Dilbilgisi → Testler (09. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -278,7 +304,7 @@
     {
      "id": "ders-10",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "10. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -289,14 +315,14 @@
    "tarih": "2026-10-01",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-01",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 10. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-test-grammar-test-13",
+     "tur": "test",
+     "turAdi": "yds.obs · Test",
+     "baslik": "Dilbilgisi Testi 13 — Dilbilgisi → Testler (10. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -305,14 +331,14 @@
    "tarih": "2026-10-02",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-02",
+     "id": "uyg-kelime-vocab-verbs-1",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 10. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 1 — Kelime → Desteler (10. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -326,7 +352,7 @@
     {
      "id": "ders-11",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "11. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -342,7 +368,7 @@
     {
      "id": "ders-12",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "12. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -358,7 +384,7 @@
     {
      "id": "ders-13",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "13. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -369,14 +395,22 @@
    "tarih": "2026-10-06",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-06",
+     "id": "uyg-kelime-vocab-verbs-2",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 13. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 2 — Kelime → Desteler (13. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-vocab-verbs-3",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 3 — Kelime → Desteler (13. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -390,7 +424,7 @@
     {
      "id": "ders-14",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "14. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -401,14 +435,14 @@
    "tarih": "2026-10-08",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-08",
+     "id": "uyg-kelime-vocab-verbs-4",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 14. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 4 — Kelime → Desteler (14. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -417,14 +451,22 @@
    "tarih": "2026-10-09",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-09",
+     "id": "uyg-kelime-vocab-verbs-5",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 14. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 5 — Kelime → Desteler (14. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-vocab-verbs-6",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Eş Anlamlı Fiiller — Grup 6 — Kelime → Desteler (14. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -438,7 +480,7 @@
     {
      "id": "ders-15",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "15. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -454,7 +496,7 @@
     {
      "id": "ders-16",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "16. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -470,7 +512,7 @@
     {
      "id": "ders-17",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "17. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -481,14 +523,14 @@
    "tarih": "2026-10-13",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-13",
+     "id": "uyg-kelime-phrasal-1",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 17. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 1 — Kelime → Desteler (17. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -502,7 +544,7 @@
     {
      "id": "ders-18",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "18. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -513,14 +555,22 @@
    "tarih": "2026-10-15",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-15",
+     "id": "uyg-kelime-phrasal-2",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 18. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 2 — Kelime → Desteler (18. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-phrasal-3",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 3 — Kelime → Desteler (18. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -529,14 +579,14 @@
    "tarih": "2026-10-16",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-16",
+     "id": "uyg-kelime-phrasal-4",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 18. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 4 — Kelime → Desteler (18. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -550,7 +600,7 @@
     {
      "id": "ders-19",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "19. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -566,7 +616,7 @@
     {
      "id": "ders-20",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "20. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -582,7 +632,7 @@
     {
      "id": "ders-21",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "21. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -593,14 +643,14 @@
    "tarih": "2026-10-20",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-20",
+     "id": "uyg-kelime-phrasal-5",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 21. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 5 — Kelime → Desteler (21. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -614,7 +664,7 @@
     {
      "id": "ders-22",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "22. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -625,14 +675,22 @@
    "tarih": "2026-10-22",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-22",
+     "id": "uyg-kelime-phrasal-6",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 22. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 6 — Kelime → Desteler (22. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-phrasal-7",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 7 — Kelime → Desteler (22. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -641,14 +699,14 @@
    "tarih": "2026-10-23",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-23",
+     "id": "uyg-kelime-phrasal-8",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 22. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 8 — Kelime → Desteler (22. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -662,7 +720,7 @@
     {
      "id": "ders-23",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "23. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -678,7 +736,7 @@
     {
      "id": "ders-24",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "24. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -694,7 +752,7 @@
     {
      "id": "ders-25",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "25. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -705,14 +763,22 @@
    "tarih": "2026-10-27",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-27",
+     "id": "uyg-kelime-phrasal-9",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 25. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 9 — Kelime → Desteler (25. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-phrasal-10",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 10 — Kelime → Desteler (25. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -726,7 +792,7 @@
     {
      "id": "ders-26",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "26. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -737,14 +803,14 @@
    "tarih": "2026-10-29",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-29",
+     "id": "uyg-kelime-phrasal-11",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 26. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 11 — Kelime → Desteler (26. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -753,14 +819,22 @@
    "tarih": "2026-10-30",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-10-30",
+     "id": "uyg-kelime-phrasal-12",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 26. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 12 — Kelime → Desteler (26. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-phrasal-13",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 13 — Kelime → Desteler (26. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -774,7 +848,7 @@
     {
      "id": "ders-27",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "27. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -790,7 +864,7 @@
     {
      "id": "ders-28",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "28. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -806,7 +880,7 @@
     {
      "id": "ders-29",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "29. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -817,14 +891,14 @@
    "tarih": "2026-11-03",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-03",
+     "id": "uyg-kelime-phrasal-14",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 29. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 14 — Kelime → Desteler (29. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -838,7 +912,7 @@
     {
      "id": "ders-30",
      "tur": "konu",
-     "turAdi": "Ders",
+     "turAdi": "Video Ders",
      "baslik": "30. (ders başlığı girilmedi)",
      "sure": 180,
      "tekrar": 0
@@ -849,14 +923,14 @@
    "tarih": "2026-11-05",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-05",
+     "id": "uyg-kelime-phrasal-15",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 30. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 15 — Kelime → Desteler (30. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -865,14 +939,22 @@
    "tarih": "2026-11-06",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-06",
+     "id": "uyg-kelime-phrasal-16",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 30. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 16 — Kelime → Desteler (30. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-kelime-phrasal-17",
+     "tur": "kelime",
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 17 — Kelime → Desteler (30. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -886,8 +968,8 @@
     {
      "id": "ders-31",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "31. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "31. Deneme Analizi 1",
      "sure": 180,
      "tekrar": 0
     }
@@ -902,8 +984,8 @@
     {
      "id": "ders-32",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "32. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "32. Deneme Analizi 2",
      "sure": 180,
      "tekrar": 0
     }
@@ -918,8 +1000,8 @@
     {
      "id": "ders-33",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "33. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "33. Deneme Analizi 3",
      "sure": 180,
      "tekrar": 0
     }
@@ -929,14 +1011,14 @@
    "tarih": "2026-11-10",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-10",
+     "id": "uyg-kelime-phrasal-18",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 33. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 18 — Kelime → Desteler (33. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -950,8 +1032,8 @@
     {
      "id": "ders-34",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "34. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "34. Deneme Analizi 4",
      "sure": 180,
      "tekrar": 0
     }
@@ -961,14 +1043,22 @@
    "tarih": "2026-11-12",
    "gunAdi": "Perşembe",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-12",
+     "id": "uyg-kelime-phrasal-19",
      "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 34. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "turAdi": "yds.obs · Kelime",
+     "baslik": "Phrasal Verbs — Grup 19 — Kelime → Desteler (34. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma-reading-1",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Trees From The Wood — Reading (34. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -977,14 +1067,14 @@
    "tarih": "2026-11-13",
    "gunAdi": "Cuma",
    "durum": "dolu",
-   "toplamSure": 50,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "tekrar-2026-11-13",
-     "tur": "kelime",
-     "turAdi": "Hızlı Tekrar",
-     "baslik": "20 dk kelime + 34. (ders başlığı girilmedi) özeti",
-     "sure": 50,
+     "id": "uyg-okuma-reading-2",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Why Smoking Rates Aren't Falling — Reading (34. ders sonrası)",
+     "sure": 60,
      "tekrar": 0
     }
    ]
@@ -998,8 +1088,8 @@
     {
      "id": "ders-35",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "35. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "35. Deneme Analizi 5",
      "sure": 180,
      "tekrar": 0
     }
@@ -1014,8 +1104,8 @@
     {
      "id": "ders-36",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "36. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "36. Deneme Analizi 6",
      "sure": 180,
      "tekrar": 0
     }
@@ -1030,8 +1120,8 @@
     {
      "id": "ders-37",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "37. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "37. Deneme Analizi 7",
      "sure": 180,
      "tekrar": 0
     }
@@ -1041,14 +1131,22 @@
    "tarih": "2026-11-17",
    "gunAdi": "Salı",
    "durum": "dolu",
-   "toplamSure": 180,
+   "toplamSure": 60,
    "parcalar": [
     {
-     "id": "ders-38",
-     "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "38. (ders başlığı girilmedi)",
-     "sure": 180,
+     "id": "uyg-okuma-reading-3",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "A 'Mini Ice Age' Is Coming — Reading (37. ders sonrası)",
+     "sure": 30,
+     "tekrar": 0
+    },
+    {
+     "id": "uyg-okuma-reading-4",
+     "tur": "okuma",
+     "turAdi": "yds.obs · Okuma",
+     "baslik": "Deadlier Than Sharks: Selfies — Reading (37. ders sonrası)",
+     "sure": 30,
      "tekrar": 0
     }
    ]
@@ -1060,10 +1158,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-39",
+     "id": "ders-38",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "39. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "38. Deneme Analizi 8",
      "sure": 180,
      "tekrar": 0
     }
@@ -1076,10 +1174,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "ders-40",
+     "id": "ders-39",
      "tur": "konu",
-     "turAdi": "Ders",
-     "baslik": "40. (ders başlığı girilmedi)",
+     "turAdi": "Deneme Analizi",
+     "baslik": "39. Deneme Analizi 9",
      "sure": 180,
      "tekrar": 0
     }
@@ -1092,10 +1190,10 @@
    "toplamSure": 180,
    "parcalar": [
     {
-     "id": "deneme-01",
-     "tur": "test",
-     "turAdi": "Deneme",
-     "baslik": "1. tam deneme — 180 dk tek oturum + hata analizi",
+     "id": "ders-40",
+     "tur": "konu",
+     "turAdi": "Deneme Analizi",
+     "baslik": "40. Deneme Analizi 10",
      "sure": 180,
      "tekrar": 0
     }

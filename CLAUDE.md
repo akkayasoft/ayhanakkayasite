@@ -370,61 +370,54 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 ### Sınav programı (22 Kasım 2026 YDS) — şu an yürürlükte olan program
 
 `scripts/yds-sinav-programi-uret.js` **aynı** `src/data/ydsProgram.json`
-dosyasını üretir; yani iki üretici **birbirinin yerine geçer**, aynı anda
-kullanılamaz. Şu an dosyanın sahibi bu betik (`surum: 2026-2027.sinav.1`).
-`yds-program-uret.js`'i çalıştırmak sınav programını siler — sınavdan sonra
-bilinçli olarak yapılacak iş.
+dosyasını üretir; iki üretici **birbirinin yerine geçer**, aynı anda
+kullanılamaz. Şu an dosyanın sahibi bu betik. `yds-program-uret.js`'i
+çalıştırmak sınav programını siler — sınavdan sonra bilinçli olarak yapılacak iş.
 
-**Neden ayrı bir üretici:** `yds-program-uret.js` uygulamanın kendi içeriğini
-(56 parça) günlük dakika bütçesine göre yayar — açık uçlu. Bu betik sabit
-sıralı **40 dersi** sabit bir sınav tarihine doğru, **günde bir ders** olacak
-şekilde yerleştirir. İkisi aynı çıktı biçimini ürettiği için aktarım,
-idempotentlik ve "geçmiş + işaretli görev korunur" güvenceleri değişmeden
-çalışır.
+**Haftalık desen (kullanıcının koyduğu, değiştirilemez):**
 
-- **Ders listesi:** `src/data/ydsDersleri.json` (40 kayıt: `no`, `baslik`,
-  `sure`). Başlıklar **yer tutucu** — Ankara Dil setinin gerçek ders adları
-  henüz `yds-yokdil-app` deposunda yok (`content/lessons.json` içinde 2 ders
-  transkribe edilmiş; kaynak PDF'ler yereldeki `../ankaradilydspdf/`). Gerçek
-  başlıklar girilince yalnızca bu dosya değişir, program tek komutla yeniden
-  üretilir.
-- **Gün tipleri:** `ders` (Pzt/Çar/Cmt/Paz, 180 dk) · `tekrar` (Sal/Per/Cum,
-  50 dk: 20 dk kelime + önceki dersin özeti) · `deneme` (180 dk) · `hafif`
-  (sınavdan önceki gün, yalnız hata defteri).
-- **Ders günleri kutsaldır.** Ders YALNIZCA seçili günlere konur; Sal/Per/Cum
-  günlerine dokunulmaz. Üretici sonunda bunu **denetler** ve ihlal varsa hata
-  verip çıkar — sessizce yanlış program yazmaz.
-- **Son hafta istisna** (`--sinav-blogu`, varsayılan son 6 gün = 16-21 Kasım):
-  orada her gün kullanılabilir. Ders penceresine sığmayan dersler buraya taşar;
-  bu bir çaresizlik değil tercih — setin **son dersleri deneme sınavı
-  analizidir**, yani sınavdan hemen önce işlenmeleri doğru yer. Dersler
-  bittikten sonra kalan gün tam denemeye, son gün hafif tekrara ayrılır.
+| Gün | Ne | Süre |
+|---|---|---|
+| Pzt · Çar · Cmt · Paz | 1 video ders | 180 dk |
+| Sal · Per · Cum | o derslere ait **yds.obs uygulamaları** | 60 dk |
+
+- **40 ders**, `src/data/ydsDersleri.json`. İlk 30'u video ders; **son 10'u
+  deneme analizi videosudur** (`tur: 'deneme-analizi'`). Video derslerin
+  başlıkları hâlâ **yer tutucu** — Ankara Dil setinin gerçek adları
+  `yds-yokdil-app` deposunda yok, kaynak PDF'ler yereldeki
+  `../ankaradilydspdf/`. Başlıklar girilince yalnızca bu dosya değişir.
+- **40 uygulama**, `src/data/ydsUygulamalar.json` — yds.obs'un gerçek içeriği:
+  2 preposition + 9 dilbilgisi testi, 25 kelime destesi, 4 okuma ünitesi.
+  `yds-yokdil-app/content/*.json` içinden çıkarıldı; içerik büyüyünce yeniden
+  çıkarılmalı. Görev başlığı gerçek ekranı gösterir
+  (*"Dilbilgisi Testi 7 — Dilbilgisi → Testler (06. ders sonrası)"*).
+- Uygulamalar uygulama günlerine **eşit dağıtılır**: 40 parça 28 güne
+  bölünmediği için bazı günler 2 parça alır. Havuz bitmişse o gün
+  "yds.obs'ta serbest çalışma" görevi açılır — konu uydurulmaz.
+- **Ders günleri kutsaldır.** Üretici sonunda **denetler**: son hafta dışında
+  seçili günler dışına ders düşmüşse hata verip çıkar.
+- **Son hafta istisna** (kullanıcı izin verdi): 40 ders 38 ders gününe
+  sığmadığı için son iki ders (39-40) son haftanın uygulama günlerine, **sona
+  en yakından** taşar. Ders penceresinin geri kalanına dokunulmaz.
+- **Sınavdan önceki gün hafif** (21 Kasım): yalnız hata defteri. Bu üreticinin
+  kendi kararı, kullanıcının şartnamesinde yok — istenirse o gün de ders günü
+  yapılabilir.
 
 > ⚠️ **İlk sürümün hatası: kullanıcının kısıtını kendi başına esnetmek.**
-> 40 ders 36 ders gününe sığmıyordu ve eksik 4 gün Sal/Per/Cum'dan "ödünç"
-> alınıyordu. Kullanıcı günleri açıkça vermişti; o günler dinlenme + hızlı
-> tekrar günü olarak tasarlanmıştı ve doldurulunca haftalık tempo
-> sürdürülemez hale geliyordu. Doğru çözüm taşmayı **son haftaya** vermekti —
-> zaten oraya ait oldukları için. Ders penceresi yetmediğinde kısıt esnetilmez,
-> taşma bildirilir.
+> Ders günleri yetmeyince eksik günler Sal/Per/Cum'dan "ödünç" alınıyordu.
+> Kullanıcı günleri açıkça vermişti. Doğru çözüm taşmayı **son haftaya**
+> vermekti. Ders penceresi yetmediğinde kısıt esnetilmez, taşma bildirilir.
 
 **Uygulama ayarı dosyayla eşleşmeli.** Program her güne içerik yazdığı için
 dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
 → Çalışma Günleri **"Her Gün" + 180 dk** olmalı; farklı olursa aktarım
-programı *yeniden yayar* ve bu özenle kurulmuş takvim bozulur.
+programı *yeniden yayar* ve bu takvim bozulur.
 
-Doğrulandı (temiz veritabanı, 14 Eylül saatiyle): 69 görev aktarıldı —
-**40 ders** (36'sı ders günlerinde, 4'ü son haftada), **27 hızlı tekrar**,
-**1 tam deneme** (20 Kasım), **1 hafif gün**; toplam 147 saat. Sınav öncesi
-her hafta tam olarak **4 ders / 14,5 saat**. Sal/Per/Cum gününe düşen ders
-sayısı **0** (hem üreticide hem veritabanında doğrulandı). İkinci aktarım
-0 görev ekledi; "yeniden yayıldı" mesajı çıkmadı — dosya olduğu gibi
-kullanıldı.
-
-> Bilinen boşluk: programda 20 Kasım'dan önce **ara ölçüm yok**. Deneme
-> günleri yalnızca seçili günlere ya da son haftaya konabildiği için ara
-> deneme yeri kalmadı. Kullanıcı isterse bir Cuma denemeye ayrılabilir —
-> ama bu Sal/Per/Cum kısıtını deldiği için **sorulmadan yapılmaz**.
+Doğrulandı (temiz veritabanı, 16 Eylül saatiyle): **81 görev** aktarıldı —
+30 video ders, 10 deneme analizi (7-20 Kasım), 40 yds.obs uygulaması (28 güne
+yayılmış, **hepsi birer kez**, kopya yok), 1 hafif gün; 69 gün, 150 saat.
+Ders gününe uygulama düşmedi, uygulama gününe ders düşmedi (son hafta hariç).
+İkinci aktarım 0 görev ekledi. Tüm öğrenci ve admin sayfaları 200.
 
 ### Çalışma günleri admin tarafından değiştirilebilir
 
