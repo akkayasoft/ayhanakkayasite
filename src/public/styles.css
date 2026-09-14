@@ -1032,6 +1032,40 @@ td, th {
   white-space: nowrap;
 }
 
+/* RUTIN SATIRLARI ISTISNA. Gorev satirinda "Son Saat" 07:30 gibi sabit
+   bicimli ve 72px sutuna sigiyor; rutinde ise hedef + tolerans ("06:00
+   (+10 dk)") ya da aralik ("06:15 - 06:30") yaziyor. Durum hucresinde de
+   rozetin yaninda basilan saat ve gecikme var. Ikisi de nowrap kaldigi icin
+   sutunu tasiriyordu (olculdu: Son Saat +36px, Durum +55px). Icerik artik
+   kisa/sabit bicimli olmadigi icin sarmasi gerekiyor — nowrap kurali zaten
+   yalnizca kisa alanlar icindi. */
+.student-task-row.routine-row .single-line-cell[data-field='estimatedTime'],
+.student-task-row.routine-row .status-cell {
+  white-space: normal;
+}
+
+/* Rozet ile ayrinti alt alta: yan yana dizmek 116px sutuna sigmiyor. */
+.student-task-row.routine-row .status-cell small {
+  display: block;
+  margin-top: 2px;
+}
+
+/* Saat hucresinde de ayrinti alt satira. Sutun 72px, yani yatay dolgu
+   dusuldugunde iceriye 39px kaliyor: "+10 dk" (42px) ve "-> 06:30" (53px)
+   oraya sigmiyor, tarayici "(+10 / dk)" gibi anlamsiz yerlerden kiriyordu.
+   Iki onlem: sag dolguyu iceriye birak (39px -> 52px) ve ayrinti satirini
+   kucult (12px -> "-> 06:30" 49px). Sol dolgu duruyor ki saat, gorev
+   satirlarindaki saatle ayni hizada bassin. */
+.student-task-row.routine-row .single-line-cell[data-field='estimatedTime'] {
+  padding-right: 4px;
+}
+
+.student-task-row.routine-row .single-line-cell[data-field='estimatedTime'] small {
+  display: block;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
 /* Kaydetme sonucu geri bildirimi (JS ekliyor) */
 .student-task-table tr.task-row-success td,
 .student-task-table tr.task-row-success:hover td {

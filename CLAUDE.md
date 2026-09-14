@@ -809,6 +809,35 @@ tablosunda da birer satır olur — aynı sütunlar, aynı satır içi düzenlem
 > not yazılamaz** — yazılacak günlük kayıt henüz yoktur; rota 409 ile
 > "Önce rutini işaretle" der. Yalnızca **bugünün** satırı yazılabilir.
 
+#### Rutin satırları iki sütunu taşırıyordu
+
+Rutin satırı eklenince tablo **taştı**; ölçüldü (1440px): *Son Saat* +36px,
+*Durum* +55px. Sebep, görev satırı için doğru olan iki kuralın rutinde
+geçerli olmaması:
+
+- `.single-line-cell` ve `.status-cell` `white-space: nowrap` taşıyor. Görevde
+  oraya `07:30` gibi **kısa ve sabit biçimli** bir değer giriyor; rutinde ise
+  hedef + tolerans (`06:00 (+10 dk)`), aralık (`06:15 - 06:30`) ya da rozetin
+  yanında basılan saat + gecikme (`07:00 · 60 dk gecikme`) var.
+- *Son Saat* sütunu 72px sabit; yatay dolgu düşülünce içeriye **39px** kalıyor.
+
+Çözüm yalnızca **rutin satırlarına** (`.student-task-row.routine-row`)
+kapsandı — normal görev satırlarının `nowrap`'ine dokunulmadı:
+
+1. İki hücrede `white-space: normal`, ayrıntı (`<small>`) alt satıra.
+2. *Son Saat* değeri **anlamlı yerden** ikiye bölünür: üst satır asıl saat
+   (`routineSaatAna` → `06:00` / `06:15`), alt satır ayrıntı
+   (`routineSaatAlt` → `+10 dk` / `→ 06:30`). Tek parça bırakılınca tarayıcı
+   `(+10` / `dk)` gibi anlamsız yerlerden kırıyordu.
+3. O hücrenin **sağ dolgusu** 4px'e iner (içerik 39px → 52px) ve ayrıntı
+   satırı 12px'e küçülür; böylece `→ 06:30` (49px) tek satırda durur. Sol
+   dolgu korunur — saat, görev satırlarındaki saatle aynı hizada başlar.
+
+Doğrulandı (1440 / 1180 / 390px, işaretli ve işaretsiz durumda, görev
+satırlarıyla birlikte): hücre taşması **0**, sayfa taşması **0**; görev
+satırında `07:30` ve `-` eskisi gibi tek satır; telefonda kart hücresi `flex`
+olduğu için saat ve ayrıntı yan yana kalıyor.
+
 Doğrulandı: işaretlemeden önce satırlar listede "İşaretle" düğmesiyle çıkıyor
 ve açıklama kapalı; işaretledikten sonra rozet *"Geç · değiştirilemez"*,
 basılan saat ve gecikme görünüyor, açıklama **açılıyor** ve yazılan not

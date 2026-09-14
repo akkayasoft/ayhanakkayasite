@@ -5738,10 +5738,17 @@ async function getStudentViewModel(req, currentPage) {
   ]) {
     if (currentPage !== 'dashboard' || !gorunum || !gorunum.routine) continue;
     const log = gorunum.todayLog;
-    const hedef =
+    // Saat hucresi 72px: tek parca metin ("06:00 (+10 dk)") oraya sigmiyor ve
+    // tarayici "(+10 / dk)" gibi anlamsiz yerlerden kiriyordu. Degeri ANLAMLI
+    // yerden iki satira boluyoruz: ust satir asil saat, alt satir ayrinti.
+    const saatAna = tur === 'wake' ? gorunum.routine.targetTime : gorunum.routine.startTime;
+    const saatAlt =
       tur === 'wake'
-        ? `${gorunum.routine.targetTime}${gorunum.routine.toleranceMinutes ? ` (+${gorunum.routine.toleranceMinutes} dk)` : ''}`
-        : `${gorunum.routine.startTime} - ${gorunum.routine.endTime}`;
+        ? gorunum.routine.toleranceMinutes
+          ? `+${gorunum.routine.toleranceMinutes} dk`
+          : ''
+        : `→ ${gorunum.routine.endTime}`;
+    const hedef = saatAlt ? `${saatAna} ${saatAlt}` : saatAna;
     rutinSatirlari.push({
       id: `routine-${tur}`,
       isRoutine: true,
@@ -5754,6 +5761,8 @@ async function getStudentViewModel(req, currentPage) {
       scheduleText: `${today} · Bugün`,
       singleDate: today,
       estimatedTime: hedef,
+      routineSaatAna: saatAna,
+      routineSaatAlt: saatAlt,
       description: log ? log.note : '',
       // Isaretlenince not hala yazilabilir: rutin sabah basilir, not sonra
       // yazilir. Basilmadan once yazacak kayit yok.
