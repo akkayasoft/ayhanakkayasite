@@ -3054,7 +3054,7 @@ async function buildScheduleView(req) {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|schedule|tasks(?:\/(?:create|update|active))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|schedule|tasks(?:\/(?:create|update|active|status))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -3220,6 +3220,124 @@ app.post('/logout', (req, res) => {
   });
 });
 
+// --- Gorev durumu duzeltme (admin) ----------------------------------------
+//
+// "Isaretleme kalicidir" kuralinin TEK istisnasi. Ogrenci son saati kacirinca
+// muhurleyici o ornege 'not_done' yaziyor; admin'in durum degistirme rotasi
+// hic olmadigi icin yapilmis bir is kalici olarak "yapilmadi" kaliyordu. Kural
+// esnetilmiyor — OGRENCI tarafi aynen kilitli; yalnizca admin'e bir kapi
+// aciliyor ve kapinin her kullanimi satirin icine yaziliyor (kim, ne zaman,
+// neyin uzerine).
+//
+// Duzeltme gorev degil GOREV ORNEGI (gorev + gun) seviyesinde calisir, cunku
+// durum da o seviyede tutulur: tekrarli bir gorevin dun ve bugun ayri
+// satirlari olur.
+
+const TASK_STATUS_FIX_ACTIONS = new Set(['done', 'not_done', 'clear']);
+
+/**
+ * Bu ornegin isaretini SILMEK kalici mi?
+ *
+ * `sealOverdueTaskStatuses` suresi dolmus ve isaretsiz her ornege 'not_done'
+ * yazar; penceresi son AUTO_LOCK_LOOKBACK_DAYS gundur ve 5 dakikada bir
+ * calisir. Bu pencereye dusen kilitli bir ornegin isaretini silmek en fazla
+ * 5 dakika yasar, sonra kendiliginden geri gelir. "Temizlendi" demek yalan
+ * olurdu; rota bu durumu reddeder, panel de dugmeyi kapatir.
+ */
+function wouldSealerRewriteStatus(task, day, today, nowHm) {
+  if (!isTaskInstanceLocked(task, day, today, nowHm)) return false;
+  const lookbackStart = shiftDate(today, -AUTO_LOCK_LOOKBACK_DAYS);
+  const windowStart = [lookbackStart, AUTO_LOCK_START_DATE, SYSTEM_START_DATE].sort().pop();
+  return day >= windowStart && day <= today;
+}
+
+/** Arsivlenmis gorevin GECMIS ornegi de duzeltilebilmeli; arsiv bayragi
+ *  yalnizca "yeni ornek acilmasin" demektir, gecmisi yok saymaz. */
+function isTaskDueOnDateIgnoringArchive(task, dateObj, dateStr) {
+  return isTaskDueOnDate({ ...task, isArchived: false }, dateObj, dateStr);
+}
+
+/**
+ * Duzeltme panelinin verisi: secili ogrencinin secili GUNDE vadesi gelen
+ * gorevleri ve o gune yazilmis durum satirlari. Gun bazli, cunku duzeltilen
+ * sey bir gorev degil o gorevin o gunku ornegidir.
+ */
+async function buildTaskStatusFixView(req, students, tasks, today) {
+  const studentIdRaw = normalizeText(req.query.fixStudentId);
+  const student = students.find((s) => s.id === studentIdRaw) || students[0] || null;
+  const dayRaw = normalizeText(req.query.fixDay);
+  const day = isDateOnly(dayRaw) ? dayRaw : today;
+
+  const ortak = {
+    students,
+    day,
+    prevDay: shiftDate(day, -1),
+    nextDay: shiftDate(day, 1),
+    today,
+    systemStartDate: SYSTEM_START_DATE,
+    beforeSystemStart: day < SYSTEM_START_DATE
+  };
+
+  if (!student) return { ...ortak, student: null, rows: [], doneCount: 0 };
+
+  const dayObj = new Date(`${day}T00:00:00`);
+  const nowHm = timeStringInTimeZone();
+
+  const dueTasks = tasks
+    .filter((t) => t.studentId === student.id && isTaskDueOnDateIgnoringArchive(t, dayObj, day))
+    .sort(
+      (a, b) =>
+        taskDeadlineTime(a).localeCompare(taskDeadlineTime(b)) ||
+        String(a.title || '').localeCompare(String(b.title || ''), 'tr')
+    );
+
+  const statusesRes = await query(
+    `
+      SELECT
+        ts.task_id AS "taskId",
+        ts.status,
+        ts.corrected_at AS "correctedAt",
+        ts.previous_status AS "previousStatus",
+        ts.correction_note AS "correctionNote",
+        u.name AS "correctedByName"
+      FROM task_statuses ts
+      LEFT JOIN users u ON u.id = ts.corrected_by
+      WHERE ts.student_id = $1 AND ts.day = $2::date
+    `,
+    [student.id, day]
+  );
+  const byTask = new Map(statusesRes.rows.map((r) => [r.taskId, r]));
+
+  const rows = dueTasks.map((task) => {
+    const st = byTask.get(task.id) || null;
+    return {
+      task,
+      status: st ? st.status : null,
+      statusText: !st ? 'İşaretlenmedi' : st.status === 'done' ? 'Yapıldı' : 'Yapılmadı',
+      deadline: taskDeadlineTime(task),
+      locked: isTaskInstanceLocked(task, day, today, nowHm),
+      canClear: Boolean(st) && !wouldSealerRewriteStatus(task, day, today, nowHm),
+      correctedAt: st && st.correctedAt ? st.correctedAt : null,
+      correctedByName: st ? st.correctedByName : null,
+      previousStatusText: !st
+        ? ''
+        : st.previousStatus === 'done'
+          ? 'Yapıldı'
+          : st.previousStatus === 'not_done'
+            ? 'Yapılmadı'
+            : 'İşaretsiz',
+      correctionNote: st ? st.correctionNote || '' : ''
+    };
+  });
+
+  return {
+    ...ortak,
+    student,
+    rows,
+    doneCount: rows.filter((r) => r.status === 'done').length
+  };
+}
+
 async function getAdminViewModel(req, currentPage) {
   const [usersRes, studentsRes, categoriesRes, tasksRes] = await Promise.all([
     query(
@@ -3276,6 +3394,9 @@ async function getAdminViewModel(req, currentPage) {
   const yzProgramView = currentPage === 'yz-program' ? await buildYzProgramView(req, students) : null;
 
   const goalsView = currentPage === 'goals' ? await buildMonthlyGoalsView(req, students) : null;
+
+  const taskStatusFixView =
+    currentPage === 'tasks-status' ? await buildTaskStatusFixView(req, students, tasks, today) : null;
 
   const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
   const ydsView = currentPage === 'yds' ? await buildYdsView(30) : null;
@@ -3511,6 +3632,7 @@ async function getAdminViewModel(req, currentPage) {
     archivedTasks,
     taskTableTasks,
     taskForm,
+    taskStatusFixView,
     activeTaskFilters: {
       studentId: activeTaskStudentId
     },
@@ -3620,12 +3742,13 @@ app.get(
     if (req.params.section === 'export-active') {
       return next();
     }
-    const allowedSections = new Set(['create', 'update', 'active']);
+    const allowedSections = new Set(['create', 'update', 'active', 'status']);
     const section = allowedSections.has(req.params.section) ? req.params.section : 'active';
     const pageMap = {
       create: 'tasks-create',
       update: 'tasks-update',
-      active: 'tasks-active'
+      active: 'tasks-active',
+      status: 'tasks-status'
     };
     const viewModel = await getAdminViewModel(req, pageMap[section]);
     return res.render('admin', viewModel);
@@ -5534,6 +5657,126 @@ app.post(
     }
 
     return adminRedirect(req, res, { message: 'Görev yeniden aktifleşti.' });
+  })
+);
+
+// ISARETLEMENIN TEK GERI DONUSU. Ogrenci tarafinda isaret kalicidir; burada
+// admin bir GOREV ORNEGININ (gorev + gun) durumunu duzeltebilir. Gerekce:
+// ogrenci son saati kacirinca muhurleyici 'not_done' yaziyor ve yapilmis bir
+// is kalici olarak "yapilmadi" gorunuyordu — telafisi veritabanina elle
+// mudahaleden baska yoktu.
+//
+// Her duzeltme satirin icine yazilir (corrected_by / corrected_at /
+// previous_status / correction_note), yani kapi sessiz degildir.
+app.post(
+  '/admin/tasks/:taskId/status-fix',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const action = normalizeText(req.body.action);
+    const day = normalizeText(req.body.day);
+
+    if (!TASK_STATUS_FIX_ACTIONS.has(action)) {
+      return adminRedirect(req, res, { error: 'Geçersiz işlem.' });
+    }
+    if (!isDateOnly(day)) {
+      return adminRedirect(req, res, { error: 'Geçersiz gün.' });
+    }
+
+    const notDogrulama = validateTaskDescription(req.body.note);
+    if (!notDogrulama.ok) {
+      return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const taskRes = await query(
+      `
+        SELECT
+          id, title, student_id AS "studentId", repeat_type AS "repeatType",
+          single_date AS "singleDate", weekly_day AS "weeklyDay",
+          monthly_day AS "monthlyDay", custom_dates AS "customDates",
+          start_date AS "startDate", end_date AS "endDate",
+          estimated_time AS "estimatedTime", is_archived AS "isArchived"
+        FROM tasks WHERE id = $1
+      `,
+      [taskId]
+    );
+    if (taskRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Görev bulunamadı.' });
+    }
+    const task = mapTask(taskRes.rows[0]);
+
+    // Formdan gelen beklenmedik bir gun kayit acmasin: durum ancak gorevin
+    // GERCEKTEN vadesi geldigi gune yazilir.
+    const dayObj = new Date(`${day}T00:00:00`);
+    if (!isTaskDueOnDateIgnoringArchive(task, dayObj, day)) {
+      return adminRedirect(req, res, {
+        error: `Bu görev ${day} günü için tanımlı değil; o güne durum yazılamaz.`
+      });
+    }
+
+    // Sistem taban tarihinden onceki gunler her acilista siliniyor; oraya
+    // yazmak "duzelttim" deyip kaydi kaybetmek olurdu.
+    if (day < SYSTEM_START_DATE) {
+      return adminRedirect(req, res, {
+        error: `Sistem ${SYSTEM_START_DATE} tarihinde başlıyor; daha eski günlere durum yazılamaz.`
+      });
+    }
+
+    const today = todayDateString();
+    const nowHm = timeStringInTimeZone();
+    const mevcut = await query(
+      `SELECT status FROM task_statuses WHERE task_id = $1 AND student_id = $2 AND day = $3::date`,
+      [task.id, task.studentId, day]
+    );
+    const oncekiDurum = mevcut.rowCount ? mevcut.rows[0].status : null;
+    const etiket = (durum) =>
+      durum === 'done' ? 'Yapıldı' : durum === 'not_done' ? 'Yapılmadı' : 'İşaretsiz';
+    const kunye = `"${task.title}" · ${day}`;
+
+    if (action === 'clear') {
+      if (!oncekiDurum) {
+        return adminRedirect(req, res, { error: `${kunye} zaten işaretsiz.` });
+      }
+      // Muhurleyici 5 dakikada bir calisiyor: suresi dolmus bir ornegin
+      // isaretini silmek kalici degil, geri gelir. "Temizlendi" demek yalan
+      // olurdu.
+      if (wouldSealerRewriteStatus(task, day, today, nowHm)) {
+        return adminRedirect(req, res, {
+          error: `${kunye} süresi dolmuş bir görev; işaret silinse otomatik mühürleme 5 dakika içinde yeniden "Yapılmadı" yazar. Bunun yerine "Yapıldı" olarak düzeltin.`
+        });
+      }
+      await query(
+        `DELETE FROM task_statuses WHERE task_id = $1 AND student_id = $2 AND day = $3::date`,
+        [task.id, task.studentId, day]
+      );
+      return adminRedirect(req, res, {
+        message: `${kunye} işareti kaldırıldı (${etiket(oncekiDurum)} → İşaretsiz).`
+      });
+    }
+
+    if (oncekiDurum === action) {
+      return adminRedirect(req, res, { error: `${kunye} zaten "${etiket(action)}" durumunda.` });
+    }
+
+    await query(
+      `
+        INSERT INTO task_statuses
+          (id, task_id, student_id, day, status, note, corrected_by, corrected_at, previous_status, correction_note)
+        VALUES ($1, $2, $3, $4::date, $5, '', $6, NOW(), NULL, $7)
+        ON CONFLICT (task_id, student_id, day) DO UPDATE
+        SET status = EXCLUDED.status,
+            corrected_by = EXCLUDED.corrected_by,
+            corrected_at = NOW(),
+            previous_status = task_statuses.status,
+            correction_note = EXCLUDED.correction_note,
+            updated_at = NOW()
+      `,
+      [makeId('status'), task.id, task.studentId, day, action, req.currentUser.id, notDogrulama.value]
+    );
+
+    return adminRedirect(req, res, {
+      message: `${kunye}: ${etiket(oncekiDurum)} → ${etiket(action)} olarak düzeltildi.`
+    });
   })
 );
 
