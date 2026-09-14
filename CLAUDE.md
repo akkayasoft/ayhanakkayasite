@@ -184,7 +184,42 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 > önce işaretle), ama bir sabah unutulursa telafisi yoktur; gün sonu (23:59)
 > isteniyorsa toplu güncellemedeki **"Saati temizle"** kutusu kullanılır.
 
-### Saat sonradan girilebilir
+### Saat ve açıklama sonradan girilebilir
+
+Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
+saatleri gün sonudur. **Saat ve açıklama** görev kim tarafından açılmış olursa
+olsun düzenlenebilir; tek koşul görevin **kilitli olmaması**:
+
+- **Saat** — girmek son teslimi öne çeker, erteleyemez; üst sınır zaten gün
+  sonudur (23:59). Yani gevşetme değil sıkılaştırma.
+- **Açıklama** — öğrencinin kendi notu için: *"3. soruda takıldım"*,
+  *"yarım kaldı"*. Görevin **kimliğini** değiştirmez.
+- **Başlık, kategori, tarih** hâlâ yalnızca öğrencinin kendi açtığı tek
+  seferlik görevlerde açık (`canManage`). Görünüm modelinde `canEditTime` ve
+  `canEditDescription`, `canManage`'den ayrıdır.
+
+> ⚠️ **Elle yazılan açıklama aktarımda ezilmez.** YDS ve defter aktarımları
+> işaretlenmemiş + günü gelmemiş görevlerin başlık/açıklamasını tazeliyor;
+> önlem olmasa öğrencinin yazdığı not "Görevlere Aktar"a basınca silinirdi.
+> `tasks.description_edited` bayrağı öğrenci açıklamayı değiştirince kalkar ve
+> aktarım o satırda `description = CASE WHEN description_edited THEN
+> description ELSE $yeni END` ile açıklamaya dokunmaz. **Başlık yine tazelenir**
+> — program görevin kimliğinin kaynağıdır, not öğrencinin.
+> Doğrulandı: not yazıldıktan sonra ders başlığı değiştirilip yeniden
+> aktarıldı; başlık güncellendi, **not olduğu gibi kaldı**, dokunulmamış
+> görevin açıklaması da değişmedi.
+
+Doğrulandı: aktarılan görevde açıklama 200 ve bayrak kalkıyor; aynı görevde
+başlık ve kategori hâlâ **404**; kilitli (geçmiş) görevde açıklama **403** ve
+bayrak kalkmıyor; başka öğrencinin görevinde **404**; admin → öğrenci rotası
+**403**. Listede açıklama tam olarak saatle aynı davranıyor: bugün ve sonrası
+düzenlenebilir, geçmiş kilitli, konu her durumda kapalı.
+
+> Not: `task_detail_notes` tablosu şemada var ama **kodda hiç kullanılmıyor** —
+> eski bir tasarımdan kalma. Gün bazlı not gerekirse yeri orasıdır; şu an
+> öğrenci notu `tasks.description` alanında tutuluyor.
+
+### Saat sonradan girilebilir (eski başlık — yukarıdaki bölüme bakın)
 
 Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
 saatleri gün sonudur. Saat **sonradan elle girilebilir**:

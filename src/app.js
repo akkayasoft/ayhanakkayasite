@@ -2076,11 +2076,14 @@ async function importYdsProgram(studentId, createdBy) {
       const guncelleme = await client.query(
         `
           UPDATE tasks t
-          SET title = $1, description = $2, category_id = $3
+          SET title = $1,
+              description = CASE WHEN t.description_edited THEN t.description ELSE $2 END,
+              category_id = $3
           WHERE t.student_id = $4
             AND t.source_key = $5
             AND t.single_date >= $6::date
-            AND (t.title IS DISTINCT FROM $1 OR t.description IS DISTINCT FROM $2
+            AND (t.title IS DISTINCT FROM $1
+                 OR (NOT t.description_edited AND t.description IS DISTINCT FROM $2)
                  OR t.category_id IS DISTINCT FROM $3)
             AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
         `,
@@ -2632,11 +2635,15 @@ async function importLessonLogTasks(studentId, createdBy) {
       const guncelleme = await client.query(
         `
           UPDATE tasks t
-          SET title = $1, description = $2, category_id = $3, single_date = $4
+          SET title = $1,
+              description = CASE WHEN t.description_edited THEN t.description ELSE $2 END,
+              category_id = $3,
+              single_date = $4
           WHERE t.student_id = $5
             AND t.source_key = $6
             AND t.single_date >= $7::date
-            AND (t.title IS DISTINCT FROM $1 OR t.description IS DISTINCT FROM $2
+            AND (t.title IS DISTINCT FROM $1
+                 OR (NOT t.description_edited AND t.description IS DISTINCT FROM $2)
                  OR t.single_date IS DISTINCT FROM $4::date)
             AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
         `,
@@ -5638,8 +5645,12 @@ async function getStudentViewModel(req, currentPage) {
           task.createdBy === req.currentUser.id &&
           task.repeatType === 'once' &&
           !isTaskLockedNow(task, today, nowHm),
-        // Saat, aktarilan gorevlerde de girilebilir; tek kosul kilitli olmamasi.
+        // Saat ve aciklama aktarilan gorevlerde de girilebilir; tek kosul
+        // kilitli olmamasi. Aciklama ogrencinin kendi notu icin: "3. soruda
+        // takildim", "yarim kaldi" gibi. Digerleri (baslik, kategori, tarih)
+        // hala yalnizca kendi actigi gorevlerde acik.
         canEditTime: !isTaskLockedNow(task, today, nowHm),
+        canEditDescription: !isTaskLockedNow(task, today, nowHm),
         isLocked: isTaskLockedNow(task, today, nowHm)
       };
     });
@@ -6109,15 +6120,18 @@ app.post(
     const field = normalizeText(req.body.field);
     const value = normalizeText(req.body.value);
 
-    // Saat, kendi actigi gorevlerle sinirli DEGIL: aktarilan gorevler (YZ, YDS,
-    // defter) saatsiz geliyor ve son saatleri gun sonu (23:59) sayiliyor.
-    // Ogrenci kendi gorevine saat girebilmeli. Bu yetki gevsetmesi degil
-    // siki: saat girmek son teslimi one ceker, erteleyemez - ustsinir zaten
-    // gun sonudur. Diger alanlar (baslik, aciklama, kategori, tarih) eskisi
-    // gibi yalnizca ogrencinin kendi actigi tek seferlik gorevlerde acik.
-    const saatAlani = field === 'estimatedTime';
+    // Saat ve aciklama, kendi actigi gorevlerle sinirli DEGIL: aktarilan
+    // gorevler (YZ, YDS, defter) saatsiz geliyor ve ogrenci o gun ne
+    // yaptigini yazabilmeli. Bu bir yetki gevsetmesi degil: saat girmek son
+    // teslimi one ceker (erteleyemez), aciklama ise gorevin kimligini
+    // degistirmez. Baslik, kategori ve tarih eskisi gibi yalnizca ogrencinin
+    // kendi actigi tek seferlik gorevlerde acik.
+    // Aciklama da saat gibi: aktarilan gorevde de yazilabilir. Ogrenci o gun
+    // ne yaptigini/nerede takildigini yazabilmeli; bu gorevin KIMLIGINI
+    // degistirmez (baslik, kategori, tarih hala kapali).
+    const gevsekAlan = field === 'estimatedTime' || field === 'description';
     const taskRes = await query(
-      saatAlani
+      gevsekAlan
         ? `
         SELECT id
         FROM tasks
@@ -6162,7 +6176,11 @@ app.post(
       if (!descriptionValidation.ok) {
         return res.status(400).json({ ok: false, error: descriptionValidation.error });
       }
-      await query(`UPDATE tasks SET description = $1 WHERE id = $2`, [descriptionValidation.value, taskId]);
+      // Bayrak: bundan sonra aktarim bu aciklamayi tazelemesin.
+      await query(`UPDATE tasks SET description = $1, description_edited = TRUE WHERE id = $2`, [
+        descriptionValidation.value,
+        taskId
+      ]);
       return res.json({ ok: true, value: descriptionValidation.value, display: descriptionValidation.value || '-' });
     }
 

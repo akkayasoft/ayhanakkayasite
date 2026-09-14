@@ -103,6 +103,13 @@ async function initDb() {
   // tekrar eklemeden tanimak icin kaynak anahtari. Ayni ogrenciye ayni
   // source_key ikinci kez yazilamaz; boylece iceri aktarma idempotent olur.
   await query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_key TEXT`);
+
+  // Ogrenci aciklamayi elle degistirdiyse isaretlenir. Aktarimlar (YDS, defter)
+  // isaretlenmemis + gunu gelmemis gorevlerin aciklamasini tazeliyor; bayrak
+  // olmasa ogrencinin yazdigi not "Gorevlere Aktar"a basinca silinirdi.
+  await query(
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description_edited BOOLEAN NOT NULL DEFAULT FALSE`
+  );
   await query(`
     CREATE UNIQUE INDEX IF NOT EXISTS tasks_student_source_key_idx
     ON tasks (student_id, source_key)
