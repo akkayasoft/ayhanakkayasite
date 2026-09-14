@@ -804,7 +804,7 @@
                   <td><%= d.questionTotal %></td>
                   <td><%= d.durationMinutes %></td>
                   <td>
-                    <% if (!calendar.hasSchedule || !d.dersGunu) { %>
+                    <% if (!calendar.hasSchedule) { %>
                     <span class="muted">-</span>
                     <% } else { %>
                     <%= d.lessonCount %> ders<% if (d.freePeriods !== null) { %> <span class="muted">/ <%= d.freePeriods %> boş</span><% } %>
@@ -959,10 +959,28 @@
           </div>
         </header>
 
+        <%# Bos hafta ile "hic program yok" ayni sey degil: cizelge haftadan
+            haftaya degisebildigi icin bir hafta bilerek bos birakilmis
+            olabilir. Ikisini ayri soyluyoruz ve her durumda hafta gezinmesi
+            duruyor — yoksa bos bir haftada kullanici sikisip kalirdi. %>
         <% if (!scheduleView.varMi) { %>
-        <section class="panel narrow">
-          <h3>Program henüz girilmedi</h3>
-          <p class="muted">Ders çizelgesi tanımlandığında burada görünecek.</p>
+        <section class="panel">
+          <div class="datatable-toolbar">
+            <div>
+              <h3><%= scheduleView.ozelHafta ? 'Bu hafta ders yok' : 'Program henüz girilmedi' %></h3>
+              <p class="muted">
+                <%= scheduleView.hafta %> - <%= scheduleView.haftaSonu %> ·
+                <%= scheduleView.ozelHafta
+                      ? 'Bu hafta için çizelge bilerek boş bırakılmış.'
+                      : 'Ders çizelgesi tanımlandığında burada görünecek.' %>
+              </p>
+            </div>
+            <div class="row center">
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+            </div>
+          </div>
         </section>
         <% } else if (scheduleView.gorunum === 'cizelge') { %>
 
@@ -982,7 +1000,27 @@
         </section>
 
         <section class="panel">
-          <h3>Haftalık Çizelge</h3>
+          <div class="datatable-toolbar">
+            <div>
+              <h3>Haftalık Çizelge</h3>
+              <%# Cizelge haftadan haftaya degisebilir; bu yuzden ogrenci de
+                  hafta gezebilir. Varsayilan BU HAFTA'dir. %>
+              <p class="muted">
+                <%= scheduleView.hafta %> - <%= scheduleView.haftaSonu %>
+                <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
+                  · <%= scheduleView.haftaAkademik.termLabel %><% } %><%
+                  if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.weekNo) { %>
+                  · <%= scheduleView.haftaAkademik.weekNo %>. hafta<% } %>
+                <% if (scheduleView.ozelHafta) { %>
+                  · <span class="day-badge">bu haftaya özel</span><% } %>
+              </p>
+            </div>
+            <div class="row center">
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
+              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+            </div>
+          </div>
           <%
             // Hucreler GUN sirasiyla yazilir (once pazartesinin tum saatleri).
             // Masaustunde CSS grid her hucreyi --g/--s ile kendi yerine koyar;
@@ -1043,7 +1081,7 @@
             <p class="muted">
               <%= tw.academic.yearLabel %><% if (tw.academic.termLabel) { %> · <%= tw.academic.termLabel %><% } %><%
               if (tw.academic.weekNo) { %> · <%= tw.academic.weekNo %>. Hafta<% } %>
-              &nbsp;·&nbsp; <%= tw.dolu %> / <%= tw.yazilabilir %> ders saati yazılmış
+              &nbsp;·&nbsp; <%= tw.dolu %> / <%= tw.yazilabilir %> ders saati yazılmış<% if (tw.ozelHafta) { %>&nbsp;·&nbsp;<span class="day-badge">bu haftaya özel çizelge</span><% } %>
             </p>
           </div>
           <div class="row">
@@ -1074,15 +1112,15 @@
               <h4 class="board-dayhead" style="--g: <%= gi + 2 %>">
                 <%= g.gunAdi %>
                 <span class="th-sub"><%= g.tarih.slice(5) %></span>
-                <% if (!g.dersGunu) { %><span class="day-badge off"><%= g.dayLabel %></span><% } %>
+                <% if (g.olagandisi) { %><span class="day-badge off" title="Takvimde tatil — yine de yazabilirsin"><%= g.dayLabel %></span><% } %>
               </h4>
               <% tw.izgara.forEach((satir, i) => { const h = satir.hucreler[gi]; %>
               <div
-                class="board-cell <%= h.entry && h.dersGunu ? 'filled' : 'empty' %> <%= h.entry && !h.dersGunu ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
+                class="board-cell <%= h.entry ? 'filled' : 'empty' %> <%= h.entry && h.olagandisi ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                 style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
               >
                 <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
-                <% if (h.entry && h.dersGunu) { %>
+                <% if (h.entry) { %>
                 <p class="topic-head">
                   <strong><%= h.entry.subject %></strong>
                   <% if (h.entry.className) { %><span class="muted"><%= h.entry.className %></span><% } %>
@@ -1101,8 +1139,6 @@
                 <% } else { %>
                 <p class="muted topic-off">—</p>
                 <% } %>
-                <% } else if (h.entry && !h.dersGunu) { %>
-                <p class="muted topic-off"><%= h.dayLabel %></p>
                 <% } %>
               </div>
               <% }) %>

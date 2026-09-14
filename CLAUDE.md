@@ -674,25 +674,83 @@ hafta sonu kursu) programa hiç girilemiyordu. Artık çizelge **7 gündür**.
 - Toplu yapıştırma `Cumartesi` / `Cmt` / `Pazar` / `Paz` kısaltmalarını da tanır.
 
 > ⚠️ **Asıl mesele kısıt değil, "ders işlenir mi" kuralıydı.** Defter yazımı,
-> haftalık takvim ve defter görevi `getDayInfo().isSchoolDay`'e bakıyordu ve
-> hafta sonu `false` döner. Kural değişmeseydi cumartesiye konan ders ekranda
-> görünür ama **deftere yazılamaz, takvimde çıkmaz, defter görevine sayılmazdı**
-> — yarım bir özellik. Bu yüzden tek bir yardımcı eklendi:
-> `scheduleAppliesOn(tarih)` = `isSchoolDay || type === 'weekend'`.
-> **Bayram, ara tatil, yarıyıl tatili ve öğretim yılı dışı hâlâ sayılmaz** —
-> okul kapalıyken hafta sonu da ders işlenmez. Kullanan yerler: haftalık takvim
-> (ders listesi + "N ders / M boş"), defter ızgarası (yazılabilirlik + sayaç),
-> `buildLessonLogWeeks`, `completeLessonLogTasks` ve `saveLessonTopics`.
->
-> `getDayInfo` tatil dönemini hafta sonundan **önce** döndürdüğü için ara
-> tatildeki cumartesi `break` gelir ve doğru şekilde elenir. Ara tatil Pzt-Cum
-> tanımlı olduğundan **onu çevreleyen hafta sonu normal hafta sonudur** ve
-> oraya ders yazılabilir; istenmiyorsa o hafta boş bırakılır.
+> haftalık takvim ve defter görevi `getDayInfo().isSchoolDay`'e bakıyordu.
+> Kural değişmeseydi cumartesiye konan ders ekranda görünür ama **deftere
+> yazılamaz, takvimde çıkmaz, defter görevine sayılmazdı** — yarım bir özellik.
 
-Rozetler takvimin doğrusunu söylemeye devam eder: haftalık takvimde cumartesi
-hâlâ *"Hafta sonu"* rozeti taşır, yalnızca ders sayacı ve defter alanı açılır.
-Defter ızgarasında kapalı gün rozeti (*"1. Ara Tatil"*, *"Cumhuriyet Bayramı"*)
-artık **yazılamayan** günü işaretler — hafta sonu normal bir sütundur.
+### Takvim artık hiçbir şeyi engellemez
+
+İlk adımda hafta sonu açılmış, tatil günleri kapalı bırakılmıştı. Kullanıcı
+**tatil günlerinde de ders yapabildiğini** söyledi (telafi, kurs, bayram
+sonrası ek ders). Bu yüzden takvim kapısı **tamamen kaldırıldı**:
+
+- `academicCalendar` artık yalnızca **etiket** üretir. `isUnusualCalendarDay()`
+  (bayram / ara tatil / yarıyıl / öğretim yılı dışı) sadece defter ızgarasında
+  bilgi rozeti göstermek için kullanılır — *"takvimde tatil, yine de
+  yazabilirsin"*. Hiçbir hücreyi kapatmaz.
+- Haftalık takvim, defter yazımı, defter sayacı ve defter görevi artık
+  **hiçbir gün türünü elemez**.
+- Haftalık takvimdeki *"Hafta sonu"* / *"Cumhuriyet Bayramı"* rozetleri duruyor;
+  o günün dersi ve "N ders / M boş" sayacı da artık görünüyor.
+
+> **"Bu hafta ders yok" demenin doğru yeri artık takvim değil, HAFTAYA ÖZEL
+> ÇİZELGE'dir** (aşağıya bakın): o haftanın ızgarası boşaltılır. Böyle bir
+> haftada ders görünmez ve defter görevi de açılmaz.
+
+### Haftaya özel çizelge
+
+Çizelge tek bir haftalık şablondu ve her hafta aynı kabul ediliyordu; oysa
+hafta hafta değişebiliyor (seminer, sınav haftası, telafi dersi, DYK düzeni).
+
+- `class_schedule.week_start`: **`1900-01-01` = varsayılan şablon**, başka bir
+  tarih o haftanın kendi çizelgesi. `UNIQUE (week_start, term, day_of_week,
+  period)`. NULL yerine **sabit tarih** kullanıldı — Postgres'te NULL'lar
+  birbirinden farklı sayıldığı için NULL'lu bir UNIQUE aynı hücrenin iki kez
+  girilmesini engellemezdi (`term`'de de aynı sebeple 0 seçilmişti).
+- Çözümleme **birleştirme değil tam değiştirme**: hafta özelleştirilmişse o
+  hafta için şablon hiç kullanılmaz. Birleştirme *"bu hafta bu ders yok"*u
+  ifade edemezdi (silinen hücre için mezar taşı satırı gerekirdi).
+  Özelleştirme bu yüzden **şablonu o haftaya kopyalayarak** başlar.
+- `/admin/schedule?hafta=YYYY-MM-DD` → o haftanın ızgarası. Parametre yoksa
+  **varsayılan şablon** düzenlenir (eski davranış). Panelde hafta gezinmesi,
+  *"Bu haftayı özelleştir"* ve *"Varsayılan çizelgeye döndür"* düğmeleri var.
+  Öğrenci tarafında da hafta gezinmesi var; varsayılan **bu haftadır**.
+- Ders ekleme ve toplu yapıştırma bir haftaya yazarken **önce şablonu o haftaya
+  kopyalar** (`ensureWeekCustomized`). Önlem olmasa özelleştirilmemiş bir
+  haftaya tek ders eklemek o haftayı tek derslik bir çizelgeye çevirir ve
+  haftanın geri kalanı sessizce kaybolurdu.
+- *"Bu Haftayı Boşalt"* yalnızca o haftayı siler; varsayılan şablona dokunmaz.
+
+> ⚠️ **"Özel" işareti ders satırlarından AYRI tutulur** (`schedule_week_overrides`).
+> Özelliği satır varlığından türetmek denendi ve tutmadı: bir haftayı
+> özelleştirip **boşaltmak** ("bu hafta hiç ders yok") satırları sildiği için
+> hafta yeniden şablona dönüyordu — tam da anlatılmak isteneni silen bir
+> davranış. Ölçüldü: boşaltılan hafta şablonun 6 dersini geri gösteriyordu.
+> İşaret ayrı durunca *"özel ama boş"* ifade edilebilir hale geldi.
+
+- `buildLessonLogWeeks` her haftayı **kendi çizelgesiyle** hesaplar; boş özel
+  haftalar `getCustomScheduleWeeks()` haritasına **boş dizi** olarak girer,
+  yoksa şablona düşerlerdi.
+- `lesson_topics` zaten ders/sınıf adını kaydın içine kopyaladığı için
+  **geçmiş defter bozulmaz**: haftayı varsayılana döndürmek işlenen konuları
+  silmez.
+
+Doğrulandı (temiz veritabanı, 26 Ekim 2026 saatiyle): varsayılan şablona 6 ders
+yapıştırıldı; 2 Kasım haftasına **doğrudan** cumartesi dersi eklendi ve hafta
+kendiliğinden özelleşti (şablondan 6 ders kopyalandı, toplam 7); o haftadan bir
+ders silindi ve **varsayılan şablon değişmedi**. 9 Kasım haftası özelleştirilip
+boşaltıldı: işaret kaldı, 0 hücre yazılabilir, sayaç *0 / 0*, o hafta için
+**defter görevi açılmadı** (40 haftanın hiçbirinde yok) ve öğrenci tarafında
+*"Bu hafta ders yok"* yazıyor (hafta gezinmesi duruyor). *Varsayılana döndür*
+sonrası hafta yine 6 derslik şablonu kullandı, ikinci kez döndürme
+**reddedildi**. Tatil günü (29 Ekim, Cumhuriyet Bayramı) **yazılabilir** ve
+defter görevi o hücreyle birlikte 6/6 olunca `done` işaretlendi; 2 Kasım haftası
+cumartesi dersiyle birlikte 7/7 olunca `done` oldu. 1-5 kısıtlı **eski** bir
+veritabanı açılışta göç etti: eski kısıt düştü, satırlar `1900-01-01` şablonuna
+yerleşti, defter kaydı ve ders satırları korundu. Yetki: öğrenci beş admin
+rotasında **403**, oturumsuz **302**; öğretmen bayraklı öğrenci özel haftaya
+defter yazabildi, bayrak kalkınca **403** ve satır değişmedi. Üç genişlikte
+(1440 / 1180 / 390px) 13 sayfada **taşma 0**, JS hatası 0.
 
 Doğrulandı (temiz veritabanı, 21 Eylül 2026 saatiyle; Pzt-Cum + Cmt 2 ders +
 Paz 1 ders yapıştırıldı): çizelge 7 sütun, gün özeti 7 satır; defter ızgarasında
@@ -737,10 +795,8 @@ gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 4
 - Günlük ders saati sayısı küçültülürse kapsam dışı kalan kayıtlar silinir ve
   kaç tanesi silindiği mesajda bildirilir — yoksa öksüz satır kalırdı.
 - Çizelge **Haftalık Takvim'e** de işlenir: gün kartlarında o günün dersleri
-  saatleriyle, özet tablosunda "N ders / M boş" sütunu. Ders, çizelgenin
-  **işlediği** günde gösterilir (`scheduleAppliesOn`): hafta sonu artık dahil,
-  ara tatil / yarıyıl / bayramda `academicCalendar` devreye girer ve çizelge
-  işlemez.
+  saatleriyle, özet tablosunda "N ders / M boş" sütunu. **Her gün** işlenir —
+  hafta sonu da tatil de; o haftanın çizelgesi neyse o gösterilir.
 
 ### İşlenen konular (ders defteri)
 
@@ -754,9 +810,9 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
   çizelge sonradan değişse bile geçmiş defter okunabilir kalır — doğrulandı:
   bir ders silinip diğeri başka derse çevrildikten sonra defter satırları
   olduğu gibi durdu.
-- Sunucu tarafı yalnızca **çizelgede dersi olan** ve o gün **çizelgenin
-  işlediği** (`scheduleAppliesOn` — hafta sonu dahil, tatil hariç) hücreleri
-  yazar; formdan gelen beklenmedik anahtar kayıt açamaz.
+- Sunucu tarafı yalnızca **o haftanın çizelgesinde dersi olan** hücreleri
+  yazar; formdan gelen beklenmedik anahtar kayıt açamaz. Gün türü (hafta sonu,
+  tatil) artık hiçbir hücreyi kapatmaz.
 - Boş bırakılan alanın kaydı silinir (boş satır birikmez).
 - Dolu olmayan hücrede geçen haftanın konusu ipucu olarak gösterilir.
 - Sayaç paydası **tüm dolu hücreleri** sayar (nöbet dahil); yalnızca dersleri
@@ -1110,6 +1166,7 @@ yalnızca gelecek yeniden düzenlenir.*
 | Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
 | YDS uygulamasında "ilerlemeyi sıfırla" | Yalnızca `yds:` kaynaklı ayna satırları silinir | ✅ elle girilen soru kaydı korundu |
 | Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
+| Bir hafta özelleştirilir / varsayılana döndürülür | Yalnızca o haftanın `class_schedule` satırları değişir; **işlenen konular silinmez** (ders/sınıf adı kaydın içinde) | ✅ döndürme sonrası defter satırları durdu |
 
 > Tek istisna bilinçli: aylık hedefte "Başarılamadı" işaretlerken kanıt alanı
 > boş gönderilirse eski kanıt silinir (bkz. Aylık hedefler).

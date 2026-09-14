@@ -242,8 +242,61 @@ async function initDb() {
       class_name TEXT NOT NULL DEFAULT '',
       room TEXT NOT NULL DEFAULT '',
       kind TEXT NOT NULL DEFAULT 'lesson' CHECK (kind IN ('lesson', 'duty')),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (term, day_of_week, period)
+      week_start DATE NOT NULL DEFAULT DATE '1900-01-01',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  // Benzersizlik satir ici degil ADLI kisitla veriliyor (asagida): satir ici
+  // yazilsaydi temiz kurulumda hem o hem gocteki adli kisit olusur, tabloda
+  // ayni sey icin IKI unique dururdu.
+
+  // HAFTAYA OZEL CIZELGE. Cizelge tek bir haftalik sablondu ve her hafta ayni
+  // kabul ediliyordu; oysa hafta hafta degisebiliyor (seminer, sinav haftasi,
+  // telafi dersi, DYK duzeni). Artik bir hafta "ozellestirilebilir".
+  //
+  // week_start = SABLON_HAFTA (1900-01-01) satirlari VARSAYILAN sablondur.
+  // Baska bir tarih o haftanin kendi cizelgesidir; o hafta icin sablon degil
+  // YALNIZCA o satirlar gecerlidir (birlestirme degil, tam degistirme) —
+  // birlestirme "bu hafta bu ders yok"u ifade edemezdi.
+  //
+  // NULL yerine SABIT TARIH kullaniliyor: Postgres'te NULL'lar birbirinden
+  // farkli sayildigi icin NULL'lu bir UNIQUE kisiti ayni hucrenin iki kez
+  // girilmesini engellemezdi. `term` sutununda da ayni sebeple 0 secilmisti.
+  await query(
+    `ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS week_start DATE NOT NULL DEFAULT DATE '1900-01-01'`
+  );
+  await query(
+    `ALTER TABLE class_schedule DROP CONSTRAINT IF EXISTS class_schedule_term_day_of_week_period_key`
+  );
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'class_schedule'::regclass
+          AND conname = 'class_schedule_week_slot_key'
+      ) THEN
+        ALTER TABLE class_schedule
+        ADD CONSTRAINT class_schedule_week_slot_key
+        UNIQUE (week_start, term, day_of_week, period);
+      END IF;
+    END $$;
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS class_schedule_week_idx ON class_schedule (week_start)`
+  );
+
+  // "BU HAFTA OZEL" ISARETI, ders satirlarindan AYRI tutulur.
+  //
+  // Ozelligi satir varliginden turetmek denendi ve tutmadi: bir haftayi
+  // ozellestirip BOSALTMAK ("bu hafta hic ders yok") satirlari sildigi icin
+  // hafta yeniden sablona donuyordu — tam da anlatilmak isteneni silen bir
+  // davranis. Isaret ayri durunca "ozel ama bos" ifade edilebilir hale gelir;
+  // o hafta icin defter gorevi de acilmaz.
+  await query(`
+    CREATE TABLE IF NOT EXISTS schedule_week_overrides (
+      week_start DATE PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
