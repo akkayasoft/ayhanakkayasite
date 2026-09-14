@@ -1233,6 +1233,29 @@ function isTaskDueOnDate(task, dateObj, dateStr) {
 // suresi dolmussa null doner. Kilit yalnizca isareti degil, gorevin kendisini
 // de dondurur: aksi halde ogrenci gorevi silerek ya da saatini ileri alarak
 // otomatik "yapilmadi" kaydindan kurtulabilirdi.
+/**
+ * Gorev ornegi ISARETLENMIS mi? (yapildi / yapilmadi)
+ *
+ * Isaretlemek kalicidir — uyanma ve spor rutinindeki "ilk basis gecerli"
+ * kuralinin gorev tarafindaki karsiligi. Isaretlendikten sonra gorev PASIF
+ * olur: durumu degistirilemez, alanlari duzenlenemez, silinemez.
+ *
+ * Tek seferlik gorevde HERHANGI bir durum satiri sayilir (o gorevin tek
+ * ornegi vardir; tarihi sonradan degistiyse satir baska bir gune yazilmis
+ * olabilir). Tekrarli gorevde yalnizca ILGILI GUNUN satiri sayilir — dunku
+ * isaret bugunku ornegi kilitlemez.
+ */
+async function isTaskInstanceMarked(taskId, studentId, repeatType, gun) {
+  const tekSeferlik = repeatType === 'once';
+  const res = await query(
+    tekSeferlik
+      ? `SELECT 1 FROM task_statuses WHERE task_id = $1 AND student_id = $2 LIMIT 1`
+      : `SELECT 1 FROM task_statuses WHERE task_id = $1 AND student_id = $2 AND day = $3::date LIMIT 1`,
+    tekSeferlik ? [taskId, studentId] : [taskId, studentId, gun]
+  );
+  return res.rowCount > 0;
+}
+
 async function findStudentTaskIfEditable(taskId, studentId) {
   const result = await query(
     `
@@ -1263,8 +1286,20 @@ async function findStudentTaskIfEditable(taskId, studentId) {
   if (result.rowCount === 0) return { task: null, locked: false };
 
   const task = mapTask(result.rows[0]);
-  const locked = isTaskLockedNow(task, todayDateString(), timeStringInTimeZone());
-  return { task, locked };
+  const today = todayDateString();
+  // Kilit iki sebepten olur: (a) zaten isaretlendi, (b) suresi doldu.
+  // Hangisi oldugunu cagirana bildiriyoruz ki hata mesaji dogru olsun.
+  const marked = await isTaskInstanceMarked(task.id, studentId, task.repeatType, today);
+  const locked = marked || isTaskLockedNow(task, today, timeStringInTimeZone());
+
+  return {
+    task,
+    locked,
+    marked,
+    kilitMesaji: marked
+      ? 'Bu görev işaretlendi; üzerinde değişiklik yapılamaz.'
+      : 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.'
+  };
 }
 
 // Suresi dolmus ve hic isaretlenmemis gorev orneklerine 'not_done' yazar.
@@ -5633,8 +5668,13 @@ async function getStudentViewModel(req, currentPage) {
       const todayStatus = statuses.find((s) => s.taskId === task.id) || null;
       const latestStatus = latestStatusByTaskId.get(task.id) || null;
       const displayStatus = todayStatus || latestStatus;
+      // Isaretlenmis gorev PASIF: durumu, saati, aciklamasi degistirilemez.
+      // Tek seferlikte herhangi bir isaret, tekrarlida BUGUNKU isaret sayar.
+      const isMarked = task.repeatType === 'once' ? Boolean(displayStatus) : Boolean(todayStatus);
+      const locked = isMarked || isTaskLockedNow(task, today, nowHm);
       return {
         ...task,
+        isMarked,
         categoryName: category ? category.name : 'Kategori Yok',
         scheduleText: formatTaskSchedule(task),
         todayStatus,
@@ -5642,16 +5682,14 @@ async function getStudentViewModel(req, currentPage) {
         displayStatusDay: displayStatus ? toDateOnly(displayStatus.day) : '',
         displayStatusIsToday: Boolean(todayStatus),
         canManage:
-          task.createdBy === req.currentUser.id &&
-          task.repeatType === 'once' &&
-          !isTaskLockedNow(task, today, nowHm),
+          task.createdBy === req.currentUser.id && task.repeatType === 'once' && !locked,
         // Saat ve aciklama aktarilan gorevlerde de girilebilir; tek kosul
         // kilitli olmamasi. Aciklama ogrencinin kendi notu icin: "3. soruda
         // takildim", "yarim kaldi" gibi. Digerleri (baslik, kategori, tarih)
         // hala yalnizca kendi actigi gorevlerde acik.
-        canEditTime: !isTaskLockedNow(task, today, nowHm),
-        canEditDescription: !isTaskLockedNow(task, today, nowHm),
-        isLocked: isTaskLockedNow(task, today, nowHm)
+        canEditTime: !locked,
+        canEditDescription: !locked,
+        isLocked: locked
       };
     });
 
@@ -6157,9 +6195,9 @@ app.post(
       return res.status(404).json({ ok: false, error: 'Bu görev güncellenemez.' });
     }
 
-    const { locked: cellLocked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    const { locked: cellLocked, kilitMesaji: cellMesaj } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
     if (cellLocked) {
-      return res.status(403).json({ ok: false, error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+      return res.status(403).json({ ok: false, error: cellMesaj });
     }
 
     if (field === 'title') {
@@ -6267,9 +6305,9 @@ app.post(
       return studentRedirect(req, res, { error: 'Bu görev güncellenemez.' });
     }
 
-    const { locked: updateLocked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    const { locked: updateLocked, kilitMesaji: updateMesaj } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
     if (updateLocked) {
-      return studentRedirect(req, res, { error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+      return studentRedirect(req, res, { error: updateMesaj });
     }
 
     if (categoryRes.rowCount === 0) {
@@ -6295,9 +6333,9 @@ app.post(
   asyncHandler(async (req, res) => {
     const { taskId } = req.params;
 
-    const { locked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    const { locked, kilitMesaji } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
     if (locked) {
-      return studentRedirect(req, res, { error: 'Bu görevin süresi doldu, üzerinde değişiklik yapılamaz.' });
+      return studentRedirect(req, res, { error: kilitMesaji });
     }
 
     const deleted = await query(
@@ -6357,8 +6395,18 @@ app.post(
       return res.redirect(`/student/dashboard?error=${encodeURIComponent('Görev bulunamadı.')}`);
     }
 
-    // Suresi dolan gorev orneginin isareti degistirilemez.
+    // Zaten isaretlenmis bir gorev PASIFTIR: ilk isaret gecerli, degistirilemez.
+    // Uyanma/spor rutinindeki kuralin aynisi.
     const task = mapTask(taskRes.rows[0]);
+    if (await isTaskInstanceMarked(task.id, req.currentUser.id, task.repeatType, day)) {
+      return res.redirect(
+        `/student/dashboard?error=${encodeURIComponent(
+          'Bu görev zaten işaretlendi; işareti değiştirilemez.'
+        )}`
+      );
+    }
+
+    // Suresi dolan gorev orneginin isareti degistirilemez.
     if (isTaskLockedNow(task, day, timeStringInTimeZone())) {
       return res.redirect(
         `/student/dashboard?error=${encodeURIComponent(
@@ -6367,17 +6415,26 @@ app.post(
       );
     }
 
-    await query(
+    const yazma = await query(
       `
         INSERT INTO task_statuses (id, task_id, student_id, day, status, note)
         VALUES ($1,$2,$3,$4,$5,$6)
-        ON CONFLICT (task_id, student_id, day)
-        DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note, updated_at = NOW()
+        ON CONFLICT (task_id, student_id, day) DO NOTHING
       `,
       [makeId('status'), taskId, req.currentUser.id, day, status, note]
     );
 
-    return res.redirect(`/student/dashboard?message=${encodeURIComponent('Görev durumu güncellendi.')}`);
+    // Yukaridaki kontrolle ayni anda iki istek gelirse ikincisi buraya duser;
+    // DO NOTHING sayesinde ilk isaret yine korunur.
+    if (yazma.rowCount === 0) {
+      return res.redirect(
+        `/student/dashboard?error=${encodeURIComponent(
+          'Bu görev zaten işaretlendi; işareti değiştirilemez.'
+        )}`
+      );
+    }
+
+    return res.redirect(`/student/dashboard?message=${encodeURIComponent('Görev işaretlendi.')}`);
   })
 );
 
