@@ -1125,6 +1125,14 @@ td, th {
   flex: 1 1 220px;
 }
 
+/* Gorev satirinda o ders saatine yazilan konu: baslik altinda ikinci satir. */
+.lesson-topic {
+  display: block;
+  margin-top: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* Duzeltme izi (kim, ne zaman, neyin uzerine) kendi satirinda dursun;
    rozetin yanina dizilince durum hucresi okunmaz oluyordu. */
 .status-fix-trace {

@@ -4914,6 +4914,22 @@ async function getStudentViewModel(req, currentPage) {
   // haftalik analizde ve raporlarda aynen gorunur.
   const buHaftaBaslangic = startOfWeek(today);
   const buHaftaBitis = shiftDate(buHaftaBaslangic, 6);
+
+  // Bu haftanin yazilmis konulari: gorev satirinda YAZILAN KONU gorunsun.
+  // Liste yalnizca "1. ders · Matematik" gosteriyordu; ogretmen konuyu
+  // yazdiktan sonra da satirda yazdigi sey gorunmuyordu.
+  const haftaKonulariRes = await query(
+    `
+      SELECT day_of_week AS "dayOfWeek", period, topic
+      FROM lesson_topics
+      WHERE week_start = $1 AND topic <> ''
+    `,
+    [buHaftaBaslangic]
+  );
+  const haftaKonulari = new Map(
+    haftaKonulariRes.rows.map((r) => [`${r.dayOfWeek}:${r.period}`, r.topic])
+  );
+
   const activeTasks = allTasks
     .filter((task) => !task.isArchived)
     .filter(
@@ -4931,9 +4947,17 @@ async function getStudentViewModel(req, currentPage) {
       // Tek seferlikte herhangi bir isaret, tekrarlida BUGUNKU isaret sayar.
       const isMarked = task.repeatType === 'once' ? Boolean(displayStatus) : Boolean(todayStatus);
       const locked = isMarked || isTaskLockedNow(task, today, nowHm);
+      // Ders gorevi ise o ders saatine yazilan konu (varsa) satirda gosterilir.
+      let lessonTopic = '';
+      if (isLessonTask(task.sourceKey) && task.singleDate) {
+        const parcalar = String(task.sourceKey).split(':');
+        lessonTopic = haftaKonulari.get(`${schedule.dayOfWeek(task.singleDate)}:${Number(parcalar[2])}`) || '';
+      }
+
       return {
         ...task,
         isMarked,
+        lessonTopic,
         categoryName: category ? category.name : 'Kategori Yok',
         scheduleText: formatTaskSchedule(task),
         todayStatus,
@@ -5060,6 +5084,31 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildMonthlyGoalsView(req, [{ id: req.currentUser.id, name: req.currentUser.name }])
       : null;
 
+  // Liste bos kaldiginda NEDEN bos oldugunu sayfada soyleyebilmek icin: bu
+  // hesapta hic ders gorevi var mi, varsa hangi araliktalar? ("Olusturdum ama
+  // gorunmuyor" vakasinda tek tek veritabani sorgulamak yerine sayfa yanitlar.)
+  let dersGorevBilgi = null;
+  if (!activeTasks.some((task) => isLessonTask(task.sourceKey))) {
+    const ozet = await query(
+      `
+        SELECT count(*)::int AS toplam,
+               min(single_date) AS ilk,
+               max(single_date) AS son
+        FROM tasks
+        WHERE student_id = $1 AND source_key LIKE $2
+      `,
+      [req.currentUser.id, `${LESSON_PREFIX}:%`]
+    );
+    const satir = ozet.rows[0] || {};
+    dersGorevBilgi = {
+      toplam: Number(satir.toplam) || 0,
+      ilk: toDateOnly(satir.ilk),
+      son: toDateOnly(satir.son),
+      haftaBaslangic: buHaftaBaslangic,
+      haftaBitis: buHaftaBitis
+    };
+  }
+
   // Listede gorunen satirlarin tamami: once rutinler, sonra gorevler.
   const listeSatirlari = [...rutinSatirlari, ...activeTasks];
   // "Tamamlanan" sayaci EKRANDA GORUNENI saymali. Once yalnizca gorev
@@ -5078,6 +5127,7 @@ async function getStudentViewModel(req, currentPage) {
     menuIcons,
     categories,
     activeTasks: listeSatirlari,
+    dersGorevBilgi,
     doneCount,
     questionEntry: null,
     questionHistory,

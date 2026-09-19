@@ -140,10 +140,26 @@
           <% } %>
 
           <% if (!activeTasks.length) { %>
+          <p class="muted">Bu hafta için görev yok.</p>
+          <% } %>
+
+          <%# Ders gorevi satiri hic yoksa NEDENINI sayfa soylesin: hesapta hic
+              gorev yok mu, yoksa var da baska haftalarda mi? %>
+          <% if (dersGorevBilgi) { %>
           <p class="muted">
-            Bu hafta için görev yok. Ders görevleri çizelgeden üretilir:
-            öğretmenin <strong>Ders Programı → Ders Görevleri</strong>
-            panelinden bu hesap için oluşturması gerekir.
+            <% if (!dersGorevBilgi.toplam) { %>
+            <strong>Bu hesapta hiç ders görevi yok.</strong>
+            Ders görevleri çizelgeden üretilir: öğretmenin
+            <strong>Ders Programı → İşlenen Konular → Ders Görevleri</strong>
+            panelinden <em>bu öğrenciyi seçip</em> oluşturması gerekir.
+            <% } else { %>
+            Bu hesapta <strong><%= dersGorevBilgi.toplam %> ders görevi</strong>
+            var (<%= dersGorevBilgi.ilk %> - <%= dersGorevBilgi.son %>), ama
+            hiçbiri bu haftaya (<%= dersGorevBilgi.haftaBaslangic %> -
+            <%= dersGorevBilgi.haftaBitis %>) düşmüyor. Çizelgede bu hafta ders
+            tanımlı değilse böyle olur — haftalık görünüm için
+            <a href="/student/calendar">Haftalık Takvim</a>'e bakabilirsin.
+            <% } %>
           </p>
           <% } %>
 
@@ -173,7 +189,7 @@
                 >
                   <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
-                  <td data-label="Konu" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong></td>
+                  <td data-label="Konu" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong><% if (task.lessonTopic) { %><small class="muted lesson-topic">İşlenen: <%= task.lessonTopic %></small><% } %></td>
                   <td data-label="Son Saat" class="single-line-cell <%= task.canEditTime ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><% if (task.isRoutine) { %><%= task.routineSaatAna %><% if (task.routineSaatAlt) { %><small class="muted"><%= task.routineSaatAlt %></small><% } %><% } else { %><%= task.estimatedTime || '-' %><% } %></td>
                   <td data-label="Açıklama" class="single-line-cell <%= task.canEditDescription ? 'editable-cell' : '' %>" data-field="description" data-value="<%= task.description || '' %>"><%= task.description || '-' %></td>
                   <td data-label="Durum" class="status-cell">

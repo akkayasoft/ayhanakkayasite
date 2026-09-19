@@ -702,6 +702,14 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
 > (`corrected_by` dolu) ezilmez**; yalnızca otomatik mührün üzerine yazılır ve
 > `previous_status` ile izi kalır.
 
+- **Satırda yazılan konu görünür:** ders görevinin başlığının altında
+  *"İşlenen: Türev tanımı ve kurallar"* satırı çıkar (o haftanın
+  `lesson_topics` kaydından okunur, göreve kopyalanmaz — konu düzeltilirse
+  satır da düzelir).
+- **Liste boşsa nedeni yazılır:** hesapta hiç ders görevi yoksa *"öğretmenin
+  ... bu öğrenciyi seçip oluşturması gerekir"*, görev var ama bu haftaya
+  düşmüyorsa *"N ders görevi var (tarih aralığı), hiçbiri bu haftaya
+  düşmüyor"*. "Oluşturdum ama görünmüyor" vakasını sayfanın kendisi yanıtlar.
 - **Öğrenci listesinde içinde bulunulan HAFTA'nın dersleri görünür.**
   Diğerleri silinmez: Haftalık Takvim, Yıllık Plan, haftalık analiz ve
   raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
