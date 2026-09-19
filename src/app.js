@@ -5578,6 +5578,22 @@ app.post(
   })
 );
 
+// Calisan surum: acilista bir kez okunur. "Degisiklik canlida mi?" sorusunu
+// disaridan yanitlayabilmek icin var — daha once bunu yalnizca public bir
+// dosyanin (styles.css) icerigine bakarak tahmin edebiliyorduk ve sunucu
+// tarafi degisikliklerde hicbir kanit yoktu.
+const APP_VERSION = (() => {
+  try {
+    return require('child_process')
+      .execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch (err) {
+    return 'bilinmiyor';
+  }
+})();
+const APP_STARTED_AT = new Date().toISOString();
+
 app.get(
   '/healthz',
   asyncHandler(async (_req, res) => {
@@ -5585,6 +5601,8 @@ app.get(
     return res.json({
       ok: true,
       service: 'öğrenci-takip-app',
+      version: APP_VERSION,
+      startedAt: APP_STARTED_AT,
       time: new Date().toISOString()
     });
   })
