@@ -287,6 +287,23 @@
             <%= fix.day %> · <%= fix.student.name %> — <%= fix.rows.length %> görev,
             <%= fix.doneCount %> tanesi yapıldı.
           </p>
+
+          <%# GUNUN TAMAMINI ONAYLA. Gecmis gunler mühürleyici tarafından toplu
+              "Yapılmadı" yazıldığı için, o gün gerçekten çalışıldıysa görevleri
+              tek tek düzeltmek gerekiyordu (bir günde 4-5 görev olabiliyor). %>
+          <% if (!fix.beforeSystemStart) { %>
+          <form method="post" action="/admin/tasks/status-fix-bulk" class="row center status-fix-bulk"
+                onsubmit="return confirm('<%= fix.day %> günündeki <%= fix.rows.length %> görevin tümü işaretlensin mi?')">
+            <input type="hidden" name="next" value="<%= fixPagePath %>" />
+            <input type="hidden" name="studentId" value="<%= fix.student.id %>" />
+            <input type="hidden" name="day" value="<%= fix.day %>" />
+            <span class="muted">Günün tamamı:</span>
+            <input type="text" name="note" maxlength="300" placeholder="Gerekçe (opsiyonel)" />
+            <button type="submit" name="action" value="done">Tümü Yapıldı</button>
+            <button type="submit" name="action" value="not_done">Tümü Yapılmadı</button>
+          </form>
+          <% } %>
+
           <div class="table-wrap">
             <table class="task-table stack-mobile">
               <thead>
@@ -1870,27 +1887,32 @@
               <p class="kpi-value"><%= ydsProgramView.imported %></p>
             </article>
             <article class="kpi">
-              <p class="kpi-label">Bekleyen (bugün ve sonrası)</p>
+              <p class="kpi-label">Bekleyen</p>
               <p class="kpi-value"><%= ydsProgramView.pending %></p>
             </article>
-            <%# Aktarim gecmis gune yazmaz: muhurleyici o gorevi aninda
-                "yapilmadi" isaretlerdi ve ogrenci geri alamazdi. %>
+            <%# Taban tarihten oncesine hic yazilmaz: acilistaki temizlik o
+                kayitlari zaten siliyor. %>
             <% if (ydsProgramView.pastSkipped > 0) { %>
             <article class="kpi">
-              <p class="kpi-label">Geçmişte kaldı</p>
+              <p class="kpi-label">Taban öncesi (yazılmaz)</p>
               <p class="kpi-value"><%= ydsProgramView.pastSkipped %></p>
             </article>
             <% } %>
           </section>
 
-          <% if (ydsProgramView.pastSkipped > 0) { %>
           <p class="muted">
-            Programın <strong><%= ydsProgramView.pastSkipped %> görevi</strong>
-            bugünden önceki günlere düşüyor ve <strong>aktarılmaz</strong>:
-            günü geçmiş bir görev açılsaydı otomatik mühürleme onu hemen
-            "Yapılmadı" yazardı ve öğrenci geri alamazdı.
+            Plan <strong><%= ydsProgramView.systemStartDate %></strong>
+            tarihinden itibaren yazılır — geçmiş günler dahil. Günü geçmiş
+            görevleri otomatik mühürleme "Yapılmadı" işaretler; gerçekte
+            yapılanları
+            <a href="/admin/tasks/status">Durum Düzelt</a> panelinden
+            onaylarsınız.
+            <% if (ydsProgramView.pastSkipped > 0) { %>
+            Taban tarihten önceye düşen
+            <strong><%= ydsProgramView.pastSkipped %> görev</strong>
+            yazılmaz (açılıştaki temizlik o kayıtları siliyor).
+            <% } %>
           </p>
-          <% } %>
 
           <div class="table-wrap">
             <table class="stack-mobile">

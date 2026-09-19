@@ -948,6 +948,20 @@ td, th {
   min-width: 160px;
 }
 
+/* Gunun tamamini onaylama satiri: gerekce alani genel input kuralindan
+   (width:100%) dolayi kendi satirini kaplamasin, dugmeler yaninda kalsin. */
+.status-fix-bulk {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.status-fix-bulk input[type='text'] {
+  width: auto;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
 /* Duzeltme izi (kim, ne zaman, neyin uzerine) kendi satirinda dursun;
    rozetin yanina dizilince durum hucresi okunmaz oluyordu. */
 .status-fix-trace {

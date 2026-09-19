@@ -2220,12 +2220,17 @@ async function saveYdsProgramSettings(gunSet, gunlukDakika) {
  *
  * Ayar program dosyasiyla AYNIYSA dosya oldugu gibi kullanilir — davranis
  * eskisiyle birebir ayni kalir, yeniden yayma yok. Ayar degistiyse program
- * BUGUNDEN ITIBAREN yeniden yayilir ve su iki kural korunur:
+ * SISTEM TABAN TARIHINDEN (SYSTEM_START_DATE, varsayilan 2026-09-14) itibaren
+ * yeniden yayilir ve su kural korunur:
  *
- *   - Gecmis gune yazilmis ya da ISARETLENMIS bir gorevin parcasi yeniden
- *     planlanmaz; islenmis is tekrar onune konmaz.
- *   - Yeni plan yalnizca bugun ve sonrasini kapsar; aktarimdaki silme kurali
- *     zaten gecmise ve isaretliye dokunmuyor.
+ *   - ISARETLENMIS bir gorevin parcasi yeniden planlanmaz; islenmis (ya da
+ *     muhurlenmis) is tekrar onune konmaz.
+ *
+ * Plan neden bugunden degil de taban tarihten basliyor: "14 Eylul'den itibaren
+ * gunde 1 saat" istendi. Gecmis gunlere de gorev yazilir; muhurleyici onlari
+ * "Yapilmadi" isaretler ve admin `/admin/tasks/status` (Durum Duzelt)
+ * panelinden gercekte yapilanlari onaylar. Taban tarihten ONCESINE hic
+ * yazilmaz — acilistaki temizlik o kayitlari zaten siler.
  */
 async function planYdsGorevleri(client, studentId) {
   const program = ydsProgram.loadYdsProgram();
@@ -2239,11 +2244,10 @@ async function planYdsGorevleri(client, studentId) {
     return { gorevler: program.gorevler, ayar, yenidenYayildi: false };
   }
 
-  const bugun = todayDateString();
+  // Planin tabani: sistem taban tarihi. Isaretlenmis gorevler (gecmiste
+  // muhurlenmisler dahil) yeniden planlanmaz.
+  const taban = SYSTEM_START_DATE;
 
-  // Isaretlenmis gorevler yerinde kalir (aktarim onlari zaten silmez), o yuzden
-  // ayni occurrence ikinci kez yayilmamali — yoksa tamamladigi is tekrar
-  // karsisina cikardi.
   const isaretliRes = await client.query(
     `
       SELECT t.source_key AS "sourceKey"
@@ -2253,15 +2257,15 @@ async function planYdsGorevleri(client, studentId) {
         AND t.single_date >= $3::date
         AND EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
     `,
-    [studentId, `${ydsProgram.SOURCE_PREFIX}:%`, bugun]
+    [studentId, `${ydsProgram.SOURCE_PREFIX}:%`, taban]
   );
   const isaretliAnahtarlar = new Set(isaretliRes.rows.map((r) => r.sourceKey));
 
-  // Dosyadaki planin BUGUN VE SONRASINA dusen kismi — icerik ve tekrar sirasi
-  // korunarak yeni gunlere tasinacak. Gecmis gunlere hic dokunulmaz.
+  // Dosyadaki planin taban tarih ve sonrasina dusen kismi — icerik ve tekrar
+  // sirasi korunarak yeni gunlere tasinacak.
   const kalanOccurrences = [];
   for (const gun of program.gunler) {
-    if (!gun || typeof gun.tarih !== 'string' || gun.tarih < bugun) continue;
+    if (!gun || typeof gun.tarih !== 'string' || gun.tarih < taban) continue;
     for (const parca of gun.parcalar || []) {
       if (!parca || !parca.id) continue;
       if (isaretliAnahtarlar.has(ydsProgram.sourceKey(gun.tarih, parca.id))) continue;
@@ -2269,8 +2273,8 @@ async function planYdsGorevleri(client, studentId) {
     }
   }
 
-  const dosyaBaslangic = program.baslangic || bugun;
-  const baslangic = bugun > dosyaBaslangic ? bugun : dosyaBaslangic;
+  const dosyaBaslangic = program.baslangic || taban;
+  const baslangic = taban > dosyaBaslangic ? taban : dosyaBaslangic;
   const gunler = ydsPlan.calismaGunleri({ gunSet: ayar.gunSet, baslangic });
   const { program: yeniPlan, yerlesmeyen } = ydsPlan.yenidenYay(kalanOccurrences, gunler, {
     gunlukDakika: ayar.gunlukDakika
@@ -2299,18 +2303,17 @@ async function importYdsProgram(studentId, createdBy) {
     await client.query('BEGIN');
 
     // Aktarilacak liste ya dosyadaki plandir ya da admin gun duzenini
-    // degistirmisse bugunden itibaren yeniden yayilmis plandir.
+    // degistirmisse SISTEM TABAN TARIHINDEN itibaren yeniden yayilmis plandir.
     const plan = await planYdsGorevleri(client, studentId);
-    // GECMIS GUNE GOREV YAZILMAZ. Muhurleyici gunu gecmis ve isaretsiz her
-    // ornege "yapilmadi" yazar; ogrenci bunu geri alamaz (duzeltmesi yalnizca
-    // adminin "Durum Duzelt" panelinde). Yani gecmise yazilan gorev, hicbir
-    // zaman yapilamamis bir is olarak kayda geciyordu.
+    // Plan taban tarihten (2026-09-14) basladigi icin GECMIS gunlere de gorev
+    // yazilir: "14 Eylul'den itibaren gunde 1 saat" istendi. Muhurleyici o
+    // gunleri "Yapilmadi" isaretler, admin de Durum Duzelt panelinden gercekte
+    // yapilanlari onaylar.
     //
-    // Bu suzgec once yalnizca YENIDEN YAYIM durumunda calisiyordu; dosyadaki
-    // plan gecmiste basliyorsa (program 14 Eylul'de basliyor, aktarim 19
-    // Eylul'de yapiliyor) aradaki gunler yine aciliyordu. Artik her iki
-    // durumda da yalnizca bugun ve sonrasi yazilir.
-    const planGorevleri = plan.gorevler.filter((g) => g.tarih >= today);
+    // Taban tarihten ONCESINE yazilmaz: acilistaki temizlik (
+    // purgeBeforeSystemStart) o kayitlari zaten siliyor, yazmak kaydi
+    // kaybetmek olurdu.
+    const planGorevleri = plan.gorevler.filter((g) => g.tarih >= SYSTEM_START_DATE);
 
     // TEK kategori: "Doktora". Once tur basina bes kategori aciliyordu
     // (YDS · Konu Anlatimi, Kelime, Okuma, Test, Serbest Calisma); kategori
@@ -2499,14 +2502,18 @@ async function buildYdsProgramSummary(studentId) {
     bekleyenGun: program.bekleyenGun,
     total: program.gorevler.length,
     imported,
-    // Aktarim gecmis gune yazmadigi icin "bekleyen" yalnizca BUGUN VE
-    // SONRASINDAKI aktarilmamis gorevlerdir. Fark (gecmiste kalanlar) ayri
-    // sayilir: aksi halde panel kalici bir "8 bekleyen" gosterir ve "Görevlere
-    // Aktar" dugmesi her basista 0 gorev ekleyen olu bir kontrole donerdi.
-    pending: program.gorevler.filter((g) => g.tarih >= today && !importedKeys.has(g.sourceKey))
-      .length,
-    pastSkipped: program.gorevler.filter((g) => g.tarih < today && !importedKeys.has(g.sourceKey))
-      .length,
+    // Aktarim SISTEM TABAN TARIHINDEN itibaren yazar (gecmis gunler dahil;
+    // "14 Eylul'den itibaren gunde 1 saat"). Bekleyen = taban tarih ve
+    // sonrasindaki aktarilmamis gorevler. Taban ONCESINE dusenler hicbir zaman
+    // yazilmaz (acilistaki temizlik siler), o yuzden ayri sayilir — yoksa
+    // panel kalici bir "N bekleyen" gosterir ve dugme olu bir kontrole donerdi.
+    pending: program.gorevler.filter(
+      (g) => g.tarih >= SYSTEM_START_DATE && !importedKeys.has(g.sourceKey)
+    ).length,
+    pastSkipped: program.gorevler.filter(
+      (g) => g.tarih < SYSTEM_START_DATE && !importedKeys.has(g.sourceKey)
+    ).length,
+    systemStartDate: SYSTEM_START_DATE,
     turler,
     upcoming: program.gorevler
       .filter((g) => g.tarih >= today)
@@ -4697,7 +4704,7 @@ app.post(
     if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
     if (sonuc.replanned) {
       notlar.push(
-        `Program "${ydsPlan.gunSetEtiketi(sonuc.gunSet)}" düzenine göre bugünden itibaren yeniden yayıldı (${sonuc.gunlukDakika} dk/gün).`
+        `Program "${ydsPlan.gunSetEtiketi(sonuc.gunSet)}" düzenine göre ${SYSTEM_START_DATE} tarihinden itibaren yeniden yayıldı (${sonuc.gunlukDakika} dk/gün).`
       );
       if (sonuc.movedPieces) {
         notlar.push(`${sonuc.movedPieces} içerik parçası yeni günlere taşındı; geçmiş ve işaretli görevler yerinde kaldı.`);
@@ -6587,6 +6594,100 @@ app.post(
 
     return adminRedirect(req, res, {
       message: `${kunye}: ${etiket(oncekiDurum)} → ${etiket(action)} olarak düzeltildi.`
+    });
+  })
+);
+
+// GUNUN TAMAMINI ONAYLA. Tek tek duzeltmenin toplu hali: gecmis bir gunde
+// muhurleyici butun gorevleri "Yapilmadi" yazdigi icin, o gun gercekten
+// calisilmissa 4-5 gorevi tek tek duzeltmek gerekiyordu.
+//
+// Tek gorev rotasiyla ayni kurallar gecerli: yalnizca o gun VADESI GELEN
+// gorevlere yazilir, taban tarihten oncesine yazilmaz ve her satir kendi
+// duzeltme izini tasir. Zaten istenen durumda olan gorevler atlanir.
+app.post(
+  '/admin/tasks/status-fix-bulk',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const day = normalizeText(req.body.day);
+    const action = normalizeText(req.body.action);
+
+    if (action !== 'done' && action !== 'not_done') {
+      return adminRedirect(req, res, { error: 'Geçersiz işlem.' });
+    }
+    if (!isDateOnly(day)) {
+      return adminRedirect(req, res, { error: 'Geçersiz gün.' });
+    }
+    if (day < SYSTEM_START_DATE) {
+      return adminRedirect(req, res, {
+        error: `Sistem ${SYSTEM_START_DATE} tarihinde başlıyor; daha eski günlere durum yazılamaz.`
+      });
+    }
+
+    const notDogrulama = validateTaskDescription(req.body.note);
+    if (!notDogrulama.ok) {
+      return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const tasksRes = await query(
+      `
+        SELECT
+          id, title, student_id AS "studentId", repeat_type AS "repeatType",
+          single_date AS "singleDate", weekly_day AS "weeklyDay",
+          monthly_day AS "monthlyDay", custom_dates AS "customDates",
+          start_date AS "startDate", end_date AS "endDate",
+          estimated_time AS "estimatedTime", is_archived AS "isArchived"
+        FROM tasks WHERE student_id = $1
+      `,
+      [studentId]
+    );
+
+    const dayObj = new Date(`${day}T00:00:00`);
+    const gununGorevleri = tasksRes.rows
+      .map(mapTask)
+      .filter((task) => isTaskDueOnDateIgnoringArchive(task, dayObj, day));
+
+    if (!gununGorevleri.length) {
+      return adminRedirect(req, res, {
+        error: `${studentRes.rows[0].name} için ${day} gününde görev yok.`
+      });
+    }
+
+    let yazilan = 0;
+    let atlanan = 0;
+    for (const task of gununGorevleri) {
+      const yazma = await query(
+        `
+          INSERT INTO task_statuses
+            (id, task_id, student_id, day, status, note, corrected_by, corrected_at, previous_status, correction_note)
+          VALUES ($1, $2, $3, $4::date, $5, '', $6, NOW(), NULL, $7)
+          ON CONFLICT (task_id, student_id, day) DO UPDATE
+          SET status = EXCLUDED.status,
+              corrected_by = EXCLUDED.corrected_by,
+              corrected_at = NOW(),
+              previous_status = task_statuses.status,
+              correction_note = EXCLUDED.correction_note,
+              updated_at = NOW()
+          WHERE task_statuses.status IS DISTINCT FROM EXCLUDED.status
+        `,
+        [makeId('status'), task.id, studentId, day, action, req.currentUser.id, notDogrulama.value]
+      );
+      if (yazma.rowCount > 0) yazilan += 1;
+      else atlanan += 1;
+    }
+
+    const etiket = action === 'done' ? 'Yapıldı' : 'Yapılmadı';
+    const atlamaNotu = atlanan ? ` ${atlanan} görev zaten "${etiket}" durumundaydı.` : '';
+    return adminRedirect(req, res, {
+      message: `${studentRes.rows[0].name} · ${day}: ${yazilan} görev "${etiket}" olarak işaretlendi.${atlamaNotu}`
     });
   })
 );

@@ -257,6 +257,29 @@ admin'e bir kapı açıldı.
 > **ezilmez**. Doğrulandı: düzeltmeden sonra uygulama yeniden başlatıldı,
 > satır `done` + düzeltme izi olduğu gibi kaldı.
 
+##### Günün tamamını onayla (toplu)
+
+`POST /admin/tasks/status-fix-bulk` — panelde *"Günün tamamı: Tümü Yapıldı /
+Tümü Yapılmadı"*. Program görevleri 14 Eylül'den itibaren günde 1 saat olarak
+yazıldığı için geçmiş bir günde 3-5 görev birden mühürleniyor; o gün gerçekten
+çalışıldıysa hepsini tek tek düzeltmek gerekiyordu.
+
+- Tek görev rotasıyla **aynı kurallar**: yalnızca o gün vadesi gelen görevlere
+  yazar (`isTaskDueOnDateIgnoringArchive`), taban tarihten öncesine yazmaz ve
+  her satır kendi düzeltme izini taşır (`corrected_by` / `previous_status` /
+  gerekçe).
+- Zaten istenen durumda olan görevler **atlanır** ve mesajda kaç tanesinin
+  atlandığı söylenir (`ON CONFLICT ... DO UPDATE ... WHERE status IS DISTINCT
+  FROM`), yani ikinci basış izleri tazelemez.
+- Öğrenci **403**, oturumsuz **302**.
+
+Doğrulandı: 15 Eylül'de mühürlenmiş 2 görev tek hamlede `done` oldu
+(`previous_status='not_done'`, gerekçe ve düzelten kaydedildi); ikinci basış
+*"0 görev … 2 görev zaten Yapıldı durumundaydı"* dedi; *Tümü Yapılmadı* ile
+geri alındı; taban öncesi gün, geçersiz işlem, görevi olmayan gün ve olmayan
+öğrenci **reddedildi**; aynı gündeki **başka öğrencinin** görevine
+dokunulmadı. 390px'te form sarıyor, taşma 0.
+
 Doğrulandı (temiz veritabanı, 2026-09-17 13:00 sahte saatiyle; 12:00 son
 saatli görev mühürleyici tarafından `not_done` yazılmış): düzeltme
 `not_done → done` yazdı ve `previous_status='not_done'`, `corrected_by=admin`,
@@ -407,13 +430,31 @@ Bu yüzden günler ortalama 41 dk (118 gün tek ders, 13 gün iki ders).
 > çalıştırılırsa ardından `yz-program-yeniden-yay.js` de çalıştırılmalı, yoksa
 > günlük 1 saat düzeni kaybolur.
 
-**Sonuç takvim:** YZ içeriği 29 Ocak 2027'de, YDS içeriği 4 Şubat 2027'de
+**Plan 14 Eylül'den başlar.** İki program da `SYSTEM_START_DATE`
+(2026-09-14) tabanından yayılır — geçmiş günler dahil. Günü geçmiş görevleri
+mühürleyici "Yapılmadı" işaretler; gerçekte yapılanları admin **Durum Düzelt**
+panelinden onaylar (aşağıdaki "Günün tamamını onayla" bölümü). Taban tarihten
+**öncesine** hâlâ yazılmaz: açılıştaki temizlik o kayıtları zaten siliyor.
+
+> Bu, bir önceki adımın (aktarım geçmişe yazmasın) bilinçli olarak
+> gevşetilmesidir. Gerekçe değişti: "14 Eylül'den itibaren günde 1 saat"
+> istendi ve geçmiş günler artık **onaylanabilir** olduğu için yazılmaları
+> anlamlı. Öğrenci tarafı hâlâ kilitli — geçmişi yalnızca admin düzeltir.
+
+**Sonuç takvim:** YZ içeriği 27 Ocak 2027'de, YDS içeriği Şubat başında
 biter. YDS **sınavı 22 Kasım 2026**: 1 saat/gün ile içeriğin ancak ~%49'u
 sınava yetişir — bu bilinçli bir tercihti (alternatifi 120 dk/gün ya da sınava
 kadar test+kelime önceliklendirmesiydi). İçerik bitince günler **serbest
 çalışma** görevine döner; günlük disiplin sürer, konu uydurulmaz.
 
-Doğrulandı (19 Eylül, iki programı da aktarılmış öğrenciyle): YDS aktarımı
+Doğrulandı (temiz görev tablosu, 19 Eylül): iki aktarım da **14 Eylül**'den
+başladı — YZ 149 görev / 134 gün (ort. 41 dk, en çok 65 dk), YDS 306 görev /
+274 gün (içerik + serbest çalışma), günlük yük 14-21 Eylül aralığında
+YZ ≤ 56 dk ve YDS ≤ 60 dk. Açılışta 14-18 Eylül'ün tamamı ve bugünün YZ
+görevleri (07:30 geçmiş) **"Yapılmadı"** mühürlendi; bugünün YDS görevi
+(21:00) açık kaldı.
+
+Önceki doğrulama (19 Eylül, iki programı da aktarılmış öğrenciyle): YDS aktarımı
 **298 görev** yazdı (89 bayat görev kaldırıldı), hepsinin son saati 21:00;
 video dersler 3'er bölüme ayrıldı ve ardışık günlere düştü. YZ aktarımı
 **144 görevin tarihini** hizaladı ve son saatlerini 07:30 yaptı; geçmişteki 5
