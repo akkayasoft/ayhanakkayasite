@@ -3751,11 +3751,40 @@ app.post(
   })
 );
 
+/**
+ * Konular kaydedildikten sonra defter gorevini HEMEN denetler.
+ *
+ * `completeLessonLogTasks` zaten muhurleyici turunda (acilista + 5 dakikada
+ * bir) calisiyordu; ama kullanici konulari doldurup "Gorevlerim"e bakinca
+ * gorev hala isaretsiz gorunuyordu ve ozellik calismiyor sanildi. Kayit aninda
+ * da calistirmak beklemeyi kaldiriyor. Idempotenttir: tamamlanmamis hafta
+ * varsa hicbir sey yazmaz.
+ */
+async function saveLessonTopicsAndComplete(body) {
+  const sonuc = await saveLessonTopics(body);
+  if (!sonuc.ok) return sonuc;
+
+  try {
+    const { completed } = await completeLessonLogTasks();
+    if (completed > 0) {
+      return {
+        ...sonuc,
+        message: `${sonuc.message} Defter tamamlandı: ${completed} görev "Yapıldı" işaretlendi.`
+      };
+    }
+  } catch (err) {
+    // Kayit basarili; isaretleme denetimi patlarsa kullaniciya hata
+    // gostermeyiz - muhurleyici 5 dakika icinde ayni isi yapar.
+    console.error('Defter görevi tamamlama denetimi hatası:', err);
+  }
+  return sonuc;
+}
+
 app.post(
   '/admin/schedule/topics',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const sonuc = await saveLessonTopics(req.body || {});
+    const sonuc = await saveLessonTopicsAndComplete(req.body || {});
     return adminRedirect(req, res, sonuc.ok ? { message: sonuc.message } : { error: sonuc.error });
   })
 );
@@ -3770,7 +3799,7 @@ app.post(
     if (!req.currentUser.isTeacher) {
       return res.status(403).send('Yetkisiz erişim.');
     }
-    const sonuc = await saveLessonTopics(req.body || {});
+    const sonuc = await saveLessonTopicsAndComplete(req.body || {});
     return studentRedirect(req, res, sonuc.ok ? { message: sonuc.message } : { error: sonuc.error });
   })
 );
@@ -4893,7 +4922,6 @@ async function getStudentViewModel(req, currentPage) {
       };
     });
 
-  const doneCount = activeTasks.filter((t) => t.todayStatus && t.todayStatus.status === 'done').length;
   const questionHistory = questionHistoryRes.rows.map((row) => ({
     ...row,
     date: toDateOnly(row.day),
@@ -5002,13 +5030,24 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildMonthlyGoalsView(req, [{ id: req.currentUser.id, name: req.currentUser.name }])
       : null;
 
+  // Listede gorunen satirlarin tamami: once rutinler, sonra gorevler.
+  const listeSatirlari = [...rutinSatirlari, ...activeTasks];
+  // "Tamamlanan" sayaci EKRANDA GORUNENI saymali. Once yalnizca gorev
+  // satirlarinin BUGUNKU durumuna bakiyordu: rutinler hic sayilmiyordu ve
+  // defter gorevinin durumu kendi son tarihine (haftanin pazari) yazildigi
+  // icin isaretli gorunen satir sayaca girmiyordu — liste "✓" gosterirken
+  // sayac "0 tamamlandi" diyordu.
+  const doneCount = listeSatirlari.filter(
+    (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
+  ).length;
+
   return {
     user: req.currentUser,
     currentPage,
     today,
     menuIcons,
     categories,
-    activeTasks: [...rutinSatirlari, ...activeTasks],
+    activeTasks: listeSatirlari,
     doneCount,
     questionEntry: null,
     questionHistory,

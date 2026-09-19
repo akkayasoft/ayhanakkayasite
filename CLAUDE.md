@@ -675,15 +675,26 @@ işaretlenir.
   hâlâ zamanında sayılsın diye. Cuma verilseydi otomatik kilit hafta biter
   bitmez `not_done` mühürlerdi. (Çizelge 7 güne çıkınca bu tarih aynı kaldı —
   hafta sonu dersi olan bir hafta da pazar akşamına kadar yazılabilir.)
-- `completeLessonLogTasks()` `runSealSafely` içinde (açılışta + 5 dakikada
-  bir) **`sealOverdueTaskStatuses`'tan önce** çalışır. Sıra önemli: aynı turda
+- `completeLessonLogTasks()` iki yerden çağrılır: **konular kaydedildiği anda**
+  (`saveLessonTopicsAndComplete`, hem admin hem öğretmen işaretli öğrenci
+  rotası) ve `runSealSafely` içinde (açılışta + 5 dakikada bir)
+  **`sealOverdueTaskStatuses`'tan önce**.
+
+  > Önce yalnızca mühürleyici turunda çalışıyordu: kullanıcı konuları
+  > dolduruyor, "Görevlerim"e bakıyor ve görev hâlâ işaretsiz olduğu için
+  > özelliğin çalışmadığını düşünüyordu. Kayıt anında da çalıştırmak beklemeyi
+  > kaldırdı; mesajda *"Defter tamamlandı: 1 görev Yapıldı işaretlendi"* yazar.
+  > Denetim idempotenttir, hafta tamamlanmamışsa hiçbir şey yazmaz.
+  > Doğrulandı: 6/7 hücrede işaretsiz, 7/7'de anında `done`. Sıra önemli: aynı turda
   hem defter tamamlanıp hem süre dolmuşsa görev "yapıldı" olmalı, "yapılmadı"
   değil. (Doğrulandı: geçmiş tarihli görev + dolu defter → `done`; geçmiş
   tarihli görev + eksik defter → `not_done`.)
 - Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
   ve **hafta sonu dersleri** dahil).
 - **Öğrenci listesinde yalnızca içinde bulunulan haftanın defter görevi
-  görünür.** Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
+  görünür.** Geçmiş bir haftanın defteri doldurulup tamamlandığında görev
+  "Görevlerim"de **çıkmaz** — Haftalık Takvim, Yıllık Plan ve raporlarda
+  kendi haftasında görünür. Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
   dursaydı listeyi boğardı — doğrulandı: liste 42 görevin 37'si defterken
   6'ya indi. Filtre yalnızca **liste görünümüne**
   aittir: görevler silinmez, haftalık takvimde kendi gününde, haftalık
@@ -712,6 +723,17 @@ değiştirmek zorunda kalmasın diye bir yetki bayrağı var.
   önbelleklenmez — yetki kaldırıldığı anda **açık oturumda da** kapanır
   (doğrulandı: kaldırma sonrası aynı çerezle POST 403, ızgara salt okunur).
 - Çizelgeyi (ders/saat/sınıf) bu bayrak **açmaz**; o hâlâ yalnızca adminde.
+
+### "Tamamlanan" sayacı ekranda görüneni sayar
+
+`/student/dashboard` üstündeki üç sayaç (Toplam / Tamamlanan / Bekleyen)
+listedeki **satırların** durumundan hesaplanır (`displayStatus === 'done'`).
+
+> Önce yalnızca görev satırlarının **bugünkü** durumuna bakıyordu. Sonuç:
+> rutin satırları hiç sayılmıyordu ve defter görevinin durumu kendi son
+> tarihine (haftanın pazarı) yazıldığı için, satır ✓ görünürken sayaç
+> "0 tamamlandı" diyordu. Doğrulandı: uyanma ✓ + defter ✓ + spor ○ →
+> *Toplam 3 · Tamamlanan 2 · Bekleyen 1*.
 
 ## Uyanma rutini
 
