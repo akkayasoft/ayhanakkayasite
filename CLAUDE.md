@@ -436,6 +436,17 @@ mühürleyici "Yapılmadı" işaretler; gerçekte yapılanları admin **Durum D�
 panelinden onaylar (aşağıdaki "Günün tamamını onayla" bölümü). Taban tarihten
 **öncesine** hâlâ yazılmaz: açılıştaki temizlik o kayıtları zaten siliyor.
 
+> ⚠️ **Tarih hizalaması da aynı tabanı kullanmalı.** YZ aktarımındaki
+> "görevleri programa hizala" adımı iki yanda da *bugünü* taban alıyordu; yeni
+> tarihi geçmişe düşen bir ders taşınamıyordu. Plan 14 Eylül'den başlayınca bu,
+> programı yarım uyguladı: ilk günler eski düzende kaldı ve taşınamayan dersler
+> eski günlerinde birikip o günleri **3 derse (~90 dk)** çıkardı — "günde 1
+> saat"in tam tersi. Ölçüldü: 139 görev taşındı, 9'u takıldı. Taban
+> `SYSTEM_START_DATE` yapılınca 144'ü taşındı ve 19 Eylül sonrası tam olarak
+> 2 ders/gün (56 dk) oldu. **İşaretli görev hâlâ asla oynamaz**: 14-18 Eylül'de
+> önceden mühürlenmiş görevler kendi gününde kalır, o günler listede 3 satır
+> görünebilir (biri zaten işaretli).
+>
 > Bu, bir önceki adımın (aktarım geçmişe yazmasın) bilinçli olarak
 > gevşetilmesidir. Gerekçe değişti: "14 Eylül'den itibaren günde 1 saat"
 > istendi ve geçmiş günler artık **onaylanabilir** olduğu için yazılmaları

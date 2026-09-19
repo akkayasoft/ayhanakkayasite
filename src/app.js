@@ -1830,9 +1830,22 @@ async function importYzProgram(studentId, createdBy) {
     // ders yerine 5 ders duzenine gecince). Daha once aktarilmis gorevler eski
     // tarihte kalirsa takvim karisir: ml_ders11, ml_ders01'den once gorunur.
     // Bu yuzden zaten aktarilmis gorevlerin tarihi programla hizalanir — ama
-    // yalnizca DOKUNULMAMIS ve GELECEKTEKI gorevler tasinir. Isaretlenmis
-    // (yapildi/yapilmadi) ya da gunu gecmis bir gorev asla oynatilmaz.
-    const bugun = todayDateString();
+    // yalnizca DOKUNULMAMIS gorevler tasinir; isaretlenmis (yapildi/yapilmadi)
+    // bir gorev asla oynatilmaz.
+    //
+    // Hizalamanin tabani BUGUN degil SISTEM TABAN TARIHI.
+    //
+    // Once iki yanda da "bugun" vardi: yeni tarihi GECMISE dusen bir ders
+    // tasinamiyordu. Plan 14 Eylul'den baslayinca bu, programi yarim
+    // uyguluyordu — ilk gunler eski duzende kaliyor, tasinamayan dersler eski
+    // gunlerinde birikip o gunleri 3 derse (~90 dk) cikariyordu; yani "gunde 1
+    // saat" tam tersine donuyordu. Olculdu: 139 gorev tasindi, 9'u takildi ve
+    // 21-25 Eylul 3'er derse cikti.
+    //
+    // ISARETLI gorev hala asla oynamaz (asagidaki NOT EXISTS): tamamlanmis ya
+    // da muhurlenmis is yerinde kalir. Gecmise tasinan isaretsiz bir gorevi
+    // muhurleyici "Yapilmadi" yazar, admin de Durum Duzelt'ten onaylar.
+    const taban = SYSTEM_START_DATE;
     let moved = 0;
     let pinned = 0;
     for (const lesson of program.gorevler) {
@@ -1847,7 +1860,7 @@ async function importYzProgram(studentId, createdBy) {
             AND $1::date >= $4::date
             AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
         `,
-        [lesson.tarih, studentId, lesson.sourceKey, bugun]
+        [lesson.tarih, studentId, lesson.sourceKey, taban]
       );
       moved += tasima.rowCount || 0;
     }
@@ -1913,7 +1926,7 @@ async function importYzProgram(studentId, createdBy) {
           `${YZ_WINDOW.label} · ${yzProgram.describeLesson(lesson)}`,
           studentId,
           lesson.sourceKey,
-          bugun
+          taban
         ]
       );
       timed += pencere.rowCount || 0;
