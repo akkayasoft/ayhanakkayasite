@@ -60,11 +60,12 @@
           <p class="muted">Günlük performans özeti - <strong><%= today %></strong></p>
         </header>
 
+        <p class="section-label">Genel Durum</p>
         <section class="kpi-grid">
-          <article class="kpi"><p class="kpi-label">Öğrenci</p><p class="kpi-value"><%= students.length %></p></article>
-          <article class="kpi"><p class="kpi-label">Aktif Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
-          <article class="kpi"><p class="kpi-label">Arşiv Görev</p><p class="kpi-value"><%= archivedTasks.length %></p></article>
-          <article class="kpi"><p class="kpi-label">Kategori</p><p class="kpi-value"><%= categories.length %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.students %></span><p class="kpi-label">Öğrenci</p><p class="kpi-value"><%= students.length %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span><p class="kpi-label">Aktif Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.archive %></span><p class="kpi-label">Arşiv Görev</p><p class="kpi-value"><%= archivedTasks.length %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.categories %></span><p class="kpi-label">Kategori</p><p class="kpi-value"><%= categories.length %></p></article>
         </section>
 
         <section class="panel">
@@ -895,32 +896,40 @@
           </div>
         </header>
 
+        <p class="section-label">Haftanın Özeti</p>
         <section class="kpi-grid">
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span>
             <p class="kpi-label">Görev Tamamlama</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.completionRate === null ? '-' : weeklyAnalysis.totals.completionRate + '%' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span>
             <p class="kpi-label">Görev (yapılan / toplam)</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.done %> / <%= weeklyAnalysis.totals.due %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.questions %></span>
             <p class="kpi-label">Çözülen Soru</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.questionTotal %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
             <p class="kpi-label">Doğruluk</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.accuracy === null ? '-' : weeklyAnalysis.totals.accuracy + '%' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
             <p class="kpi-label">Çalışma Süresi</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.duration %> dk</p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.wake %></span>
             <p class="kpi-label">Uyanma (zamanında)</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.wakeOnTimeRate === null ? '-' : weeklyAnalysis.totals.wakeOnTimeRate + '%' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.clock %></span>
             <p class="kpi-label">Ortalama Kalkış</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.averageWake || '-' %></p>
           </article>
@@ -1189,32 +1198,40 @@
             Hedefler serbest metin olduğu için uygulama onları kendi ölçemez.
             Kanıt yazarken bu sayılara bakabilirsin — ayın gerçek kaydı bunlar.
           </p>
+          <p class="section-label">Ayın Kaydı</p>
           <div class="kpi-grid">
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span>
               <p class="kpi-label">Görev (yapılan / toplam)</p>
               <p class="kpi-value"><%= gv.facts.taskDone %> / <%= gv.facts.taskTotal %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
               <p class="kpi-label">Tamamlama</p>
               <p class="kpi-value"><%= gv.facts.taskRate === null ? '-' : gv.facts.taskRate + '%' %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.questions %></span>
               <p class="kpi-label">Çözülen Soru</p>
               <p class="kpi-value"><%= gv.facts.questionsSolved %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
               <p class="kpi-label">Doğruluk</p>
               <p class="kpi-value"><%= gv.facts.accuracy === null ? '-' : gv.facts.accuracy + '%' %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
               <p class="kpi-label">Çalışma Süresi</p>
               <p class="kpi-value"><%= gv.facts.duration %> dk</p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.wake %></span>
               <p class="kpi-label">Zamanında Uyanma</p>
               <p class="kpi-value"><%= gv.facts.wakeOnTime %> / <%= gv.facts.wakeTracked %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.sport %></span>
               <p class="kpi-label">Zamanında Spor</p>
               <p class="kpi-value"><%= gv.facts.sportOnTime %> / <%= gv.facts.sportTracked %></p>
             </article>
@@ -1304,20 +1321,25 @@
           </p>
         </header>
 
+        <p class="section-label">Program Durumu</p>
         <section class="kpi-grid">
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.yds %></span>
             <p class="kpi-label">Programdaki Ders</p>
             <p class="kpi-value"><%= yzProgramView.total %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
             <p class="kpi-label">Aktarılan</p>
             <p class="kpi-value"><%= yzProgramView.imported %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
             <p class="kpi-label">Bekleyen</p>
             <p class="kpi-value"><%= yzProgramView.pending %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
             <p class="kpi-label">Kurs</p>
             <p class="kpi-value"><%= yzProgramView.kurslar.length %></p>
           </article>
@@ -1695,20 +1717,25 @@
           <h3><%= wakeAdmin.selected.name %> · Son <%= wakeAdmin.detail.summary.gunSayisi %> Gün</h3>
         </header>
 
+        <p class="section-label">Son 14 Gün</p>
         <section class="kpi-grid">
           <article class="kpi <%= wakeAdmin.detail.streak > 0 ? 'ok' : '' %>">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.streak %></span>
             <p class="kpi-label">Zamanında Serisi</p>
             <p class="kpi-value"><%= wakeAdmin.detail.streak %> gün</p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
             <p class="kpi-label">Zamanında Oranı</p>
             <p class="kpi-value"><%= wakeAdmin.detail.summary.onTimeRate === null ? '-' : wakeAdmin.detail.summary.onTimeRate + '%' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.clock %></span>
             <p class="kpi-label">Ortalama Uyanma</p>
             <p class="kpi-value"><%= wakeAdmin.detail.summary.averageWake || '-' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.clock %></span>
             <p class="kpi-label">Ortalama Gecikme</p>
             <p class="kpi-value"><%= wakeAdmin.detail.summary.averageDelay === null ? '-' : wakeAdmin.detail.summary.averageDelay + ' dk' %></p>
           </article>
@@ -1823,24 +1850,30 @@
         </section>
         <% } %>
 
+        <p class="section-label">YDS Özeti</p>
         <section class="kpi-grid">
           <article class="kpi <%= ydsView.sync && ydsView.sync.streakCount > 0 ? 'ok' : '' %>">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.streak %></span>
             <p class="kpi-label">Gün Serisi</p>
             <p class="kpi-value"><%= ydsView.sync ? ydsView.sync.streakCount : 0 %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.goals %></span>
             <p class="kpi-label">Hedef Tutan Gün</p>
             <p class="kpi-value"><%= ydsView.totals.goalDays %> / <%= ydsView.totals.dayCount %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.questions %></span>
             <p class="kpi-label">Çözülen Soru</p>
             <p class="kpi-value"><%= ydsView.totals.questionsSolved %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
             <p class="kpi-label">Doğruluk (puanlı)</p>
             <p class="kpi-value"><%= ydsView.totals.accuracy === null ? '-' : ydsView.totals.accuracy + '%' %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.questions %></span>
             <p class="kpi-label">Öğrenilen Kelime</p>
             <p class="kpi-value"><%= ydsView.sync ? ydsView.sync.learnedCards : 0 %></p>
           </article>
@@ -1887,16 +1920,20 @@
             boş günlere yerleşir, geçmiş günler oynamaz.
           </p>
 
+          <p class="section-label">Çalışma Programı</p>
           <section class="kpi-grid">
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.yds %></span>
               <p class="kpi-label">Programdaki Görev</p>
               <p class="kpi-value"><%= ydsProgramView.total %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
               <p class="kpi-label">Aktarılan</p>
               <p class="kpi-value"><%= ydsProgramView.imported %></p>
             </article>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
               <p class="kpi-label">Bekleyen</p>
               <p class="kpi-value"><%= ydsProgramView.pending %></p>
             </article>
@@ -1904,6 +1941,7 @@
                 kayitlari zaten siliyor. %>
             <% if (ydsProgramView.pastSkipped > 0) { %>
             <article class="kpi">
+              <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
               <p class="kpi-label">Taban öncesi (yazılmaz)</p>
               <p class="kpi-value"><%= ydsProgramView.pastSkipped %></p>
             </article>
@@ -2219,21 +2257,26 @@
           <% } %>
         </section>
 
+        <p class="section-label">Haftanın Ders Özeti</p>
         <section class="kpi-grid">
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.schedule %></span>
             <p class="kpi-label">Haftalık Ders</p>
             <p class="kpi-value"><%= scheduleView.toplamDers %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.schedule %></span>
             <p class="kpi-label">Günün Bitişi</p>
             <p class="kpi-value"><%= scheduleView.bitisSaati %></p>
           </article>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.clock %></span>
             <p class="kpi-label">Günlük Ders Saati</p>
             <p class="kpi-value"><%= scheduleView.ayar.periodCount %></p>
           </article>
           <% if (scheduleView.toplamNobet) { %>
           <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span>
             <p class="kpi-label">Nöbet</p>
             <p class="kpi-value"><%= scheduleView.toplamNobet %></p>
           </article>

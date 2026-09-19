@@ -130,8 +130,26 @@ yapıya getirildi:
 - **Özet sayıları serif** (Playfair 600 / 30px) — referansta ölçüldü. Bir ara
   Inter'e çevrilmişti; ölçüm bunu düzeltti.
 
+### Özet kartları ve bölüm etiketleri
+
+- **Kart köşe ikonu:** her `.kpi` kartının sağ üstünde 16px soluk çizgi ikon
+  (`.kpi-icon`). Etiketler `padding-right: 26px` alır ki uzun başlık ikonun
+  altına girmesin. 59 kart var; ikonlar **etiket metnindeki anahtar kelimeye
+  göre** eşlendi (öğrenci→students, oran/doğruluk→percent, süre→duration,
+  saat/gecikme→clock, seri→streak …), eşleşmeyen kart `analysis` alır.
+- **Bölüm etiketi** (`.section-label`): mono büyük harf + sağa uzayan ince
+  çizgi; kart grubunun *grubunu* adlandırdığı için panelin dışında durur
+  (referanstaki "GENEL DURUM ————" satırı). 13 izgaranın üstüne eklendi.
+  > Negatif `margin-bottom` ile kapsayıcının boşluğunu kısmak denendi ve
+  > **geri alındı**: sayfaların bir kısmı `.container` flex'ini kullanmıyor,
+  > orada gap yok ve etiket ilk kartın altına giriyordu (ölçüldü: 8px
+  > çakışma). Artık sabit 10px alt boşluk var.
+- **Panel başlıkları** da aynı dile geçti: mono, büyük harf, 0.12em aralık;
+  alttaki ince çizgi referanstaki "sağa uzayan çizgi"nin işini görüyor.
+
 Doğrulandı: 1440 / 390px'te 14 admin + 9 öğrenci sayfası 200, sayfa taşması 0,
-menü ikonları her iki panelde de basılıyor.
+menü ikonları her iki panelde de basılıyor; kart ikonu ve bölüm etiketi
+çakışması yok.
 
 > Giriş ekranındaki tanıtım metni kaldırılmış puan sistemine atıf yapıyordu
 > ("Ödül-ceza puanlama"); güncellendi.
