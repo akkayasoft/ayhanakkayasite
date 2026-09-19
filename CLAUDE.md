@@ -14,7 +14,7 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 |---|---|---|
 | **Uyanma rutini** | günlük tek dokunuş, basılan saat | sahte satır (`tasks` kaydı değil) |
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
-| **Ders defteri** | haftalık *"Ders defterini doldur"* görevi | `tasks`, `source_key = defter:<haftaBaşı>` |
+| **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
 
 Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
 
@@ -268,10 +268,10 @@ haftanın içeriğini gün gün açar.
 - Sayfa yalnızca **öğretim yılı içindeki** haftaları gösterir; yıl dışına
   düşen görevler (varsa) Haftalık Takvim ve Görevlerim'de durur.
 
-Doğrulandı (revizyon sonrası, 7 ders saatlik çizelgeyle): 41 hafta, **41
-defter görevi**; her hafta bir görev, son teslim o haftanın pazarı; ilk görev
-`defter:2026-09-14`. Gün kartlarında tatil etiketleri (*"1. Ara Tatil"*)
-duruyor. Admin → `/student/program` **403**, oturumsuz **302**.
+Doğrulandı (revizyon sonrası, 7 ders saatlik çizelgeyle): **287 ders görevi**,
+205 güne yayılmış, ilki 14 Eylül. Gün kartlarında tatil etiketleri
+(*"1. Ara Tatil"*) duruyor. Admin → `/student/program` **403**,
+oturumsuz **302**.
 
 ## Eğitim öğretim yılı takvimi
 
@@ -659,47 +659,56 @@ işlenen konu yazılır. Tüm hafta tek formda gönderilir (`konu[gün-saat]`).
   - Varsayılan aralık **içinde bulunulan dönem**; dönem dışındaysak (yarıyıl
     tatili ya da öğretim yılı başlamadan) tüm öğretim yılı.
 
-### Defter görevleri (işlenen konular → görevler)
+### Ders görevleri (her ders saati = bir görev)
 
-`/admin/schedule` → **Defter Görevleri** paneli → "Görevlere Aktar". Her okul
-haftası için **tek** görev açılır: *"Ders defterini doldur"*. Haftanın
-çizelgede dolu olan tüm hücrelerine konu yazılınca görev **otomatik `done`**
-işaretlenir.
+`/admin/schedule` → **Ders Görevleri** paneli → "Ders Görevlerini Oluştur".
+Çizelgedeki **her ders saati kendi görevidir** ve kendi gününe düşer:
+*"3. ders · Matematik"*, açıklama *"10:20-11:00 · 9-A · işlenen konuyu yaz"*.
+O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir.
 
-- `source_key` = `defter:<haftaBaşı>`; idempotent, tekrar basılabilir. Yeni haftalar eklenir, **işaretlenmemiş ve
-  günü gelmemiş** görevlerin başlığı/tarihi tazelenir, programda kalmayan
-  bayat görevler (yine yalnızca işaretlenmemiş + gelecek) silinir.
-- Kategori: `Ders Defteri`. Görev yalnızca `yazilabilir > 0` olan haftalar
-  için açılır (çizelgede o hafta hiç dolu hücre yoksa görev de yok).
-- **Son tarih hafta sonu (Pazar)**, cuma değil: defteri cumartesi doldurmak
-  hâlâ zamanında sayılsın diye. Cuma verilseydi otomatik kilit hafta biter
-  bitmez `not_done` mühürlerdi. (Çizelge 7 güne çıkınca bu tarih aynı kaldı —
-  hafta sonu dersi olan bir hafta da pazar akşamına kadar yazılabilir.)
-- `completeLessonLogTasks()` iki yerden çağrılır: **konular kaydedildiği anda**
-  (`saveLessonTopicsAndComplete`, hem admin hem öğretmen işaretli öğrenci
+> ⚠️ **Önce haftada TEK görev vardı** (*"Ders defterini doldur"*) ve ancak
+> haftanın bütün hücreleri dolunca tamamlanıyordu. Kullanıcı bir dersi işleyip
+> haftayı kaydettiğinde "Görevlerim"de hiçbir şey değişmiyordu — liste yapılan
+> işi göstermiyordu. Model ders başına göreve çevrildi; eski `defter:%`
+> görevleri açılıştaki temizlikte siliniyor.
+
+- `source_key` = `ders:<tarih>:<saat>`; idempotent, tekrar basılabilir. Yeni
+  dersler eklenir, **işaretlenmemiş ve günü gelmemiş** görevlerin
+  başlığı/açıklaması tazelenir, çizelgeden kalkan derslerin (yine yalnızca
+  işaretlenmemiş + gelecek) görevleri silinir.
+- Kategori: `Ders Programı`. Her hafta **kendi çizelgesiyle** hesaplanır
+  (özelleştirilmiş hafta kendi satırlarını kullanır); takvim hiçbir günü
+  elemez — "bu hafta ders yok" demenin yolu o haftanın çizelgesini boşaltmak.
+- **Son saat yazılmaz**: son teslim gün sonudur (23:59). Dersin bitiş saatine
+  bağlansaydı akşam deftere yazan öğretmenin görevi öğleden sonra "yapılmadı"
+  mühürlenmiş olurdu.
+- `completeLessonTasks()` iki yerden çağrılır: **konular kaydedildiği anda**
+  (`saveLessonTopicsAndComplete`; hem admin hem öğretmen işaretli öğrenci
   rotası) ve `runSealSafely` içinde (açılışta + 5 dakikada bir)
-  **`sealOverdueTaskStatuses`'tan önce**.
+  **`sealOverdueTaskStatuses`'tan önce**. Sıra önemli: aynı turda hem konu
+  yazılıp hem gün bitmişse görev "yapıldı" olmalı.
 
-  > Önce yalnızca mühürleyici turunda çalışıyordu: kullanıcı konuları
-  > dolduruyor, "Görevlerim"e bakıyor ve görev hâlâ işaretsiz olduğu için
-  > özelliğin çalışmadığını düşünüyordu. Kayıt anında da çalıştırmak beklemeyi
-  > kaldırdı; mesajda *"Defter tamamlandı: 1 görev Yapıldı işaretlendi"* yazar.
-  > Denetim idempotenttir, hafta tamamlanmamışsa hiçbir şey yazmaz.
-  > Doğrulandı: 6/7 hücrede işaretsiz, 7/7'de anında `done`. Sıra önemli: aynı turda
-  hem defter tamamlanıp hem süre dolmuşsa görev "yapıldı" olmalı, "yapılmadı"
-  değil. (Doğrulandı: geçmiş tarihli görev + dolu defter → `done`; geçmiş
-  tarihli görev + eksik defter → `not_done`.)
-- Sayaç paydası, İşlenen Konular ekranıyla aynı: **tüm dolu hücreler** (nöbet
-  ve **hafta sonu dersleri** dahil).
-- **Öğrenci listesinde yalnızca içinde bulunulan haftanın defter görevi
-  görünür.** Geçmiş bir haftanın defteri doldurulup tamamlandığında görev
-  "Görevlerim"de **çıkmaz** — Haftalık Takvim, Yıllık Plan ve raporlarda
-  kendi haftasında görünür. Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
-  dursaydı listeyi boğardı — doğrulandı: liste 42 görevin 37'si defterken
-  6'ya indi. Filtre yalnızca **liste görünümüne**
-  aittir: görevler silinmez, haftalık takvimde kendi gününde, haftalık
-  analizde ve raporlarda aynen sayılır. Admin "Görevler" sayfası da hepsini
-  gösterir (yönetim görünümü).
+> **Konu yazmak, mühürleyicinin yazdığı "Yapılmadı"yı da düzeltir.** Defterin
+> doğru kaydı `lesson_topics`tir ve oraya yalnızca admin (ya da öğretmen
+> işaretli hesap) yazabilir — yani bu, *Durum Düzelt* ile aynı yetkidir. Aksi
+> hâlde geçmiş derslerin görevi akşam mühürlenir ve ertesi gün konuyu yazan
+> öğretmen görevi bir türlü "Yapıldı" yapamazdı. **Adminin elle verdiği karar
+> (`corrected_by` dolu) ezilmez**; yalnızca otomatik mührün üzerine yazılır ve
+> `previous_status` ile izi kalır.
+
+- **Öğrenci listesinde yalnızca BUGÜNÜN dersleri görünür** — rutinlerle aynı
+  kural. Diğerleri silinmez: Haftalık Takvim, Yıllık Plan, haftalık analiz ve
+  raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
+  açılır; hepsi listede dursaydı sayfa kullanılamazdı.)
+
+Doğrulandı (7 ders saatlik çizelge, 14 Eylül'den itibaren): **287 ders görevi**,
+205 güne yayıldı; başlıklar *"1. ders · Matematik"*, açıklamada zil saati +
+sınıf. Açılışta geçmiş 7 ders görevi `not_done` mühürlendi; sonra **tek bir
+dersin** konusu yazıldı ve o görev anında `done` oldu (`previous_status =
+not_done`, not: *"İşlenen konu yazıldığı için otomatik işaretlendi."*). Bugüne
+ders eklenip aktarım tekrarlandığında liste **40 yeni görev** ekledi; öğrenci
+panelinde o günün dersi satır olarak çıktı ve konusu yazılınca ✓ oldu
+(*Toplam 3 · Tamamlanan 2 · Bekleyen 1*).
 
 ### Öğretmen işareti (`users.is_teacher`)
 

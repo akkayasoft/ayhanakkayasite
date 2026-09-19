@@ -438,8 +438,10 @@ async function initDb() {
   await query(`DROP TABLE IF EXISTS yds_program_settings`);
 
   // Program gorevleri ve durumlari (task_statuses CASCADE ile gider).
+  // 'defter:%' = haftalik "Ders defterini doldur" gorevleri; model ders basina
+  // goreve (source_key 'ders:<tarih>:<saat>') cevrildigi icin onlar da gider.
   const silinenGorev = await query(
-    `DELETE FROM tasks WHERE source_key LIKE 'yz:%' OR source_key LIKE 'ydsp:%'`
+    `DELETE FROM tasks WHERE source_key LIKE 'yz:%' OR source_key LIKE 'ydsp:%' OR source_key LIKE 'defter:%'`
   );
   if (silinenGorev.rowCount > 0) {
     console.log(`${silinenGorev.rowCount} YZ/YDS program görevi silindi.`);
@@ -457,7 +459,7 @@ async function initDb() {
   const silinenKategori = await query(
     `
       DELETE FROM categories c
-      WHERE c.name IN ('Yapay Zeka', 'Doktora')
+      WHERE c.name IN ('Yapay Zeka', 'Doktora', 'Ders Defteri')
         AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.category_id = c.id)
         AND NOT EXISTS (SELECT 1 FROM daily_questions d WHERE d.category_id = c.id)
     `

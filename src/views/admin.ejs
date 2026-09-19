@@ -1891,23 +1891,20 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         </form>
 
         <section class="panel narrow">
-          <h3>Defter Görevleri</h3>
+          <h3>Ders Görevleri</h3>
           <p class="muted">
-            Her okul haftası için tek görev: <strong>"Ders defterini doldur"</strong>.
-            O haftanın tüm ders saatlerine konu girilince görev <strong>otomatik
-            "yapıldı"</strong> işaretlenir. Görev haftanın son gününe (pazar)
-            tarihlenir — cumartesi doldurmak da sayılsın diye.
+            Çizelgedeki <strong>her ders saati kendi görevidir</strong>
+            (ör. "3. ders · Matematik") ve kendi gününe düşer. O dersin
+            <strong>işlenen konusu yazılınca görev anında "Yapıldı"</strong>
+            işaretlenir. Öğrencinin listesinde yalnızca <strong>o günün</strong>
+            dersleri görünür.
           </p>
-          <% if (tw.logTask) { %>
+          <% if (tw.logTask && tw.logTask.toplam) { %>
           <p class="muted">
-            Bu haftanın görevi <strong><%= tw.logTask.studentName %></strong> için açık ·
-            <% if (tw.logTask.status === 'done') { %>
-            <span class="day-badge ok">Yapıldı</span>
-            <% } else if (tw.logTask.status === 'not_done') { %>
-            <span class="day-badge miss">Yapılmadı</span>
-            <% } else { %>
-            <span class="day-badge off">Bekliyor</span> — <%= tw.dolu %> / <%= tw.yazilabilir %> yazıldı
-            <% } %>
+            Bu haftanın dersleri <strong><%= tw.logTask.studentName %></strong> için açık ·
+            <span class="day-badge <%= tw.logTask.isaretli >= tw.logTask.toplam ? 'ok' : 'off' %>">
+              <%= tw.logTask.isaretli %> / <%= tw.logTask.toplam %> işaretlendi
+            </span>
           </p>
           <% } %>
           <% if (!students.length) { %>
@@ -1921,9 +1918,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               <option value="<%= st.id %>" <%= tw.logTask && tw.logTask.studentName === st.name ? 'selected' : '' %>><%= st.name %></option>
               <% }) %>
             </select>
-            <button type="submit">Defter Görevlerini Oluştur</button>
+            <button type="submit">Ders Görevlerini Oluştur</button>
             <p class="muted">
-              Öğretim yılındaki tüm okul haftaları için açılır; tekrar basmak
+              Öğretim yılındaki tüm ders saatleri için açılır; tekrar basmak
               yalnızca eksikleri tamamlar. Çizelge değişirse başlıklar tazelenir —
               ama işaretlenmiş ve günü geçmiş görevler asla oynatılmaz.
             </p>

@@ -1797,16 +1797,20 @@ async function buildTopicWeekView(req, ayar) {
   const donem =
     academicCalendar.ACADEMIC_YEAR.terms.find((t) => today >= t.start && today <= t.end) || null;
 
-  // Bu haftanin defter gorevi hangi durumda?
+  // Bu haftanin ders gorevleri: kac tanesi var, kac tanesi konusu yazildigi
+  // icin isaretlenmis?
   const buHaftaGorev = await query(
     `
-      SELECT t.id, u.name AS "studentName",
-             (SELECT st.status FROM task_statuses st WHERE st.task_id = t.id LIMIT 1) AS status
-      FROM tasks t JOIN users u ON u.id = t.student_id
-      WHERE t.source_key = $1
-      LIMIT 1
+      SELECT count(*)::int AS toplam,
+             count(st.id)::int AS isaretli,
+             min(u.name) AS "studentName"
+      FROM tasks t
+      JOIN users u ON u.id = t.student_id
+      LEFT JOIN task_statuses st ON st.task_id = t.id
+      WHERE t.source_key LIKE $1
+        AND t.single_date BETWEEN $2::date AND $3::date
     `,
-    [lessonLogSourceKey(weekStart)]
+    [`${LESSON_PREFIX}:%`, weekStart, weekEnd]
   );
 
   return {
@@ -1817,8 +1821,9 @@ async function buildTopicWeekView(req, ayar) {
     thisWeekStart: startOfWeek(today),
     logTask: buHaftaGorev.rowCount
       ? {
-          studentName: buHaftaGorev.rows[0].studentName,
-          status: buHaftaGorev.rows[0].status || 'not_set'
+          studentName: buHaftaGorev.rows[0].studentName || '',
+          toplam: Number(buHaftaGorev.rows[0].toplam) || 0,
+          isaretli: Number(buHaftaGorev.rows[0].isaretli) || 0
         }
       : null,
     exportFrom: donem ? donem.start : academicCalendar.ACADEMIC_YEAR.start,
@@ -1833,96 +1838,99 @@ async function buildTopicWeekView(req, ayar) {
   };
 }
 
-// --- Ders defteri gorevleri ------------------------------------------------
+// --- Ders gorevleri --------------------------------------------------------
 //
-// Her okul haftasi icin tek gorev: "Ders defterini doldur". O haftanin TUM
-// yazilabilir ders saatlerine konu girilince gorev otomatik "yapildi"
-// isaretlenir. Ders basina ayri gorev acmak haftada 15 gorev demekti; YZ ve
-// YDS gorevlerinin ustune binmesin diye haftalik tek denetim tercih edildi.
+// HER DERS SAATI KENDI GOREVIDIR: cizelgedeki her ders kendi gunune bir gorev
+// olarak yazilir ("3. ders · Matematik"), konusu yazilinca gorev otomatik
+// "yapildi" isaretlenir.
 //
-// Gorev haftanin SON GUNUNE (pazar) tarihlenir: defter haftalik bir kayittir,
-// dogal son tarihi haftanin bitisidir. Cuma'ya tarihlenseydi cumartesi
-// doldurmak otomatik kilide takilip kalici "yapilmadi" olurdu.
+// Once haftada TEK gorev vardi ("Ders defterini doldur") ve ancak haftanin
+// butun hucreleri dolunca tamamlaniyordu. Kullanici bir dersi isleyip haftayi
+// kaydettiginde "Gorevlerim"de hicbir sey degismiyordu — gorev listesi
+// yapilan isi gostermiyordu. Model ders basina goreve cevrildi.
 
-const LESSON_LOG_PREFIX = 'defter';
-const LESSON_LOG_CATEGORY = 'Ders Defteri';
-// Otomatik tamamlamada geriye kac hafta taranir.
-const LESSON_LOG_LOOKBACK_WEEKS = 10;
+const LESSON_PREFIX = 'ders';
+const LESSON_CATEGORY = 'Ders Programı';
 
-function lessonLogSourceKey(weekStart) {
-  return `${LESSON_LOG_PREFIX}:${weekStart}`;
+function lessonSourceKey(tarih, saat) {
+  return `${LESSON_PREFIX}:${tarih}:${saat}`;
 }
 
-function isLessonLogTask(sourceKey) {
-  return typeof sourceKey === 'string' && sourceKey.startsWith(`${LESSON_LOG_PREFIX}:`);
+function isLessonTask(sourceKey) {
+  return typeof sourceKey === 'string' && sourceKey.startsWith(`${LESSON_PREFIX}:`);
 }
 
 /**
- * Ogretim yilindaki haftalar: her biri icin o hafta kac ders saatine konu
- * yazilabilecegini hesaplar. Yazilacak sey yoksa hafta listeye girmez — bos
- * gorev acilmaz.
+ * Ogretim yilindaki TUM ders saatleri, gorev satirina cevrilmis hali.
  *
- * Her hafta KENDI cizelgesiyle hesaplanir: ozellestirilmis haftalar kendi
- * satirlarini, digerleri sablonu kullanir. Tatil takvimi artik hicbir seyi
- * elemez; "bu hafta defter gorevi olmasin" demenin yolu o haftanin
- * cizelgesini BOSALTMAKTIR (ozellestir + hepsini sil).
+ * Her hafta KENDI cizelgesiyle hesaplanir: ozellestirilmis hafta kendi
+ * satirlarini, digerleri sablonu kullanir. Takvim hicbir gunu elemez —
+ * "bu hafta ders yok" demenin yolu o haftanin cizelgesini bosaltmaktir.
  */
-function buildLessonLogWeeks(sablon, ozelHaftalar, ayar) {
+function buildLessonTaskRows(sablon, ozelHaftalar, ayar) {
   const { start, end } = academicCalendar.ACADEMIC_YEAR;
-  const haftalar = [];
+  const saatler = new Map(schedule.buildPeriods(ayar).map((p) => [p.period, p]));
+  const satirlar = [];
 
   let weekStart = startOfWeek(start);
   while (weekStart <= end) {
     const haftaninKayitlari = ozelHaftalar.get(weekStart) || sablon;
-    let yazilabilir = 0;
     for (const gun of schedule.GUNLER) {
       const tarih = shiftDate(weekStart, gun - 1);
       if (tarih < start || tarih > end) continue;
-      yazilabilir += haftaninKayitlari.filter((e) => e.dayOfWeek === gun).length;
-    }
-
-    if (yazilabilir > 0) {
-      const weekEnd = shiftDate(weekStart, 6);
-      haftalar.push({
-        weekStart,
-        weekEnd,
-        dueDate: weekEnd, // pazar
-        yazilabilir,
-        kayitlar: haftaninKayitlari,
-        academic: academicCalendar.describeWeek(weekStart, weekEnd)
-      });
+      for (const kayit of haftaninKayitlari.filter((e) => e.dayOfWeek === gun)) {
+        const zil = saatler.get(kayit.period) || null;
+        satirlar.push({
+          tarih,
+          weekStart,
+          dayOfWeek: gun,
+          period: kayit.period,
+          subject: kayit.subject,
+          className: kayit.className || '',
+          room: kayit.room || '',
+          kind: kayit.kind,
+          zil
+        });
+      }
     }
     weekStart = shiftDate(weekStart, 7);
   }
 
-  return haftalar;
+  return satirlar;
 }
 
-function lessonLogTitle(hafta) {
-  const no = hafta.academic && hafta.academic.weekNo ? ` (${hafta.academic.weekNo}. hafta)` : '';
-  return `Ders defterini doldur${no}`;
+function lessonTaskTitle(satir) {
+  return `${satir.period}. ders · ${satir.subject}`;
 }
 
-function lessonLogDescription(hafta) {
-  const donem = hafta.academic && hafta.academic.termLabel ? `${hafta.academic.termLabel} · ` : '';
-  return `${donem}${hafta.weekStart} - ${hafta.weekEnd} · ${hafta.yazilabilir} ders saati`;
+function lessonTaskDescription(satir) {
+  const parcalar = [];
+  if (satir.zil) parcalar.push(`${satir.zil.start}-${satir.zil.end}`);
+  if (satir.className) parcalar.push(satir.className);
+  if (satir.room) parcalar.push(satir.room);
+  parcalar.push('işlenen konuyu yaz');
+  return parcalar.join(' · ');
 }
 
 /**
- * Defter gorevlerini olusturur/tazeler. YZ ve YDS aktarimlariyla ayni desen:
- * yeni haftalari ekler, degisen basligi yalnizca ISARETLENMEMIS ve GUNU
- * GELMEMIS gorevlerde tazeler, artik gecerli olmayan haftalarin (yine yalnizca
+ * Ders gorevlerini olusturur/tazeler. Onceki aktarimlarla ayni desen: yeni
+ * dersleri ekler, degisen baslik/aciklamayi yalnizca ISARETLENMEMIS ve GUNU
+ * GELMEMIS gorevlerde tazeler, cizelgeden kalkan derslerin (yine yalnizca
  * isaretlenmemis + gelecek) gorevlerini siler.
+ *
+ * Son saat (estimated_time) YAZILMAZ: gunun sonu (23:59) son teslimdir.
+ * Dersin bitis saatine baglansaydi, aksam deftere yazan ogretmenin gorevi
+ * ogleden sonra "yapilmadi" muhurlenmis olurdu.
  */
-async function importLessonLogTasks(studentId, createdBy) {
+async function importLessonTasks(studentId, createdBy) {
   const [ayar, sablon, ozelHaftalar] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(),
     getCustomScheduleWeeks()
   ]);
-  const haftalar = buildLessonLogWeeks(sablon, ozelHaftalar, ayar);
-  if (!haftalar.length) {
-    return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0, weeks: 0 };
+  const satirlar = buildLessonTaskRows(sablon, ozelHaftalar, ayar);
+  if (!satirlar.length) {
+    return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0, lessons: 0 };
   }
 
   const today = todayDateString();
@@ -1932,7 +1940,7 @@ async function importLessonLogTasks(studentId, createdBy) {
 
     let createdCategories = 0;
     const mevcut = await client.query(`SELECT id FROM categories WHERE name = $1`, [
-      LESSON_LOG_CATEGORY
+      LESSON_CATEGORY
     ]);
     let categoryId;
     if (mevcut.rowCount > 0) {
@@ -1941,17 +1949,17 @@ async function importLessonLogTasks(studentId, createdBy) {
       categoryId = makeId('cat');
       await client.query(`INSERT INTO categories (id, name) VALUES ($1, $2)`, [
         categoryId,
-        LESSON_LOG_CATEGORY
+        LESSON_CATEGORY
       ]);
       createdCategories = 1;
     }
 
     let inserted = 0;
     let updated = 0;
-    for (const hafta of haftalar) {
-      const sourceKey = lessonLogSourceKey(hafta.weekStart);
-      const baslik = lessonLogTitle(hafta);
-      const aciklama = lessonLogDescription(hafta);
+    for (const satir of satirlar) {
+      const sourceKey = lessonSourceKey(satir.tarih, satir.period);
+      const baslik = lessonTaskTitle(satir);
+      const aciklama = lessonTaskDescription(satir);
 
       const ekleme = await client.query(
         `
@@ -1963,7 +1971,7 @@ async function importLessonLogTasks(studentId, createdBy) {
           VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
           ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
         `,
-        [makeId('task'), baslik, aciklama, categoryId, studentId, hafta.dueDate, createdBy, sourceKey]
+        [makeId('task'), baslik, aciklama, categoryId, studentId, satir.tarih, createdBy, sourceKey]
       );
 
       if (ekleme.rowCount > 0) {
@@ -1976,22 +1984,21 @@ async function importLessonLogTasks(studentId, createdBy) {
           UPDATE tasks t
           SET title = $1,
               description = CASE WHEN t.description_edited THEN t.description ELSE $2 END,
-              category_id = $3,
-              single_date = $4
-          WHERE t.student_id = $5
-            AND t.source_key = $6
-            AND t.single_date >= $7::date
+              category_id = $3
+          WHERE t.student_id = $4
+            AND t.source_key = $5
+            AND t.single_date >= $6::date
             AND (t.title IS DISTINCT FROM $1
                  OR (NOT t.description_edited AND t.description IS DISTINCT FROM $2)
-                 OR t.single_date IS DISTINCT FROM $4::date)
+                 OR t.category_id IS DISTINCT FROM $3)
             AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
         `,
-        [baslik, aciklama, categoryId, hafta.dueDate, studentId, sourceKey, today]
+        [baslik, aciklama, categoryId, studentId, sourceKey, today]
       );
       updated += guncelleme.rowCount || 0;
     }
 
-    const gecerli = haftalar.map((h) => lessonLogSourceKey(h.weekStart));
+    const gecerli = satirlar.map((satir) => lessonSourceKey(satir.tarih, satir.period));
     const silme = await client.query(
       `
         DELETE FROM tasks t
@@ -2001,7 +2008,7 @@ async function importLessonLogTasks(studentId, createdBy) {
           AND t.single_date >= $4::date
           AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
       `,
-      [studentId, `${LESSON_LOG_PREFIX}:%`, gecerli, today]
+      [studentId, `${LESSON_PREFIX}:%`, gecerli, today]
     );
 
     await client.query('COMMIT');
@@ -2009,9 +2016,9 @@ async function importLessonLogTasks(studentId, createdBy) {
       inserted,
       updated,
       removed: silme.rowCount || 0,
-      skipped: haftalar.length - inserted,
+      skipped: satirlar.length - inserted,
       categories: createdCategories,
-      weeks: haftalar.length
+      lessons: satirlar.length
     };
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2022,66 +2029,78 @@ async function importLessonLogTasks(studentId, createdBy) {
 }
 
 /**
- * Defteri tamamlanan haftalarin gorevini otomatik "yapildi" isaretler.
+ * Konusu yazilmis ders gorevlerini otomatik "yapildi" isaretler.
  *
  * Otomatik kilitten ONCE calismali (bkz. runSealSafely): kilit once calissa
- * pazar gunu tamamlanan bir defter "yapilmadi" muhurlenmis olurdu.
+ * aksam yazilan bir konunun gorevi "yapilmadi" muhurlenmis olurdu.
  * Idempotenttir; zaten isaretli gorev ON CONFLICT ile atlanir.
  */
-async function completeLessonLogTasks() {
-  const [ayar, sablon, ozelHaftalar] = await Promise.all([
-    getScheduleSettings(),
-    getScheduleEntries(),
-    getCustomScheduleWeeks()
-  ]);
-  if (!sablon.length && ozelHaftalar.size === 0) return { completed: 0 };
-
+async function completeLessonTasks() {
   const today = todayDateString();
-  const enEski = startOfWeek(shiftDate(today, -7 * LESSON_LOG_LOOKBACK_WEEKS));
 
+  // Isaretlenmemis VE otomatik "yapilmadi" muhurlenmis ders gorevleri.
+  // Ikincisi de taranir: gecmis bir dersin konusu sonradan yazilabilir
+  // (bkz. asagidaki upsert).
   const gorevler = await query(
     `
-      SELECT t.id, t.student_id AS "studentId", t.source_key AS "sourceKey", t.single_date AS "singleDate"
+      SELECT t.id, t.student_id AS "studentId", t.source_key AS "sourceKey",
+             t.single_date AS "singleDate"
       FROM tasks t
+      LEFT JOIN task_statuses st ON st.task_id = t.id
       WHERE t.source_key LIKE $1
-        AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+        AND (st.id IS NULL OR (st.status = 'not_done' AND st.corrected_by IS NULL))
     `,
-    [`${LESSON_LOG_PREFIX}:%`]
+    [`${LESSON_PREFIX}:%`]
   );
   if (gorevler.rowCount === 0) return { completed: 0 };
 
-  const haftaByKey = new Map(
-    buildLessonLogWeeks(sablon, ozelHaftalar, ayar).map((h) => [lessonLogSourceKey(h.weekStart), h])
-  );
+  // Konular hafta hafta okunur; ayni hafta birden fazla gorevde gectigi icin
+  // tek sorguya indirgenir.
+  const konuOnbellek = new Map();
+  const haftaKonulari = async (weekStart) => {
+    if (!konuOnbellek.has(weekStart)) konuOnbellek.set(weekStart, await getLessonTopics(weekStart));
+    return konuOnbellek.get(weekStart);
+  };
 
   let completed = 0;
   for (const gorev of gorevler.rows) {
-    const hafta = haftaByKey.get(gorev.sourceKey);
-    if (!hafta || hafta.weekStart < enEski) continue;
+    const parcalar = String(gorev.sourceKey).split(':');
+    const tarih = parcalar[1];
+    const saat = Number(parcalar[2]);
+    if (!isDateOnly(tarih) || !Number.isInteger(saat)) continue;
 
-    const konular = await getLessonTopics(hafta.weekStart);
-    let dolu = 0;
-    for (const [anahtar, kayit] of konular) {
-      if (!kayit.topic) continue;
-      const [gun, saat] = anahtar.split(':').map(Number);
-      if (!hafta.kayitlar.some((k) => k.dayOfWeek === gun && k.period === saat)) continue;
-      dolu += 1;
-    }
+    const konular = await haftaKonulari(startOfWeek(tarih));
+    const kayit = konular.get(`${schedule.dayOfWeek(tarih)}:${saat}`);
+    if (!kayit || !normalizeText(kayit.topic)) continue;
 
-    if (dolu < hafta.yazilabilir) continue;
-
+    // Konu yazmak, MUHURLEYICININ yazdigi "yapilmadi"yi da duzeltir.
+    //
+    // Gerekce: defterin dogru kaydi `lesson_topics`tir ve oraya yalnizca admin
+    // (ya da ogretmen isaretli hesap) yazabilir — yani bu, Durum Duzelt ile
+    // ayni yetkidir. Aksi halde gecmis derslerin gorevi aksam muhurlenir ve
+    // ertesi gun konuyu yazan ogretmen gorevi bir turlu "yapildi" yapamazdi.
+    //
+    // ADMININ ELLE yazdigi karar (corrected_by dolu) ezilmez; yalnizca
+    // otomatik muhurun uzerine yazilir ve izi birakilir.
     const yazma = await query(
       `
         INSERT INTO task_statuses (id, task_id, student_id, day, status, note)
-        VALUES ($1,$2,$3,$4,'done','Defter tamamlandığı için otomatik işaretlendi.')
-        ON CONFLICT (task_id, student_id, day) DO NOTHING
+        VALUES ($1,$2,$3,$4,'done','İşlenen konu yazıldığı için otomatik işaretlendi.')
+        ON CONFLICT (task_id, student_id, day) DO UPDATE
+        SET status = 'done',
+            note = EXCLUDED.note,
+            previous_status = task_statuses.status,
+            corrected_at = NOW(),
+            updated_at = NOW()
+        WHERE task_statuses.status = 'not_done'
+          AND task_statuses.corrected_by IS NULL
       `,
       [makeId('status'), gorev.id, gorev.studentId, toDateOnly(gorev.singleDate)]
     );
     completed += yazma.rowCount || 0;
   }
 
-  return { completed };
+  return { completed, today };
 }
 
 /**
@@ -3507,19 +3526,19 @@ app.post(
       });
     }
 
-    const sonuc = await importLessonLogTasks(studentId, req.currentUser.id);
+    const sonuc = await importLessonTasks(studentId, req.currentUser.id);
     const notlar = [];
-    if (sonuc.categories) notlar.push('"Ders Defteri" kategorisi oluşturuldu.');
+    if (sonuc.categories) notlar.push(`"${LESSON_CATEGORY}" kategorisi oluşturuldu.`);
     if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
     if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);
 
     if (sonuc.inserted === 0 && !notlar.length) {
       return adminRedirect(req, res, {
-        message: `${studentRes.rows[0].name} için yeni hafta yok; ${sonuc.skipped} defter görevi zaten var.`
+        message: `${studentRes.rows[0].name} için yeni ders yok; ${sonuc.skipped} ders görevi zaten var.`
       });
     }
     return adminRedirect(req, res, {
-      message: `${sonuc.inserted} defter görevi eklendi (${sonuc.weeks} okul haftası).${notlar.length ? ' ' + notlar.join(' ') : ''}`
+      message: `${sonuc.inserted} ders görevi eklendi (${sonuc.lessons} ders saati).${notlar.length ? ' ' + notlar.join(' ') : ''}`
     });
   })
 );
@@ -3754,7 +3773,7 @@ app.post(
 /**
  * Konular kaydedildikten sonra defter gorevini HEMEN denetler.
  *
- * `completeLessonLogTasks` zaten muhurleyici turunda (acilista + 5 dakikada
+ * `completeLessonTasks` zaten muhurleyici turunda (acilista + 5 dakikada
  * bir) calisiyordu; ama kullanici konulari doldurup "Gorevlerim"e bakinca
  * gorev hala isaretsiz gorunuyordu ve ozellik calismiyor sanildi. Kayit aninda
  * da calistirmak beklemeyi kaldiriyor. Idempotenttir: tamamlanmamis hafta
@@ -3765,11 +3784,11 @@ async function saveLessonTopicsAndComplete(body) {
   if (!sonuc.ok) return sonuc;
 
   try {
-    const { completed } = await completeLessonLogTasks();
+    const { completed } = await completeLessonTasks();
     if (completed > 0) {
       return {
         ...sonuc,
-        message: `${sonuc.message} Defter tamamlandı: ${completed} görev "Yapıldı" işaretlendi.`
+        message: `${sonuc.message} ${completed} ders görevi "Yapıldı" işaretlendi.`
       };
     }
   } catch (err) {
@@ -4880,17 +4899,13 @@ async function getStudentViewModel(req, currentPage) {
   const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
   const allTasks = tasksRes.rows.map(mapTask);
 
-  // Defter gorevi ogretim yilindaki HER hafta icin acilir (37 tane). Hepsi
-  // listede dursaydi gunluk gorevleri boğardi; listede yalnizca icinde
-  // bulunulan haftanınki kalir. Digerleri silinmez - takvimde kendi gununde,
-  // haftalik analizde ve raporlarda aynen gorunur.
-  const buHaftaninDefterKeyi = lessonLogSourceKey(startOfWeek(today));
+  // Ders gorevi ogretim yilindaki her ders saati icin acilir (yuzlerce).
+  // Listede yalnizca BUGUNUN dersleri kalir — rutinlerle ayni kural. Digerleri
+  // silinmez: takvimde kendi gununde, haftalik analizde ve raporlarda aynen
+  // gorunur.
   const activeTasks = allTasks
     .filter((task) => !task.isArchived)
-    .filter(
-      (task) =>
-        !isLessonLogTask(task.sourceKey) || task.sourceKey === buHaftaninDefterKeyi
-    )
+    .filter((task) => !isLessonTask(task.sourceKey) || task.singleDate === today)
     .sort(compareTasksBySchedule)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);
@@ -5676,15 +5691,15 @@ async function runSealSafely() {
     }
   }
 
-  // Defter tamamlamasi otomatik kilitten ONCE calisir: kilit once calissa
-  // pazar gunu tamamlanan bir defter "yapilmadi" muhurlenmis olurdu.
+  // Ders gorevi tamamlamasi otomatik kilitten ONCE calisir: kilit once calissa
+  // aksam yazilan bir konunun gorevi "yapilmadi" muhurlenmis olurdu.
   try {
-    const { completed } = await completeLessonLogTasks();
+    const { completed } = await completeLessonTasks();
     if (completed > 0) {
-      console.log(`${completed} haftanın ders defteri tamamlandı, görev işaretlendi.`);
+      console.log(`${completed} ders görevi, konusu yazıldığı için işaretlendi.`);
     }
   } catch (err) {
-    console.error('Ders defteri tamamlama hatası:', err);
+    console.error('Ders görevi tamamlama hatası:', err);
   }
 
   try {
