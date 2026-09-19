@@ -204,33 +204,6 @@ async function initDb() {
   // sureleri verilir, her ders saatinin baslangic-bitisi bunlardan turetilir.
   // Boylece "8. ders kacta" sorusunun tek bir dogru cevabi olur.
   await query(`
-    CREATE TABLE IF NOT EXISTS yds_program_settings (
-      id TEXT PRIMARY KEY,
-      -- Virgullu hafta gunu listesi (0=Pazar ... 6=Cumartesi). Varsayilan
-      -- hafta sonu; admin /admin/yds sayfasindan degistirebilir. Program
-      -- yeniden yayildiginda GECMIS ve ISARETLI gorevlere dokunulmaz.
-      gun_set TEXT NOT NULL DEFAULT '0,6',
-      gunluk_dakika INTEGER NOT NULL DEFAULT 120 CHECK (gunluk_dakika BETWEEN 15 AND 600),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  // GUNLUK 1 SAAT duzeni: her gun 60 dk. Program dosyasi 180 dk/gun (sinav
-  // programi) olarak uretilmisti; bu tempo surdurulemedigi icin calisma duzeni
-  // gunde bir saate indirildi ve uzun video dersler aktarimda bolumlere
-  // ayriliyor (bkz. ydsPlan.bolumlereAyir).
-  //
-  // Yalnizca satir YOKSA yazilir: admin panelden baska bir duzen sectiyse
-  // (kendi karari) her acilista ustune yazmak yanlis olurdu.
-  await query(
-    `
-      INSERT INTO yds_program_settings (id, gun_set, gunluk_dakika)
-      VALUES ('default', '0,1,2,3,4,5,6', 60)
-      ON CONFLICT (id) DO NOTHING
-    `
-  );
-
-  await query(`
     CREATE TABLE IF NOT EXISTS school_settings (
       id TEXT PRIMARY KEY,
       start_time TIME NOT NULL DEFAULT '08:00',
@@ -354,51 +327,6 @@ async function initDb() {
     CHECK (day_of_week BETWEEN 1 AND 7)
   `);
 
-  // --- YDS / YOKDIL takibi -----------------------------------------------
-  //
-  // yds.obs uygulamasinin ilerlemesi bu tablolara YANSITILIR. Kaynak dosya
-  // (state-<kullanici>.json) uygulamadan sifirlanabildigi icin veriyi burada
-  // saklamak gecmis denetim kaydini korur — canli aynada olsaydi sifirlama
-  // gecmisi de silerdi.
-  await query(`
-    CREATE TABLE IF NOT EXISTS yds_days (
-      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      day DATE NOT NULL,
-      lessons INTEGER NOT NULL DEFAULT 0,
-      decks INTEGER NOT NULL DEFAULT 0,
-      quizzes INTEGER NOT NULL DEFAULT 0,
-      readings INTEGER NOT NULL DEFAULT 0,
-      words_learned INTEGER NOT NULL DEFAULT 0,
-      questions_solved INTEGER NOT NULL DEFAULT 0,
-      scored_questions INTEGER NOT NULL DEFAULT 0,
-      questions_correct INTEGER NOT NULL DEFAULT 0,
-      goal_met BOOLEAN NOT NULL DEFAULT FALSE,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (student_id, day)
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS yds_sync (
-      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      goal_okuma INTEGER NOT NULL DEFAULT 0,
-      goal_kelime INTEGER NOT NULL DEFAULT 0,
-      goal_gramer INTEGER NOT NULL DEFAULT 0,
-      goal_test INTEGER NOT NULL DEFAULT 0,
-      streak_count INTEGER NOT NULL DEFAULT 0,
-      streak_max INTEGER NOT NULL DEFAULT 0,
-      streak_last_day DATE NULL,
-      plan_start DATE NULL,
-      learned_cards INTEGER NOT NULL DEFAULT 0,
-      synced_at TIMESTAMPTZ NULL,
-      last_error TEXT NOT NULL DEFAULT ''
-    )
-  `);
-  // YDS uygulamasindaki "Ilerlemeyi sifirla" damgasi. Kaynaktaki resetAt bu
-  // degerden buyukse aynadaki gecmis temizlenir (bkz. syncYdsProgress).
-  await query(`ALTER TABLE yds_sync ADD COLUMN IF NOT EXISTS source_reset_at BIGINT NOT NULL DEFAULT 0`);
-  await query(`ALTER TABLE yds_sync ADD COLUMN IF NOT EXISTS reset_applied_at TIMESTAMPTZ NULL`);
-
   // --- Uyanma rutini -----------------------------------------------------
   //
   // wake_routines: ogrenci basina hedef saat + tolerans (tek satir).
@@ -496,6 +424,47 @@ async function initDb() {
   await query(
     `ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS correction_note TEXT NOT NULL DEFAULT ''`
   );
+
+  // --- YZ / YDS programlari kaldirildi -----------------------------------
+  //
+  // Gorevler artik yalnizca UYANMA RUTINI, SPOR RUTINI ve DERS DEFTERI'nden
+  // gelir. Yapay Zeka mufredati ve YDS calisma programi (gorev ureten iki
+  // kaynak), yds.obs ilerleme aynasi ve elle gorev acma tamamen kaldirildi.
+  //
+  // Bu blok tek seferlik degil IDEMPOTENT bir temizliktir: her acilista
+  // kalinti arar, yoksa hicbir sey yapmaz.
+  await query(`DROP TABLE IF EXISTS yds_days`);
+  await query(`DROP TABLE IF EXISTS yds_sync`);
+  await query(`DROP TABLE IF EXISTS yds_program_settings`);
+
+  // Program gorevleri ve durumlari (task_statuses CASCADE ile gider).
+  const silinenGorev = await query(
+    `DELETE FROM tasks WHERE source_key LIKE 'yz:%' OR source_key LIKE 'ydsp:%'`
+  );
+  if (silinenGorev.rowCount > 0) {
+    console.log(`${silinenGorev.rowCount} YZ/YDS program görevi silindi.`);
+  }
+
+  // yds.obs aynasindan gelen soru kayitlari; elle girilenler (source_key NULL)
+  // korunur.
+  const silinenSoru = await query(`DELETE FROM daily_questions WHERE source_key LIKE 'yds:%'`);
+  if (silinenSoru.rowCount > 0) {
+    console.log(`${silinenSoru.rowCount} YDS ayna soru kaydı silindi.`);
+  }
+
+  // Bosalan program kategorileri. Baska gorev ya da soru kaydi bagliysa
+  // DOKUNULMAZ - kategori silmek o kayitlarin etiketini kaybettirirdi.
+  const silinenKategori = await query(
+    `
+      DELETE FROM categories c
+      WHERE c.name IN ('Yapay Zeka', 'Doktora')
+        AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.category_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM daily_questions d WHERE d.category_id = c.id)
+    `
+  );
+  if (silinenKategori.rowCount > 0) {
+    console.log(`${silinenKategori.rowCount} boşalan program kategorisi silindi.`);
+  }
 
   // --- Puan sistemi kaldirildi -------------------------------------------
   //

@@ -21,7 +21,6 @@
           <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>"><%- menuIcons.tasks %>Görevlerim</a>
           <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>"><%- menuIcons.wake %>Uyanma Rutini</a>
           <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>"><%- menuIcons.sport %>Spor Rutini</a>
-          <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>"><%- menuIcons.newTask %>Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>"><%- menuIcons.schedule %>Haftalık Takvim</a>
           <a href="/student/program" class="menu-link <%= currentPage === 'program' ? 'active' : '' %>"><%- menuIcons.program %>Yıllık Plan</a>
           <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>"><%- menuIcons.yds %>Ders Programı</a>
@@ -48,155 +47,12 @@
         <div class="alert error"><%= error %></div>
         <% } %>
 
-        <% if (currentPage === 'new-task') { %>
-        <header class="content-header">
-          <h2>Görev Ekle</h2>
-          <p class="muted"><%= today %></p>
-        </header>
-
-        <section class="panel narrow">
-          <h3>Günlük Görev Ekle</h3>
-          <form id="studentTaskCreateForm" method="post" action="/student/tasks" class="grid">
-            <input type="hidden" name="next" value="/student/dashboard" />
-            <div class="stack">
-              <label>Görev Başlığı</label>
-              <input type="text" name="title" minlength="2" maxlength="120" autocomplete="off" required />
-            </div>
-            <div class="stack">
-              <label>Kategori</label>
-              <select id="studentTaskCategorySelect" name="categoryId" required>
-                <option value="">Kategori Seç</option>
-                <% categories.forEach((c) => { %>
-                <option value="<%= c.id %>"><%= c.name %></option>
-                <% }) %>
-              </select>
-            </div>
-            <div class="stack">
-              <label>Plan Tipi</label>
-              <select id="studentTaskPlanningMode" name="planningMode" required>
-                <option value="single">Tek Gün</option>
-                <option value="multi_daily">Toplu Günlük Plan</option>
-              </select>
-            </div>
-            <div id="studentTaskSingleDateFields" class="stack">
-              <label>Tarih</label>
-              <input id="studentTaskDateInput" type="date" name="singleDate" value="<%= today %>" required />
-              <div class="quick-date-row">
-                <button type="button" class="quick-date-btn" data-offset-days="0">Bugün</button>
-                <button type="button" class="quick-date-btn" data-offset-days="1">Yarın</button>
-                <button type="button" class="quick-date-btn" data-offset-days="7">+7 Gün</button>
-              </div>
-            </div>
-            <div id="studentTaskRangeFields" class="stack form-block-hidden">
-              <label>Başlangıç Tarihi</label>
-              <input id="studentTaskRangeStartInput" type="date" name="rangeStartDate" value="<%= today %>" />
-              <label>Kaç Gün Sürecek?</label>
-              <input id="studentTaskRangeDayCountInput" type="number" name="rangeDayCount" min="1" max="180" value="30" />
-            </div>
-            <div class="stack">
-              <label>Son Saat (opsiyonel)</label>
-              <input type="time" name="estimatedTime" />
-              <p class="muted form-helper">
-                Bu saat görevin <strong>son teslim saatidir</strong>: geçtiğinde görev
-                kilitlenir ve işaretlenmemişse "yapılmadı" olur. Boş bırakırsan
-                son teslim gün sonudur (23:59).
-              </p>
-            </div>
-            <div class="stack">
-              <label>Açıklama</label>
-              <input type="text" name="description" maxlength="300" placeholder="Yaptıklarını kısaca yazabilirsin" />
-            </div>
-            <div>
-              <button type="submit" data-default-label="Görev Ekle">Görev Ekle</button>
-              <p class="muted form-helper">Aynı gün, aynı kategori ve aynı başlıkta çift kayıt engellenir. Toplu planda mevcut günler atlanır.</p>
-            </div>
-          </form>
-        </section>
-        <script>
-          (() => {
-            const form = document.getElementById('studentTaskCreateForm');
-            if (!form) return;
-            const categorySelect = document.getElementById('studentTaskCategorySelect');
-            const planningModeSelect = document.getElementById('studentTaskPlanningMode');
-            const dateInput = document.getElementById('studentTaskDateInput');
-            const singleDateFields = document.getElementById('studentTaskSingleDateFields');
-            const rangeFields = document.getElementById('studentTaskRangeFields');
-            const rangeStartInput = document.getElementById('studentTaskRangeStartInput');
-            const rangeDayCountInput = document.getElementById('studentTaskRangeDayCountInput');
-            const quickDateButtons = Array.from(form.querySelectorAll('.quick-date-btn'));
-            const submitButton = form.querySelector('button[type="submit"]');
-            const categoryStorageKey = `student:lastTaskCategory:<%= user.id %>`;
-
-            if (categorySelect) {
-              const savedCategory = localStorage.getItem(categoryStorageKey);
-              if (savedCategory) {
-                const optionExists = Array.from(categorySelect.options).some((opt) => opt.value === savedCategory);
-                if (optionExists) categorySelect.value = savedCategory;
-              }
-              categorySelect.addEventListener('change', () => {
-                if (categorySelect.value) {
-                  localStorage.setItem(categoryStorageKey, categorySelect.value);
-                }
-              });
-            }
-
-            const dateStringByOffset = (offsetDays) => {
-              const date = new Date();
-              date.setDate(date.getDate() + offsetDays);
-              const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-              return local.toISOString().slice(0, 10);
-            };
-
-            quickDateButtons.forEach((button) => {
-              button.addEventListener('click', () => {
-                if (!dateInput) return;
-                const offset = Number(button.getAttribute('data-offset-days') || '0');
-                dateInput.value = dateStringByOffset(offset);
-                if (rangeStartInput && !rangeStartInput.value) {
-                  rangeStartInput.value = dateInput.value;
-                }
-              });
-            });
-
-            const updatePlanningModeUI = () => {
-              const isMulti = planningModeSelect && planningModeSelect.value === 'multi_daily';
-              if (singleDateFields) singleDateFields.classList.toggle('form-block-hidden', Boolean(isMulti));
-              if (rangeFields) rangeFields.classList.toggle('form-block-hidden', !isMulti);
-
-              if (dateInput) dateInput.required = !isMulti;
-              if (rangeStartInput) rangeStartInput.required = Boolean(isMulti);
-              if (rangeDayCountInput) rangeDayCountInput.required = Boolean(isMulti);
-
-              quickDateButtons.forEach((button) => {
-                button.disabled = Boolean(isMulti);
-              });
-
-              if (submitButton) {
-                submitButton.textContent = isMulti ? 'Toplu Görev Oluştur' : 'Görev Ekle';
-              }
-            };
-
-            if (planningModeSelect) {
-              planningModeSelect.addEventListener('change', updatePlanningModeUI);
-            }
-            updatePlanningModeUI();
-
-            form.addEventListener('submit', () => {
-              if (!submitButton) return;
-              submitButton.disabled = true;
-              submitButton.textContent = 'Kaydediliyor...';
-            });
-          })();
-        </script>
-        <% } %>
-
         <% if (currentPage === 'dashboard') { %>
         <header class="content-header row space-between center">
           <div>
             <h2>Görevlerim</h2>
             <p class="muted"><%= today %></p>
           </div>
-          <a class="button-link active" href="/student/new-task">Görev Ekle</a>
         </header>
 
         <% if (wake && wake.routine && wake.routine.isActive) { %>
@@ -284,7 +140,7 @@
           <% } %>
 
           <% if (!activeTasks.length) { %>
-          <p class="muted">Aktif görev yok. <a href="/student/new-task">Yeni görev ekle</a></p>
+          <p class="muted">Bugün için görev yok.</p>
           <% } %>
 
           <% if (activeTasks.length) { %>
@@ -373,16 +229,6 @@
                         <button type="submit" class="icon-btn bad" title="Yapılmadı" aria-label="Yapılmadı">
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
-                          </svg>
-                        </button>
-                      </form>
-                      <% } %>
-                      <% if (task.canManage) { %>
-                      <form method="post" action="/student/tasks/<%= task.id %>/delete" onsubmit="return confirm('Bu görev silinsin mi?')">
-                        <input type="hidden" name="next" value="/student/dashboard" />
-                        <button type="submit" class="icon-btn danger" title="Sil" aria-label="Sil">
-                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path d="M4 7h16M9 7V5h6v2m-8 0l1 12h8l1-12M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
                           </svg>
                         </button>
                       </form>

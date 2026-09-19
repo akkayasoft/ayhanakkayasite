@@ -4,11 +4,39 @@ Bu dosya, bu depoda çalışan Claude Code (ve geliştiriciler) için projenin g
 
 ## Proje
 
-**Öğrenci Takip Sistemi** — admin (öğretmen/veli) öğrencilere görev atar, öğrenci tamamladığını işaretler; günlük soru çözüm/süre takibi ve tarih aralıklı performans raporu vardır.
+**Öğrenci Takip Sistemi** — öğrencinin günlük çalışma disiplinini takip eder:
+uyanma rutini, spor rutini ve okulda işlenen konuların deftere yazılması.
+Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans raporu var.
 
-> Ödül/ceza puan sistemi kaldırıldı: ilgili sayfalar, rotalar, `point_logs` /
-> `weekly_category_rules` / `weekly_category_evaluations` tabloları ve
-> `users.points` sütunu tamamen silindi.
+### Görevler yalnızca üç kaynaktan gelir (19 Eylül 2026 revizyonu)
+
+| Kaynak | Ne | Nerede |
+|---|---|---|
+| **Uyanma rutini** | günlük tek dokunuş, basılan saat | sahte satır (`tasks` kaydı değil) |
+| **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
+| **Ders defteri** | haftalık *"Ders defterini doldur"* görevi | `tasks`, `source_key = defter:<haftaBaşı>` |
+
+Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
+
+- **Yapay Zeka programı** (149 derslik müfredat aktarımı) — modül, veri, script,
+  admin sayfası, `yz:` görevleri.
+- **YDS çalışma programı** (`ydsp:` görevleri) ve **yds.obs ilerleme aynası**
+  (senkron, `yds_days` / `yds_sync` / `yds_program_settings` tabloları,
+  `yds:` kaynaklı soru kayıtları, YDS Takibi sayfası).
+- **Elle görev açma**: admin "Görev Oluştur" / "Görev Güncelle" (toplu) /
+  "Haftayı Kopyala" sayfaları ve öğrenci "Görev Ekle" sayfası; ilgili rotalar.
+  Görev Yönetimi'nde **Tüm Görevler** ve **Durum Düzelt** sekmeleri kaldı.
+
+> Temizlik `db.js` içinde **idempotent** bir migration olarak duruyor: her
+> açılışta `yz:` / `ydsp:` görevlerini, `yds:` ayna soru kayıtlarını ve boşalan
+> `Yapay Zeka` / `Doktora` kategorilerini siler; kalıntı yoksa hiçbir şey
+> yapmaz. Kategori silme koşulludur — başka görev ya da soru kaydı bağlıysa
+> dokunulmaz. Doğrulandı: canlıya benzer bir veritabanında 455 program görevi
+> ve 2 kategori silindi, ikinci açılışta hiçbir şey olmadı.
+
+> Ödül/ceza puan sistemi daha önce kaldırılmıştı: ilgili sayfalar, rotalar,
+> `point_logs` / `weekly_category_rules` / `weekly_category_evaluations`
+> tabloları ve `users.points` sütunu tamamen silindi.
 
 ## Teknoloji
 
@@ -22,23 +50,24 @@ Bu dosya, bu depoda çalışan Claude Code (ve geliştiriciler) için projenin g
 
 ```
 src/
-  app.js      ~3550 satır — TÜM route'lar, iş mantığı, validasyon, view-model'ler (monolitik)
-  db.js       şema + idempotent migration (açılışta otomatik) + admin seed
-  views/      admin.ejs, student.ejs, login.ejs
-  public/     styles.css
-scripts/      deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
+  app.js            ~5700 satır — TÜM route'lar, iş mantığı, view-model'ler (monolitik)
+  db.js             şema + idempotent migration (açılışta otomatik) + admin seed
+  academicCalendar.js  2026-2027 MEB çalışma takvimi
+  schedule.js       ders çizelgesi / zil saatleri
+  menuIcons.js      kenar çubuğu ve kart ikonları (SVG)
+  views/            admin.ejs, student.ejs, login.ejs
+  public/           styles.css, dist/ (React island'ları)
+scripts/            deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 ```
 
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
 
-Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle —
-form), `calendar`, `program` (Yıllık Plan — hafta hafta), `questions`,
-`wake` (Uyanma Rutini), `schedule` (Ders Programı — **salt okunur**).
-Görev ekleme formu ile aktif görev listesi
-**ayrı sayfalardadır**; form gönderimi `next=/student/dashboard` ile listeye
-döner. Yeni bir öğrenci sayfası eklerken `/student/:page` içindeki
-`allowedPages` ve `studentRedirect`'teki `next` beyaz listesi birlikte
-güncellenmelidir.
+Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `calendar`,
+`program` (Yıllık Plan — hafta hafta), `questions`, `wake` (Uyanma Rutini),
+`sport` (Spor Rutini), `schedule` (Ders Programı — **salt okunur**),
+`goals` (Aylık Hedefler). Yeni bir öğrenci sayfası eklerken `/student/:page`
+içindeki `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi
+birlikte güncellenmelidir.
 
 ## Lokal Çalıştırma
 
@@ -225,8 +254,8 @@ haftanın içeriğini gün gün açar.
 
 - `buildStudentProgramView(studentId, allTasks, categories, today, hafta)`:
   öğretim yılının ilk haftasından son haftasına (41 hafta) döner; her hafta
-  için görev sayısı, tamamlanan ve **kategori kırılımı** (*"Yapay Zeka 5 ·
-  Doktora 2"*) üretir. **İçerik (başlık + açıklama) yalnızca seçili hafta
+  için görev sayısı, tamamlanan ve **kategori kırılımı** (*"Ders Defteri 1"*)
+  üretir. **İçerik (başlık + açıklama) yalnızca seçili hafta
   için** üretilir — 41 haftanın tüm görevlerini görüntüye taşımak gereksiz.
 - Yılın **tüm durumları tek sorguda** çekilir (`BETWEEN` ilk hafta - son
   hafta); hafta hafta gitmek 41 gidiş olurdu.
@@ -239,12 +268,10 @@ haftanın içeriğini gün gün açar.
 - Sayfa yalnızca **öğretim yılı içindeki** haftaları gösterir; yıl dışına
   düşen görevler (varsa) Haftalık Takvim ve Görevlerim'de durur.
 
-Doğrulandı (149 derslik YZ programı aktarılmış öğrenciyle): 41 hafta, 149
-görev; ilk hafta Pzt-Cum beş ders, 29 Ekim haftası **4 ders** (bayram atlandı),
-1. Ara Tatil haftası **0 görev** ve gün kartlarında *"1. Ara Tatil"* etiketi;
-hafta seçiciyle Mayıs 2027'ye atlandı; sayfa **10 ms**, 44 KB. Admin →
-`/student/program` **403**, oturumsuz **302**. Üç genişlikte (1440 / 1024 /
-390px) sayfa taşması **0**, konsol hatası 0.
+Doğrulandı (revizyon sonrası, 7 ders saatlik çizelgeyle): 41 hafta, **41
+defter görevi**; her hafta bir görev, son teslim o haftanın pazarı; ilk görev
+`defter:2026-09-14`. Gün kartlarında tatil etiketleri (*"1. Ara Tatil"*)
+duruyor. Admin → `/student/program` **403**, oturumsuz **302**.
 
 ## Eğitim öğretim yılı takvimi
 
@@ -397,18 +424,15 @@ Bir görev örneği (görev + gün) kendi son saatini geçtiğinde **kilitlenir*
 > dönem "Tahmini Saat"ti; bu yanıltıcıydı, çünkü girilen saat geçtiğinde görev
 > kilitlenir ve işaretlenmemişse kalıcı olarak `not_done` olur. Etiket her iki
 > formda da **"Son Saat"** olarak düzeltildi ve kilit uyarısı forma yazıldı.
-> Somut sonucu: YZ görevlerine toplu **07:30** yazılırsa o günün görevi
-> **07:31'de kilitlenir** — 08:00'de işaretlemek artık mümkün değildir.
-> Doğrulandı: 07:30'lu görev, saat 08:00'de açılan uygulamada `not_done`
-> mühürlendi. Sabah saati yazmak bilinçli bir tercih olabilir (okula çıkmadan
-> önce işaretle), ama bir sabah unutulursa telafisi yoktur; gün sonu (23:59)
-> isteniyorsa toplu güncellemedeki **"Saati temizle"** kutusu kullanılır.
+> Doğrulandı: 07:30 son saatli bir görev, saat 08:00'de açılan uygulamada
+> `not_done` mühürlendi. Defter görevlerinde son saat girilmez; son teslim
+> haftanın pazarı, gün sonudur (23:59).
 
 ### Saat ve açıklama sonradan girilebilir
 
-Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
-saatleri gün sonudur. **Saat ve açıklama** görev kim tarafından açılmış olursa
-olsun düzenlenebilir; tek koşul görevin **kilitli olmaması**:
+Defter görevleri `estimated_time` olmadan yazılır; son saatleri gün sonudur.
+**Saat ve açıklama** öğrenci tarafından düzenlenebilir; tek koşul görevin
+**kilitli olmaması**:
 
 - **Saat** — girmek son teslimi öne çeker, erteleyemez; üst sınır zaten gün
   sonudur (23:59). Yani gevşetme değil sıkılaştırma.
@@ -418,7 +442,7 @@ olsun düzenlenebilir; tek koşul görevin **kilitli olmaması**:
   seferlik görevlerde açık (`canManage`). Görünüm modelinde `canEditTime` ve
   `canEditDescription`, `canManage`'den ayrıdır.
 
-> ⚠️ **Elle yazılan açıklama aktarımda ezilmez.** YDS ve defter aktarımları
+> ⚠️ **Elle yazılan açıklama aktarımda ezilmez.** Defter aktarımı
 > işaretlenmemiş + günü gelmemiş görevlerin başlık/açıklamasını tazeliyor;
 > önlem olmasa öğrencinin yazdığı not "Görevlere Aktar"a basınca silinirdi.
 > `tasks.description_edited` bayrağı öğrenci açıklamayı değiştirince kalkar ve
@@ -438,443 +462,6 @@ düzenlenebilir, geçmiş kilitli, konu her durumda kapalı.
 > Not: `task_detail_notes` tablosu şemada var ama **kodda hiç kullanılmıyor** —
 > eski bir tasarımdan kalma. Gün bazlı not gerekirse yeri orasıdır; şu an
 > öğrenci notu `tasks.description` alanında tutuluyor.
-
-### Saat sonradan girilebilir (eski başlık — yukarıdaki bölüme bakın)
-
-Aktarılan görevler (YZ, YDS, defter) `estimated_time` olmadan yazılır; son
-saatleri gün sonudur. Saat **sonradan elle girilebilir**:
-
-- **Öğrenci tarafı:** "Saat" hücresi, görev kim tarafından açılmış olursa olsun
-  düzenlenebilir; tek koşul görevin **kilitli olmaması**. Diğer alanlar
-  (konu, açıklama, kategori, tarih) eskisi gibi yalnızca öğrencinin kendi
-  açtığı tek seferlik görevlerde açık — görünüm modelinde `canEditTime`
-  `canManage`'den ayrıdır.
-- Bu bir yetki **gevşetmesi değil sıkılaştırmadır**: saat girmek son teslimi
-  öne çeker, erteleyemez — üst sınır zaten gün sonudur (23:59).
-- **Toplu giriş:** `/admin/tasks/update` → toplu güncelleme formunda "Yeni
-  Saat" alanı ve "Saati temizle" kutusu. 149 YZ görevini tek tek girmek
-  gerçekçi olmadığı için eklendi. İkisi birden seçilirse hata döner.
-- **"Tümünü seç" filtreye saygı duyar.** Önceden tüm kutuları işaretliyordu:
-  kategoriye göre filtreleyip basan biri ekranda görmediği görevleri de toplu
-  güncellemeye sokuyordu (YZ'yi filtreleyip saat yazarken YDS ve defter
-  görevleri de değişirdi). Ayrıca filtre daraltılınca gizlenen satırın kutusu
-  temizlenir — yoksa eski seçim formda asılı kalırdı. Doğrulandı: YZ filtresi
-  açıkken 191 değil **151** seçildi ve yalnızca YZ görevleri güncellendi.
-- Doğrulandı: kilitli görevde 403 ve veritabanı değişmiyor; başka öğrencinin
-  görevinde 404; geçersiz saatte 400; aktarılan görevin başlığını değiştirmek
-  hâlâ 404.
-
-## Günlük 1 saat düzeni (19 Eylül 2026)
-
-İki program da **günde bir saat, sabit pencerede** çalışılacak şekilde
-düzenlendi. Sebep: 180 dk/gün YDS temposu sürdürülemiyordu ("yoğunluğum fazla
-diye çalışamıyorum").
-
-| Program | Pencere | Son saat | Gün |
-|---|---|---|---|
-| Yapay Zeka | 06:30 - 07:30 | **07:30** | her gün |
-| Doktora (YDS) | 20:00 - 21:00 | **21:00** | her gün |
-
-- Pencerenin **bitişi görevin son saatidir** (`tasks.estimated_time`): o saat
-  geçince otomatik mühürleme işaretlenmemiş görevi **"Yapılmadı"** yazar.
-  Başlangıç saati bilgi amaçlıdır, görev açıklamasının başına yazılır
-  (*"06:30-07:30 · Python Temelleri · 26 dk · …"*).
-- Pencereler `YZ_CALISMA_PENCERESI` / `YDS_CALISMA_PENCERESI` ortam
-  değişkenleriyle değiştirilebilir (`HH:MM-HH:MM`); geçersiz değer varsayılana
-  düşer.
-- Son saat ve açıklama **aktarımda** yazılır; daha önce aktarılmış görevlere de
-  işlenir — ama yalnızca **işaretlenmemiş ve günü gelmemiş** olanlara.
-  Öğrencinin kendi yazdığı açıklama (`description_edited`) korunur.
-
-**YDS: 60 dk/gün + uzun dersler bölünüyor.** `yds_program_settings` açılışta
-**Her Gün + 60 dk** olarak seed edilir (yalnızca satır yoksa; admin başka bir
-düzen seçtiyse dokunulmaz). Video dersler 150-180 dk olduğu için
-`ydsPlan.bolumlereAyir()` bütçeden uzun her parçayı bölümlere ayırır:
-*"03. ders — Bölüm 2/3"*, kimlik `<parçaId>#2`. Bölme olmasaydı motor bütçeyi
-aşan parçaya günün tamamını verirdi ve o gün 3 saat çalışmak gerekirdi.
-
-**YZ: her güne 60 dakikalık paket.** `scripts/yz-program-yeniden-yay.js`
-commit'li `yzProgram.json`'daki ders listesini yeniden tarihlendirir (platform
-deposuna ihtiyaç duymaz): `--gunler` (varsayılan her gün), `--dakika`
-(varsayılan 60), `--baslangic` (varsayılan bugün; öncesi oynatılmaz). Dersler
-**bölünmez** — kimlik `yz:<dersId>` müfredat dersidir, uydurma alt-ders
-üretilmemeli; bütçeye sığmayan tek ders (en uzunu 65 dk) günü tek başına alır.
-Bu yüzden günler ortalama 41 dk (118 gün tek ders, 13 gün iki ders).
-
-> ⚠️ `yz-program-uret.js` (platformdan ders listesini tazeleyen üretici) hâlâ
-> **günde tek ders / hafta içi** düzeniyle yazar. Platform güncellenip o script
-> çalıştırılırsa ardından `yz-program-yeniden-yay.js` de çalıştırılmalı, yoksa
-> günlük 1 saat düzeni kaybolur.
-
-**Plan 14 Eylül'den başlar.** İki program da `SYSTEM_START_DATE`
-(2026-09-14) tabanından yayılır — geçmiş günler dahil. Günü geçmiş görevleri
-mühürleyici "Yapılmadı" işaretler; gerçekte yapılanları admin **Durum Düzelt**
-panelinden onaylar (aşağıdaki "Günün tamamını onayla" bölümü). Taban tarihten
-**öncesine** hâlâ yazılmaz: açılıştaki temizlik o kayıtları zaten siliyor.
-
-> ⚠️ **Tarih hizalaması da aynı tabanı kullanmalı.** YZ aktarımındaki
-> "görevleri programa hizala" adımı iki yanda da *bugünü* taban alıyordu; yeni
-> tarihi geçmişe düşen bir ders taşınamıyordu. Plan 14 Eylül'den başlayınca bu,
-> programı yarım uyguladı: ilk günler eski düzende kaldı ve taşınamayan dersler
-> eski günlerinde birikip o günleri **3 derse (~90 dk)** çıkardı — "günde 1
-> saat"in tam tersi. Ölçüldü: 139 görev taşındı, 9'u takıldı. Taban
-> `SYSTEM_START_DATE` yapılınca 144'ü taşındı ve 19 Eylül sonrası tam olarak
-> 2 ders/gün (56 dk) oldu. **İşaretli görev hâlâ asla oynamaz**: 14-18 Eylül'de
-> önceden mühürlenmiş görevler kendi gününde kalır, o günler listede 3 satır
-> görünebilir (biri zaten işaretli).
->
-> Bu, bir önceki adımın (aktarım geçmişe yazmasın) bilinçli olarak
-> gevşetilmesidir. Gerekçe değişti: "14 Eylül'den itibaren günde 1 saat"
-> istendi ve geçmiş günler artık **onaylanabilir** olduğu için yazılmaları
-> anlamlı. Öğrenci tarafı hâlâ kilitli — geçmişi yalnızca admin düzeltir.
-
-**Sonuç takvim:** YZ içeriği 27 Ocak 2027'de, YDS içeriği Şubat başında
-biter. YDS **sınavı 22 Kasım 2026**: 1 saat/gün ile içeriğin ancak ~%49'u
-sınava yetişir — bu bilinçli bir tercihti (alternatifi 120 dk/gün ya da sınava
-kadar test+kelime önceliklendirmesiydi). İçerik bitince günler **serbest
-çalışma** görevine döner; günlük disiplin sürer, konu uydurulmaz.
-
-Doğrulandı (temiz görev tablosu, 19 Eylül): iki aktarım da **14 Eylül**'den
-başladı — YZ 149 görev / 134 gün (ort. 41 dk, en çok 65 dk), YDS 306 görev /
-274 gün (içerik + serbest çalışma), günlük yük 14-21 Eylül aralığında
-YZ ≤ 56 dk ve YDS ≤ 60 dk. Açılışta 14-18 Eylül'ün tamamı ve bugünün YZ
-görevleri (07:30 geçmiş) **"Yapılmadı"** mühürlendi; bugünün YDS görevi
-(21:00) açık kaldı.
-
-Önceki doğrulama (19 Eylül, iki programı da aktarılmış öğrenciyle): YDS aktarımı
-**298 görev** yazdı (89 bayat görev kaldırıldı), hepsinin son saati 21:00;
-video dersler 3'er bölüme ayrıldı ve ardışık günlere düştü. YZ aktarımı
-**144 görevin tarihini** hizaladı ve son saatlerini 07:30 yaptı; geçmişteki 5
-görev (mühürlenmiş) **oynamadı**. Uygulama yeniden başlatıldığında bugünün YZ
-görevleri (07:30 geçmiş) otomatik **"Yapılmadı"**, YDS görevi (21:00) hâlâ
-**açık** kaldı. Öğrenci listesinde ve Yıllık Plan'da taşma 0.
-
-## Yapay zekâ programı (yapayzeka.obs → takip.obs)
-
-`akkayasoft/uretken-yz-platform` müfredatı (149 ders) 2026-2027 takvimine
-yayılıp görev olarak aktarılır.
-
-- **Program dosyası:** `src/data/yzProgram.json` — commit edilir.
-- **Üretim:** `node scripts/yz-program-uret.js --platform /yol/uretken-yz-platform`
-  Platform deposundaki `dersler.py`'yi okur, `academicCalendar`'dan ders
-  günlerini alır; tatil/bayram günü atlanır. Hafta düzeni **otomatik**:
-  müfredat sığıyorsa Pzt-Per (4 ders/hafta), sığmıyorsa Cuma da açılır
-  (5 ders/hafta). `--gunler 1,2,3` ile elle zorlanabilir.
-- **Aktarım:** admin panelinde **YZ Programı** sayfası → "Görevlere Aktar".
-  Her ders `tasks.source_key` (`yz:<dersId>`) ile işaretlenir.
-- **Tek kategori: `Yapay Zeka`.** Önce her kurs ayrı kategoriydi (24 tane) ve
-  kategori listesi YZ kurslarıyla doluyordu. Kurs adı kaybolmaz — görev
-  açıklamasının ilk parçası hâlâ kurs adıdır (`describeLesson`), YZ Programı
-  sayfasındaki "Kurs Bazında Dağılım" tablosu da aynen durur.
-- **Toplama AÇILIŞTA kendiliğinden çalışır** (`consolidateCategory`,
-  `bootstrap` içinde; aynı fonksiyon YDS için `ydsp:` → `Doktora` ile de
-  çağrılır). Önce yalnızca "Görevlere Aktar" düğmesine basınca
-  oluyordu; kullanıcı deploy sonrası ekranda hâlâ eski kurs kategorilerini
-  görüp özelliğin çalışmadığını düşündü ve özellik yanlışlıkla geri alındı.
-  Görünen durumun koddaki niyetle aynı olması için toplama artık bir düğmeye
-  bağlı değil. Idempotenttir: toplanacak görev yoksa hiçbir şey yapmaz, temiz
-  kurulumda kategoriyi bile açmaz.
-
-> ⚠️ Toplama temiz kurulumda kategori açmadığı için `categoryId` **null**
-> dönebilir; aktarım yazacağı görevler için kategoriye ihtiyaç duyar. İki
-> aktarım da bu yüzden `ensureCategoryId()` yedeğini kullanır. Bu yedek önce
-> yalnızca YDS'ye konmuştu ve sıfırdan kurulumda YZ aktarımı
-> `null value in column "category_id"` ile sessizce düşüyordu (işlem geri
-> alındığı için ekranda hata görünmüyordu, sadece görev eklenmiyordu).
-- **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
-  Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
-  bas — yalnızca yeni dersler eklenir.
-- Görevlerin son saati **07:30**'dur (günlük çalışma penceresi 06:30-07:30,
-  bkz. "Günlük 1 saat düzeni"). Önceden saatsiz yazılıyordu ve son saat gün
-  sonuna (23:59) düşüyordu.
-
-Aktarım tekrar çalıştırıldığında üç şey birden olur:
-
-1. **Yeni dersler** görev olarak eklenir.
-2. **Kategori adı değiştiyse** (platformda kurs adı düzeltilince) mevcut
-   kategori *yeniden adlandırılır* — ikinci bir kategori açılmaz. Eşleşme
-   kategori adına değil, o kursun daha önce aktarılmış derslerinin
-   `source_key`'ine bakılarak yapılır.
-3. **Ders tarihi kaydıysa** (ör. 4 ders/hafta → 5 ders/hafta) görev programa
-   hizalanır — ama yalnızca **işaretlenmemiş ve günü gelmemiş** görevler
-   taşınır. İşaretli veya geçmiş bir görev asla oynatılmaz; kaç görevin
-   sabit kaldığı mesajda bildirilir.
-
-> Not: 2. madde artık kategori **birleştirmesi** olarak çalışır. Kurs başına
-> kategori döneminden kalan görevler tek kategoriye taşınır, boşalan eski
-> kategoriler silinir. Hangi kategorilerin "YZ kategorisi" olduğu **ada göre
-> tahmin edilmez** — hâlâ `yz:` görevi tutan kategorilerin kimliğine bakılır;
-> elle açılmış bir kategori yanlışlıkla toplanmasın diye. Silme de koşulludur:
-> kategoriye bağlı başka bir görev ya da **soru kaydı** varsa silinmez
-> (`daily_questions.category_id` ON DELETE SET NULL — silmek o kaydın
-> kategorisini kaybettirirdi), kaç tanesinin durduğu mesajda bildirilir.
-> Doğrulandı (açılıştaki otomatik toplama ile, hiçbir düğmeye basmadan):
-> 24 kurs kategorisi → 1; 149 görev taşındı, 24 boşalan kategori silindi,
-> 3 işaretli görev durumu korundu. İkinci açılışta hiçbir şey değişmedi
-> (mesaj da çıkmadı). Soru kaydı bağlı bir kategori **silinmedi** ve o kaydın
-> etiketi değişmedi. Temiz kurulumda `Yapay Zeka` kategorisi hiç açılmadı.
-
-## YDS / YÖKDİL takibi (yds.obs → takip.obs)
-
-`akkayasoft/yds-yokdil-app` (Expo/React Native, `https://yds.obs.akkayasoft.com`)
-ilerlemesi takip.obs'a **yansıtılır**. YZ programının tersi yön: orada takip.obs
-planı üretip görev *iter*, burada uygulama kendi günlük paketini zaten üretir,
-takip.obs sonucu *okur*.
-
-- **Kaynak:** YDS uygulaması cihazlar arası senkron için VPS'te minik bir Node
-  servisi çalıştırır (`server/yds-api`, `127.0.0.1:3210`) ve kullanıcı başına tek
-  JSON tutar. **İki uygulama aynı sunucuda** olduğu için takip.obs dosyayı
-  doğrudan okur — HTTP'ye de Basic Auth şifresini burada saklamaya da gerek yok.
-- `YDS_STATE_FILE` (varsayılan `/var/www/yds-api/data/state-ayhan.json`)
-- `YDS_STUDENT_USERNAME` (varsayılan `ayhan`) — verinin yazılacağı öğrenci.
-- **Okuma:** `src/ydsSync.js`. Dosya biçimi YDS tarafındaki `app/src/sync.ts`
-  `Blob` tipidir; uygulama tek yazıcıdır.
-- **Yansıtma:** `syncYdsProgress()` — `runSealSafely` içinde (açılışta + 5
-  dakikada bir) ve `/admin/yds` sayfasındaki "Şimdi Çek" düğmesiyle. Idempotent.
-- `yds_days` — günlük kırılım (okuma/kelime/gramer/test sayıları, çözülen soru,
-  hedef tuttu mu).
-- `daily_questions` — çözülen sorular `source_key = 'yds:<tarih>'` ile yazılır
-  (partial unique index; elle girilen satırlarda `source_key` NULL kalır).
-  Böylece Soru Takibi ve **Haftalık Analiz** ek kod olmadan dolar.
-
-> ⚠️ **Doğruluk yalnızca puanlı testlerden gelir.** YDS tarafında 9 dilbilgisi
-> testi `scored: false`, yalnızca 2 preposition testi puanlı. Bu yüzden
-> `correct + wrong = scoredQuestions ≤ questionsSolved`. Çözülen gerçek toplam
-> `count` sütununda durur; puansız soruları "yanlış" saymak veriyi bozardı.
-> Sonuç: puansız test çözülen bir gün Haftalık Analiz'de "0 soru" görünür.
-> Kalıcı çözüm yukarı akışta — YDS deposunda dilbilgisi testlerine cevap
-> anahtarı eşlenmesi (README'de bilinen iş olarak duruyor).
-
-### Sıfırlama yayılımı
-
-YDS uygulamasındaki **"İlerlemeyi sıfırla"** sunucu durumunu boşaltır ve bir
-`resetAt` damgası bırakır; diğer cihazlar bu damgayı görüp kendilerini temizler.
-takip.obs aynası da bir "cihaz" gibi davranır:
-
-- `yds_sync.source_reset_at` en son uygulanan damgayı tutar. Dosyadaki `resetAt`
-  bundan **büyükse** o öğrencinin `yds_days` satırları ve `source_key LIKE 'yds:%'`
-  olan `daily_questions` satırları silinir, sonra yeni durum yazılır.
-- Silme **yalnızca damga ilerlediğinde** olur, her senkronda değil (idempotent).
-- **Dokunulmayanlar**: elle girilen soru kayıtları (`source_key` NULL), YDS
-  çalışma programı görevleri (`ydsp:`) ve öğrencinin takip.obs'ta kendi
-  işaretlediği görev durumları. Bunlar YDS ilerlemesi değil, bu uygulamanın
-  kendi kaydıdır.
-- Uygulanan sıfırlamanın zamanı `yds_sync.reset_applied_at`'e yazılır ve
-  `/admin/yds` sayfasında gösterilir.
-
-> Bu davranış bilinçli bir tercih değişikliğidir: başlangıçta veri "sıfırlama
-> geçmişi silmesin" diye saklanıyordu. Ancak sıfırlama yayılmadığında ayna
-> kalıcı olarak yanlış kalıyordu — kaynak boşalınca döngü hiçbir şey yazmaz,
-> eski satırlar sonsuza kadar dururdu.
-
-Hata durumları uygulamayı durdurmaz: dosya yoksa/bozuksa senkron sessizce geçer,
-son hata `yds_sync.last_error`'a yazılır ve `/admin/yds` sayfasında gösterilir;
-daha önce yansıtılmış veri korunur.
-
-## YDS çalışma programı (yds.obs içeriği → görevler)
-
-`scripts/yds-program-uret.js` — YDS içeriğini 2026-2027 **hafta sonlarına** yayıp
-`src/data/ydsProgram.json` üretir. `/admin/yds` → "Görevlere Aktar".
-
-**Gün düzeni:** YDS hafta sonuna (Cmt+Paz) alındı ki hafta içi çalışan YZ
-programıyla çakışmasın. Günlük bütçe bu yüzden 60 değil **120 dk**
-(`--dakika` ya da `YDS_GUNLUK_DAKIKA` ile değişir). Resmî/dinî bayramlar
-çıkarılır; **ara tatil ve yarıyıl tatiline denk gelen hafta sonları dahildir**
-(okul tatili YDS çalışmasını engellemez).
-
-> `getDayInfo()` tatil dönemini hafta sonundan önce döndürdüğü için (ara
-> tatildeki cumartesi `type='break'` gelir) gün seçimi takvim etiketine değil
-> **gerçek hafta gününe** bakar.
-
-**YZ programından farkı:** YZ müfredatı sabitti (149 ders ≈ 149 gün). YDS içeriği
-Ankara Dil kaynaklarından gün gün üretiliyor: bugün **56 parça**, yıl ise
-**78 hafta sonu günü**. Bu yüzden:
-
-1. Her parça **en fazla 3 kez** planlanır (ilk görme + 3 gün + 10 gün sonra).
-   Aralıklı tekrar mantığı; aynı okumayı 45 kez planlamak yerine dürüst olan bu.
-2. Tekrarlar günlük bütçenin **1/3'ünü** aşamaz — yoksa vadesi gelen tekrarlar
-   günü doldurup yeni içeriği kovuyor (ilk denemede 17-18 Eylül baştan sona
-   tekrar çıkmıştı).
-3. İçerik bitince kalan günler **"bekliyor"**: konu uydurulmaz, yalnızca
-   `YDS · Serbest Çalışma` kategorisinde bir günlük çalışma görevi açılır.
-4. Yeni içerik gelince programı yeniden üret + aynı düğmeye bas. Yeni parçalar
-   boş günlere yerleşir; **geçmiş ve işaretli görevler oynamaz**.
-
-Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması değişen
-**işaretlenmemiş ve günü gelmemiş** görevleri tazeler, programda artık olmayan
-**bayat** görevleri (yine yalnızca işaretlenmemiş + gelecek) siler.
-
-> ⚠️ **Aktarım geçmiş güne görev YAZMAZ** — yalnızca bugün ve sonrası.
-> Günü geçmiş bir görev açılsaydı mühürleyici onu anında "Yapılmadı" yazardı
-> ve öğrenci geri alamazdı (düzeltmesi yalnızca adminin *Durum Düzelt*
-> panelinde): hiçbir zaman yapılamamış bir iş olarak kayda geçerdi. Bu süzgeç
-> önce **yalnızca yeniden yayım** durumunda çalışıyordu; dosyadaki plan
-> geçmişte başlıyorsa (program 14 Eylül'de başlıyor, aktarım 19 Eylül'de
-> yapılıyor) aradaki günler yine açılıyordu.
->
-> `/admin/yds` panelindeki sayaçlar buna göre ayrıldı: **Bekleyen (bugün ve
-> sonrası)** aktarım düğmesini sürer, geçmişte kalanlar ayrı **"Geçmişte
-> kaldı"** kartında ve bir açıklama satırında görünür. Aksi halde panel kalıcı
-> bir "8 bekleyen" gösterir, düğme de her basışta 0 görev ekleyen ölü bir
-> kontrole dönerdi.
->
-> Doğrulandı (19 Eylül, temiz öğrenci): 97 görevlik sınav programından
-> **89'u** aktarıldı, geçmiş güne düşen **8'i yazılmadı**; en erken görev
-> bugün. İkinci aktarım *"yeni görev yok"* dedi, panel 0 bekleyen / 8 geçmişte
-> kaldı gösterdi ve düğme **pasif** oldu.
-
-> Bir gün "bekliyor"dan "içerikli"ye dönerken o günün serbest görevi
-> **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
-> hem serbest kayıt hem yeni içerik görevleri görünür.
-
-### Sınav programı (22 Kasım 2026 YDS) — şu an yürürlükte olan program
-
-`scripts/yds-sinav-programi-uret.js` **aynı** `src/data/ydsProgram.json`
-dosyasını üretir; iki üretici **birbirinin yerine geçer**, aynı anda
-kullanılamaz. Şu an dosyanın sahibi bu betik. `yds-program-uret.js`'i
-çalıştırmak sınav programını siler — sınavdan sonra bilinçli olarak yapılacak iş.
-
-**Haftalık desen (kullanıcının koyduğu, değiştirilemez):**
-
-| Gün | Ne | Süre |
-|---|---|---|
-| Pzt · Çar · Cmt · Paz | 1 video ders | 180 dk |
-| Sal · Per · Cum | o derslere ait **yds.obs uygulamaları** | 60 dk |
-
-- **40 ders**, `src/data/ydsDersleri.json`. İlk 30'u video ders; **son 10'u
-  deneme analizi videosudur** (`tur: 'deneme-analizi'`). Video derslerin
-  başlıkları hâlâ **yer tutucu** — Ankara Dil setinin gerçek adları
-  `yds-yokdil-app` deposunda yok, kaynak PDF'ler yereldeki
-  `../ankaradilydspdf/`. Başlıklar girilince yalnızca bu dosya değişir.
-- **56 uygulama**, `src/data/ydsUygulamalar.json` — yds.obs'un gerçek içeriği:
-  8 konu anlatımı bölümü, 25 kelime destesi, 12 okuma oturumu, 11 test.
-  **Üretimi:** `node scripts/yds-uygulama-cikar.js --yds /yol/yds-yokdil-app`.
-  Çıkarım kuralları `src/ydsIcerik.js` içinde ve `yds-program-uret.js` ile
-  **ortaktır**: dersler bölümlere, okumalar oturumlara ayrılır. Her parçanın
-  **kendi süresi** vardır (konu 15, kelime 12, okuma 20, test 25 dk); gün
-  süresi bunların toplamıdır (24-50 dk, ort. 33).
-- Görev başlığı gerçek ekranı gösterir:
-  *"Dilbilgisi Testi 7 (25 soru) — Dilbilgisi → Testler (06. ders sonrası)"*.
-- **Türler zamana yayılır** (`turlereGoreYay`). Havuz dosyada tür tür sıralı
-  geliyor; olduğu gibi kullanılsa ilk günler baştan sona konu anlatımı,
-  **testler Kasım'a** kalırdı — oysa test geri bildirim veren en değerli
-  içerik ve erken başlamalı. Her parçaya kendi türü içindeki göreli konumu
-  verilip ona göre sıralanır. Sonuç: 11 test 17 Eylül - 13 Kasım arasına
-  yayıldı, her uygulama günü iki **farklı** türden geliyor.
-- Havuz bitmişse o gün "yds.obs'ta serbest çalışma" görevi açılır — konu
-  uydurulmaz.
-
-> ⚠️ İlk sürümde sınav üreticisi içeriği kendi **kaba** kopyasıyla çıkarıyordu
-> (bütün deste/okuma/test = 40 parça) ve `yds-program-uret.js`'teki ince
-> kırılım kayboluyordu. Aynı kurallar iki yerde durmasın diye `ydsIcerik.js`'e
-> taşındı; iki üretici de aynı kaynağı kullanıyor.
-- **Ders günleri kutsaldır.** Üretici sonunda **denetler**: son hafta dışında
-  seçili günler dışına ders düşmüşse hata verip çıkar.
-- **Son hafta istisna** (kullanıcı izin verdi): 40 ders 38 ders gününe
-  sığmadığı için son iki ders (39-40) son haftanın uygulama günlerine, **sona
-  en yakından** taşar. Ders penceresinin geri kalanına dokunulmaz.
-- **Sınavdan önceki gün hafif** (21 Kasım): yalnız hata defteri. Bu üreticinin
-  kendi kararı, kullanıcının şartnamesinde yok — istenirse o gün de ders günü
-  yapılabilir.
-
-> ⚠️ **İlk sürümün hatası: kullanıcının kısıtını kendi başına esnetmek.**
-> Ders günleri yetmeyince eksik günler Sal/Per/Cum'dan "ödünç" alınıyordu.
-> Kullanıcı günleri açıkça vermişti. Doğru çözüm taşmayı **son haftaya**
-> vermekti. Ders penceresi yetmediğinde kısıt esnetilmez, taşma bildirilir.
-
-**Uygulama ayarı artık bilerek dosyadan FARKLI.** Dosya 180 dk/gün üretilmiş
-(sınav programı), uygulama ayarı ise **Her Gün + 60 dk**; aktarım bu yüzden
-programı bugünden itibaren *yeniden yayar* ve uzun video dersleri bölümlere
-ayırır. Sebebi ve sonuçları: "Günlük 1 saat düzeni" bölümü. Sınav takvimini
-(Pzt·Çar·Cmt·Paz ders / Sal·Per·Cum uygulama) geri istersen ayarı 180 dk'ya
-çevirmen yeterli.
-
-Doğrulandı (temiz veritabanı, 16 Eylül saatiyle): **97 görev** aktarıldı —
-30 video ders, 10 deneme analizi (7-20 Kasım), 56 yds.obs uygulaması (8 konu
-anlatımı + 25 kelime + 12 okuma + 11 test; 28 güne yayılmış, **hepsi birer
-kez**, kopya yok), 1 hafif gün; 69 gün, 137 saat.
-Ders gününe uygulama düşmedi, uygulama gününe ders düşmedi (son hafta hariç).
-İkinci aktarım 0 görev ekledi. Tüm öğrenci ve admin sayfaları 200.
-
-### Çalışma günleri admin tarafından değiştirilebilir
-
-Program dosyası hafta sonuna göre üretilmiştir, ama gün düzeni **arayüzden**
-değiştirilebilir — deploy beklemeden. `/admin/yds` → **Çalışma Günleri**
-paneli: hazır düzen (Hafta Sonu / Hafta İçi / Her Gün), **özel günler** (tek
-tek işaretleme) ve **günlük süre** (15-600 dk).
-
-- `yds_program_settings` (tek satır, id `default`): `gun_set` (`'0,6'` gibi,
-  0 = Pazar), `gunluk_dakika`. Yalnızca admin yazar (`POST
-  /admin/yds/program-settings`, doğrulandı: öğrenci 403).
-- **Ayar dosyayla aynıysa hiçbir şey yeniden yayılmaz** — aktarım eskisiyle
-  birebir aynı sonucu verir. Yeniden yayma yalnızca ayar farklıyken devreye
-  girer; bu, mevcut davranışı bozmamak için bilinçli bir kapı.
-- Değişiklik ayarı kaydetmekle görevlere işlemez; panelde "bu ayar henüz
-  görevlere işlenmedi" uyarısı çıkar ve **"Görevlere Aktar"**'a basılması
-  beklenir. Aktarım düğmesi bu durumda `pending === 0` olsa bile açıktır —
-  yoksa ayar kaydedilir ama uygulanamazdı.
-
-**Yeniden yayma kuralı: içerik baştan üretilmez, KALAN PLAN taşınır.**
-`ydsPlan.yenidenYay()` dosyadaki planın **bugün ve sonrasına** düşen parça
-görünümlerini (tekrarlar dahil) sırasıyla yeni günlere paketler.
-
-> İlk denemede "zaten görülmüş parçaları ele, kalanı baştan yay" yapılmıştı.
-> Yıl ortasında bu, tüm içerik zaten tanıtılmış olduğu için **kalan bütün
-> tekrarları siliyor** ve takvimin geri kalanını boş "serbest çalışma" gününe
-> çeviriyordu. Ölçüldü: gelecekteki 54 içerik görevi 0'a düşüyordu. Kalan planı
-> taşımak hem içeriği hem tekrar sırasını koruyor.
-
-Korunanlar (doğrulandı, parmak izi karşılaştırmasıyla):
-
-- **Geçmiş günlerdeki görevler** hiç oynamaz (aktarımdaki silme zaten
-  `single_date >= bugün` ile sınırlı, yeni plan da bugünden başlar).
-- **İşaretlenmiş görevler** — geçmişte ya da gelecekte — yerinde kalır ve aynı
-  görünüm ikinci kez yayılmaz (yoksa tamamlanan iş tekrar önüne gelirdi).
-- Doğrulandı (15 Kasım'da hafta sonu → her gün, 60 dk): geçmiş 114 görev ve
-  işaretli 33 görev **bit bit aynı** (md5 eşit); gelecekteki içerik görevi
-  54 → 54 (kayıp yok); hafta içi görev 0 → 177. Aynı düğmeye tekrar basmak
-  hiçbir şey değiştirmedi (0 eklendi). Özel günlere (Pzt/Çar/Cmt) ve oradan
-  hafta sonuna geri dönüşte de parmak izi değişmedi; hafta sonuna dönünce
-  görev sayısı tam olarak dosyadaki 221'e indi.
-- `ydsp:<tarih>:<parçaId>` anahtarı tekrar seviyesini taşımadığı için aynı
-  parça aynı güne iki kez konmaz (`yenidenYay` içinde engellenir); yoksa biri
-  `ON CONFLICT DO NOTHING` ile sessizce düşerdi.
-- Günlük bütçeye sığmayan tek bir parça (ör. 25 dk'lık test, 20 dk'lık gün)
-  günü tek başına alır — yoksa sonsuz döngü olurdu; sığmayan kalan sayısı
-  mesajda bildirilir.
-
-**Çakışma uyarısı:** hafta içi bir gün seçilirse panel, o günlerin kaçında
-zaten Yapay Zeka görevi olduğunu söyler. "İki program çakışmaz" garantisi
-yalnızca varsayılan hafta sonu düzeninde geçerlidir; başka düzen seçmek yasak
-değil ama bilerek yapılmalı.
-
-**Planlama motoru paylaşımlı:** `src/ydsPlan.js`. Aynı kod hem
-`scripts/yds-program-uret.js` (depodaki JSON'u üretir, artık `--gunler` /
-`--dakika` alır) hem de uygulama tarafından kullanılır. Doğrulandı: motor,
-commit'li `ydsProgram.json`'u parçalarından **birebir** yeniden üretiyor.
-
-**Tek kategori: `Doktora`.** Önce tür başına beş kategori açılıyordu
-(`YDS · Konu Anlatımı` / `Kelime` / `Okuma` / `Test` / `Serbest Çalışma`) ve
-kategori listesi bunlarla doluyordu. Tür bilgisi kaybolmaz: görev
-açıklamasının ilk parçası hâlâ tür adıdır (`describeItem`) ve YDS sayfasındaki
-tür kırılımı tablosu program dosyasından geldiği için aynen durur.
-Toplama **açılışta kendiliğinden** çalışır (YZ ile aynı mekanizma —
-`consolidateCategory`), düğmeye basmak gerekmez.
-`source_key` = `ydsp:<tarih>:<parçaId>`.
-
-Bugünkü durum (19 Eylül, günde 1 saat düzeniyle): **166 içerik görevi**
-(19 Eyl → 4 Şubat), ardından içerik bitene kadar her güne bir **serbest
-çalışma** görevi (132 gün, 25 Haziran'a kadar) — toplam **298 görev**.
-
-**İki program artık aynı günlere düşer** (ikisi de her gün), ama farklı
-saatlerde: YZ sabah 06:30-07:30, YDS akşam 20:00-21:00. Eski "ortak gün 0"
-garantisi (YZ hafta içi / YDS hafta sonu) geçerli değil; ayrım gün değil
-**saat** üzerinden.
-
-> Gün düzeni değişince (ör. hafta içinden hafta sonuna geçiş) yeniden aktarım
-> eski günlerdeki görevleri bayat sayıp siler — ama yalnızca işaretlenmemiş ve
-> günü gelmemiş olanları. **İşaretli bir görev eski gününde kalır**; o gün iki
-> programın çakıştığı tek yer olabilir.
 
 ## Okul ders programı
 
@@ -1079,8 +666,7 @@ haftası için **tek** görev açılır: *"Ders defterini doldur"*. Haftanın
 çizelgede dolu olan tüm hücrelerine konu yazılınca görev **otomatik `done`**
 işaretlenir.
 
-- `source_key` = `defter:<haftaBaşı>`; YZ/YDS aktarımlarıyla aynı desen —
-  idempotent, tekrar basılabilir. Yeni haftalar eklenir, **işaretlenmemiş ve
+- `source_key` = `defter:<haftaBaşı>`; idempotent, tekrar basılabilir. Yeni haftalar eklenir, **işaretlenmemiş ve
   günü gelmemiş** görevlerin başlığı/tarihi tazelenir, programda kalmayan
   bayat görevler (yine yalnızca işaretlenmemiş + gelecek) silinir.
 - Kategori: `Ders Defteri`. Görev yalnızca `yazilabilir > 0` olan haftalar
@@ -1098,8 +684,8 @@ işaretlenir.
   ve **hafta sonu dersleri** dahil).
 - **Öğrenci listesinde yalnızca içinde bulunulan haftanın defter görevi
   görünür.** Öğretim yılı boyunca 37 görev açılıyor; hepsi "Görevlerim"de
-  dursaydı günlük görevleri (YZ, YDS, kişisel) boğardı — doğrulandı: liste
-  42 görevin 37'si defterken 6'ya indi. Filtre yalnızca **liste görünümüne**
+  dursaydı listeyi boğardı — doğrulandı: liste 42 görevin 37'si defterken
+  6'ya indi. Filtre yalnızca **liste görünümüne**
   aittir: görevler silinmez, haftalık takvimde kendi gününde, haftalık
   analizde ve raporlarda aynen sayılır. Admin "Görevler" sayfası da hepsini
   gösterir (yönetim görünümü).
@@ -1379,16 +965,9 @@ Doğrulananlar:
 
 - **Takvim:** 11-13 Eylül `outside`, **14 Eylül `school`**, 1. Dönem 2026-09-14
   → 2027-01-22. İlk altı haftada tatil/bayram yok.
-- **Yapay Zeka:** 149 görev, 2026-09-14 → 2027-05-11; okul günü olmayan güne
-  düşen ders **0**; ilk hafta Pzt-Cum 5 ders.
-- **Doktora:** 221 görev, 2026-09-19 → 2027-06-20; hafta sonu dışına düşen
-  görev **0**. YZ ile ortak gün **0**.
-- **Kategoriler:** temiz kurulumda açılışta tam **iki** kategori oluşuyor
-  (`Yapay Zeka`, `Doktora`); düğmeye basmak gerekmiyor.
-- **YDS aynası:** dosya yoksa senkron sessizce geçiyor, hata `yds_sync.last_error`'a
-  yazılıyor, uygulama ayakta kalıyor. Geçerli dosyada `yds_days` +
-  `daily_questions` doğru dolduruldu. `resetAt` ilerletildiğinde yansıma
-  silinip yeniden yazıldı, **elle girilen soru kaydı korundu**.
+> Not: Bu doğrulama YZ ve YDS programları hâlâ varken yapıldı; o iki madde
+> 19 Eylül revizyonunda geçersizleşti (bkz. Proje). Kalanlar geçerli.
+
 - **Uyanma / Spor:** tek dokunuş kaydediyor; erken basış `on_time` + gecikme 0;
   basılmayan geçmiş günler mühürleniyor.
 - **Ders defteri:** çizelge girilince 37 haftalık görev açıldı, 1. hafta son
@@ -1425,10 +1004,6 @@ durum ve notları CASCADE ile gider), `monthly_goals` (yalnızca taban ayından
 
 **Dokunulmayanlar (bilinçli):**
 
-- **YDS aynası** — `yds_days` ve `source_key LIKE 'yds:%'` olan
-  `daily_questions`. Bunlar yds.obs'un **gerçek çalışma geçmişinin** aynası,
-  bu uygulamanın kaydı değil. Silinseler senkron 5 dakika içinde geri yazardı;
-  üstelik başka bir uygulamanın verisini yok etmek olurdu.
 - **Tekrarlı görevler** (`repeat_type <> 'once'`) — `start_date`'i eski olan
   aktif bir görev silinmemeli. Taban öncesi örnekleri zaten `task_statuses`
   ile gidiyor.
@@ -1465,10 +1040,8 @@ yalnızca gelecek yeniden düzenlenir.*
 | Uyanma hedefi (06:00 → 06:30, tolerans) | Geçmiş `wake_logs` satırları kendi hedef/tolerans kopyasını taşıdığı için **hiç değişmez** | ✅ eski kayıt 06:00/10 olarak kaldı |
 | Spor aralığı (06:15-06:30 → 07:00-07:45) | Geçmiş `sport_logs` satırları kendi aralığını taşır | ✅ eski kayıt 06:15-06:30 kaldı |
 | Rutin tamamen kaldırılır | `wake_logs` / `sport_logs` **silinmez** | ✅ 39 satır yerinde kaldı |
-| Doktora gün düzeni / günlük süre | Bugünden itibaren yeniden yayılır; geçmiş ve işaretli görevler yerinde | ✅ parmak izi eşit, içerik kaybı yok |
-| YZ / YDS / defter programı yeniden aktarılır | Yeni görev eklenir, **işaretlenmemiş ve günü gelmemiş** görevler tazelenir/silinir | ✅ geçmiş ve işaretli hiç oynamıyor |
+| Defter görevleri yeniden aktarılır | Yeni hafta eklenir, **işaretlenmemiş ve günü gelmemiş** görevler tazelenir/silinir | ✅ geçmiş ve işaretli hiç oynamıyor |
 | Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
-| YDS uygulamasında "ilerlemeyi sıfırla" | Yalnızca `yds:` kaynaklı ayna satırları silinir | ✅ elle girilen soru kaydı korundu |
 | Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
 | Admin bir rutin kaydını elle yazar | Satır değişir ama **izi kalır** (+ `previous_time`); değerlendirme kaydın kendi hedef/aralık kopyasına göre yapılır | ✅ mühürleyici ezmedi, öğrencinin basışı reddedildi |
 | Bir hafta özelleştirilir / varsayılana döndürülür | Yalnızca o haftanın `class_schedule` satırları değişir; **işlenen konular silinmez** (ders/sınıf adı kaydın içinde) | ✅ döndürme sonrası defter satırları durdu |
@@ -1479,6 +1052,12 @@ yalnızca gelecek yeniden düzenlenir.*
 Yeni bir "program" ya da "rutin" eklerken aynı desen izlenmeli: değerlendirmeyi
 belirleyen ayar **kaydın içine kopyalanmalı**, silme/taşıma **yalnızca
 işaretlenmemiş ve günü gelmemiş** satırlara dokunmalı.
+
+> ⚠️ **19 Eylül revizyonu bu desenin bilinçli istisnasıdır.** YZ/YDS görevleri
+> ve yds.obs aynası, işaretli olsalar bile **silindi** — kullanıcı programların
+> tamamen iptalini istedi ("içerikleri silebilirsin"). Silinen şey geçmişin
+> kaydı değil, artık izlenmeyen iki programın kendisiydi. Uyanma/spor kayıtları
+> ve defter geçmişi bu silmeden **etkilenmedi**.
 
 ## Çalışırken dikkat
 
