@@ -1870,10 +1870,27 @@
               <p class="kpi-value"><%= ydsProgramView.imported %></p>
             </article>
             <article class="kpi">
-              <p class="kpi-label">Bekleyen</p>
+              <p class="kpi-label">Bekleyen (bugün ve sonrası)</p>
               <p class="kpi-value"><%= ydsProgramView.pending %></p>
             </article>
+            <%# Aktarim gecmis gune yazmaz: muhurleyici o gorevi aninda
+                "yapilmadi" isaretlerdi ve ogrenci geri alamazdi. %>
+            <% if (ydsProgramView.pastSkipped > 0) { %>
+            <article class="kpi">
+              <p class="kpi-label">Geçmişte kaldı</p>
+              <p class="kpi-value"><%= ydsProgramView.pastSkipped %></p>
+            </article>
+            <% } %>
           </section>
+
+          <% if (ydsProgramView.pastSkipped > 0) { %>
+          <p class="muted">
+            Programın <strong><%= ydsProgramView.pastSkipped %> görevi</strong>
+            bugünden önceki günlere düşüyor ve <strong>aktarılmaz</strong>:
+            günü geçmiş bir görev açılsaydı otomatik mühürleme onu hemen
+            "Yapılmadı" yazardı ve öğrenci geri alamazdı.
+          </p>
+          <% } %>
 
           <div class="table-wrap">
             <table class="stack-mobile">

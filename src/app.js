@@ -2241,10 +2241,16 @@ async function importYdsProgram(studentId, createdBy) {
     // Aktarilacak liste ya dosyadaki plandir ya da admin gun duzenini
     // degistirmisse bugunden itibaren yeniden yayilmis plandir.
     const plan = await planYdsGorevleri(client, studentId);
-    // Yeniden yayimda gecmis gunler plana girmez; yine de savunma amacli
-    // suzuluyor ki gecmise gorev YAZILMASIN (yazilsaydi muhurleyici onu aninda
-    // "yapilmadi" isaretlerdi).
-    const planGorevleri = plan.gorevler.filter((g) => !plan.yenidenYayildi || g.tarih >= today);
+    // GECMIS GUNE GOREV YAZILMAZ. Muhurleyici gunu gecmis ve isaretsiz her
+    // ornege "yapilmadi" yazar; ogrenci bunu geri alamaz (duzeltmesi yalnizca
+    // adminin "Durum Duzelt" panelinde). Yani gecmise yazilan gorev, hicbir
+    // zaman yapilamamis bir is olarak kayda geciyordu.
+    //
+    // Bu suzgec once yalnizca YENIDEN YAYIM durumunda calisiyordu; dosyadaki
+    // plan gecmiste basliyorsa (program 14 Eylul'de basliyor, aktarim 19
+    // Eylul'de yapiliyor) aradaki gunler yine aciliyordu. Artik her iki
+    // durumda da yalnizca bugun ve sonrasi yazilir.
+    const planGorevleri = plan.gorevler.filter((g) => g.tarih >= today);
 
     // TEK kategori: "Doktora". Once tur basina bes kategori aciliyordu
     // (YDS · Konu Anlatimi, Kelime, Okuma, Test, Serbest Calisma); kategori
@@ -2427,7 +2433,14 @@ async function buildYdsProgramSummary(studentId) {
     bekleyenGun: program.bekleyenGun,
     total: program.gorevler.length,
     imported,
-    pending: program.gorevler.length - imported,
+    // Aktarim gecmis gune yazmadigi icin "bekleyen" yalnizca BUGUN VE
+    // SONRASINDAKI aktarilmamis gorevlerdir. Fark (gecmiste kalanlar) ayri
+    // sayilir: aksi halde panel kalici bir "8 bekleyen" gosterir ve "Görevlere
+    // Aktar" dugmesi her basista 0 gorev ekleyen olu bir kontrole donerdi.
+    pending: program.gorevler.filter((g) => g.tarih >= today && !importedKeys.has(g.sourceKey))
+      .length,
+    pastSkipped: program.gorevler.filter((g) => g.tarih < today && !importedKeys.has(g.sourceKey))
+      .length,
     turler,
     upcoming: program.gorevler
       .filter((g) => g.tarih >= today)

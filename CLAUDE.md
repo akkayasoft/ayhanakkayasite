@@ -519,6 +519,25 @@ Aktarım üç iş yapar: yeni görevleri ekler, başlığı/açıklaması deği�
 **işaretlenmemiş ve günü gelmemiş** görevleri tazeler, programda artık olmayan
 **bayat** görevleri (yine yalnızca işaretlenmemiş + gelecek) siler.
 
+> ⚠️ **Aktarım geçmiş güne görev YAZMAZ** — yalnızca bugün ve sonrası.
+> Günü geçmiş bir görev açılsaydı mühürleyici onu anında "Yapılmadı" yazardı
+> ve öğrenci geri alamazdı (düzeltmesi yalnızca adminin *Durum Düzelt*
+> panelinde): hiçbir zaman yapılamamış bir iş olarak kayda geçerdi. Bu süzgeç
+> önce **yalnızca yeniden yayım** durumunda çalışıyordu; dosyadaki plan
+> geçmişte başlıyorsa (program 14 Eylül'de başlıyor, aktarım 19 Eylül'de
+> yapılıyor) aradaki günler yine açılıyordu.
+>
+> `/admin/yds` panelindeki sayaçlar buna göre ayrıldı: **Bekleyen (bugün ve
+> sonrası)** aktarım düğmesini sürer, geçmişte kalanlar ayrı **"Geçmişte
+> kaldı"** kartında ve bir açıklama satırında görünür. Aksi halde panel kalıcı
+> bir "8 bekleyen" gösterir, düğme de her basışta 0 görev ekleyen ölü bir
+> kontrole dönerdi.
+>
+> Doğrulandı (19 Eylül, temiz öğrenci): 97 görevlik sınav programından
+> **89'u** aktarıldı, geçmiş güne düşen **8'i yazılmadı**; en erken görev
+> bugün. İkinci aktarım *"yeni görev yok"* dedi, panel 0 bekleyen / 8 geçmişte
+> kaldı gösterdi ve düğme **pasif** oldu.
+
 > Bir gün "bekliyor"dan "içerikli"ye dönerken o günün serbest görevi
 > **işaretlenmişse silinmez** — kullanıcının tamamladığı iş yok edilmez. O gün
 > hem serbest kayıt hem yeni içerik görevleri görünür.
