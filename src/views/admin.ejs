@@ -9,31 +9,41 @@
   <body>
     <main class="shell">
       <aside class="sidebar">
-        <div>
-          <p class="sidebar-kicker">Yönetim</p>
-          <h1 class="sidebar-title">Öğrenci Takip</h1>
-          <p class="sidebar-user"><strong><%= user.name %></strong></p>
+        <div class="sidebar-brand">
+          <span class="sidebar-mark" aria-hidden="true"><%- menuIcons.dashboard %></span>
+          <div>
+            <h1 class="sidebar-title">Öğrenci Takip</h1>
+            <p class="sidebar-kicker">Yönetim Paneli</p>
+          </div>
         </div>
 
         <nav class="menu">
-          <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Genel Durum</a>
-          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>">Öğrenciler</a>
-          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>">Kullanıcı Yönetimi</a>
-          <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>">Kategoriler</a>
-          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active', 'tasks-status'].includes(currentPage) ? 'active' : '' %>">Görevler</a>
-          <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>">Haftalık Analiz</a>
-          <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
-          <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>">YZ Programı</a>
-          <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
-          <a href="/admin/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>">Spor Rutini</a>
-          <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>">YDS Takibi</a>
-          <a href="/admin/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
-          <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>">Raporlar</a>
+          <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>"><%- menuIcons.dashboard %>Genel Durum</a>
+          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>"><%- menuIcons.students %>Öğrenciler</a>
+          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>"><%- menuIcons.users %>Kullanıcı Yönetimi</a>
+          <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>"><%- menuIcons.categories %>Kategoriler</a>
+          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active', 'tasks-status'].includes(currentPage) ? 'active' : '' %>"><%- menuIcons.tasks %>Görevler</a>
+          <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>"><%- menuIcons.analysis %>Haftalık Analiz</a>
+          <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>"><%- menuIcons.goals %>Aylık Hedefler</a>
+          <a href="/admin/yz-program" class="menu-link <%= currentPage === 'yz-program' ? 'active' : '' %>"><%- menuIcons.ai %>YZ Programı</a>
+          <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>"><%- menuIcons.wake %>Uyanma Rutini</a>
+          <a href="/admin/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>"><%- menuIcons.sport %>Spor Rutini</a>
+          <a href="/admin/yds" class="menu-link <%= currentPage === 'yds' ? 'active' : '' %>"><%- menuIcons.yds %>YDS Takibi</a>
+          <a href="/admin/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>"><%- menuIcons.schedule %>Ders Programı</a>
+          <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>"><%- menuIcons.reports %>Raporlar</a>
         </nav>
 
-        <form method="post" action="/logout" class="sidebar-logout">
-          <button type="submit" class="ghost">Çıkış</button>
-        </form>
+        <%# Kullanici blogu ve cikis en altta (referans tasarimdaki gibi):
+            kimlik bilgisi menunun basini tutmuyor. %>
+        <div class="sidebar-footer">
+          <p class="sidebar-user">
+            <strong><%= user.name %></strong>
+            <span class="sidebar-role">Yönetici</span>
+          </p>
+          <form method="post" action="/logout" class="sidebar-logout">
+            <button type="submit" class="ghost">Çıkış</button>
+          </form>
+        </div>
       </aside>
 
       <section class="content">

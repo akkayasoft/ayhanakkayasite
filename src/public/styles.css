@@ -194,36 +194,75 @@ a:hover {
   color: var(--sidebar-fg);
 }
 
+/* Marka blogu: kare isaret + ad + mono alt baslik (referans duzeni). */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--sidebar-hover);
+  border: 1px solid var(--sidebar-border);
+  color: var(--sidebar-active);
+}
+
+.sidebar-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
 .sidebar-kicker {
-  padding: 0 var(--sp-3);
   color: var(--sidebar-muted);
 }
 
 .sidebar-title {
-  padding: 0 var(--sp-3);
-  margin-top: 4px;
   font-family: var(--font-display);
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 600;
+  line-height: 1.2;
   color: #ffffff;
 }
 
-/* Kullanici bilgisi kenar cubugunun kimlik blogunu kapatir */
+/* Kimlik blogu menunun basini tutmasin: cikis ile birlikte en altta. */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--sidebar-border);
+}
+
 .sidebar-user {
-  margin: var(--sp-3) 0 var(--sp-4);
-  padding: var(--sp-3);
-  background: var(--sidebar-hover);
-  border: 1px solid var(--sidebar-border);
-  border-radius: var(--radius);
+  margin: 0 0 var(--sp-3);
+  padding: 0 var(--sp-3);
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--sidebar-fg);
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .sidebar-user strong {
+  display: block;
   color: #ffffff;
   font-weight: 600;
+}
+
+.sidebar-role {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sidebar-muted);
 }
 
 .menu {
@@ -233,14 +272,24 @@ a:hover {
 }
 
 .menu-link {
-  display: block;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
-  color: var(--sidebar-fg);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px var(--sp-3);
+  border-radius: 2px;
+  /* Pasif satir bir tik soluk; aktif olan kendiliginden one cikar. */
+  color: rgba(205, 217, 234, 0.68);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
   transition: background 0.12s ease, color 0.12s ease;
+}
+
+/* Ikonlar 16px ve metinle ayni rengi alir (stroke: currentColor). */
+.menu-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .menu-link:hover {
@@ -249,14 +298,10 @@ a:hover {
   text-decoration: none;
 }
 
-/* Aktif satir: sol kenarda parlak mavi seritle isaretlenir (referans
-   tasarimdaki vurgu). Serit border ile degil box-shadow ile cizilir ki
-   satirin ic boslugu kaymasin. */
 .menu-link.active {
   background: var(--sidebar-hover);
-  color: var(--sidebar-active);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--sidebar-active);
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .sidebar-logout {
@@ -388,10 +433,9 @@ section.grid {
 
 .kpi-value {
   display: block;
-  /* Sayilar arayuz fontunda kalir: Playfair'in rakamlari sayfada denendi,
-     "0" ile "o" birbirine benziyor ve tabular-nums karsiligi yok - veri
-     okunurlugu suslemeden once gelir. Serif yalnizca basliklarda. */
-  font-size: 1.75rem;
+  /* Referans tasarimda ozet sayilari Playfair 600 / 30px (olculdu). */
+  font-family: var(--font-display);
+  font-size: 1.875rem;
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -1912,14 +1956,6 @@ tr.day-off td {
     font-size: 1rem;
   }
 
-  .sidebar-user {
-    order: 3;
-    flex: 1 1 100%;
-    margin: 0;
-    padding: var(--sp-2) var(--sp-3);
-    font-size: 0.75rem;
-  }
-
   .menu {
     order: 4;
     flex: 1 1 100%;
@@ -1941,8 +1977,25 @@ tr.day-off td {
     border-color: var(--sidebar-active);
   }
 
-  .sidebar-logout {
+  /* Ust barda kimlik + cikis yan yana, sagda. Dikeydeki ust cizgi ve
+     margin-top:auto burada anlamsiz. */
+  .sidebar-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
     margin: 0 0 0 auto;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .sidebar-user {
+    margin: 0;
+    padding: 0;
+    text-align: right;
+  }
+
+  .sidebar-logout {
+    margin: 0;
     padding: 0;
   }
 

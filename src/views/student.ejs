@@ -9,27 +9,35 @@
   <body>
     <main class="shell">
       <aside class="sidebar">
-        <div>
-          <p class="sidebar-kicker">Öğrenci</p>
-          <h1 class="sidebar-title">Çalışma Paneli</h1>
-          <p class="sidebar-user"><strong><%= user.name %></strong></p>
+        <div class="sidebar-brand">
+          <span class="sidebar-mark" aria-hidden="true"><%- menuIcons.tasks %></span>
+          <div>
+            <h1 class="sidebar-title">Çalışma Paneli</h1>
+            <p class="sidebar-kicker">Öğrenci</p>
+          </div>
         </div>
 
         <nav class="menu">
-          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>">Görevlerim</a>
-          <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>">Uyanma Rutini</a>
-          <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>">Spor Rutini</a>
-          <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
-          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
-          <a href="/student/program" class="menu-link <%= currentPage === 'program' ? 'active' : '' %>">Yıllık Plan</a>
-          <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
-          <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
-          <a href="/student/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
+          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>"><%- menuIcons.tasks %>Görevlerim</a>
+          <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>"><%- menuIcons.wake %>Uyanma Rutini</a>
+          <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>"><%- menuIcons.sport %>Spor Rutini</a>
+          <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>"><%- menuIcons.newTask %>Görev Ekle</a>
+          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>"><%- menuIcons.schedule %>Haftalık Takvim</a>
+          <a href="/student/program" class="menu-link <%= currentPage === 'program' ? 'active' : '' %>"><%- menuIcons.program %>Yıllık Plan</a>
+          <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>"><%- menuIcons.yds %>Ders Programı</a>
+          <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>"><%- menuIcons.questions %>Soru Takibi</a>
+          <a href="/student/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>"><%- menuIcons.goals %>Aylık Hedefler</a>
         </nav>
 
-        <form method="post" action="/logout" class="sidebar-logout">
-          <button type="submit" class="ghost">Çıkış</button>
-        </form>
+        <div class="sidebar-footer">
+          <p class="sidebar-user">
+            <strong><%= user.name %></strong>
+            <span class="sidebar-role">Öğrenci</span>
+          </p>
+          <form method="post" action="/logout" class="sidebar-logout">
+            <button type="submit" class="ghost">Çıkış</button>
+          </form>
+        </div>
       </aside>
 
       <section class="content">

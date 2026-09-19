@@ -17,6 +17,8 @@ const ydsSync = require('./ydsSync');
 const ydsProgram = require('./ydsProgram');
 const ydsPlan = require('./ydsPlan');
 const schedule = require('./schedule');
+// Kenar cubugu menusundeki cizgi ikonlari (bkz. src/menuIcons.js).
+const { menuIcons } = require('./menuIcons');
 
 const app = express();
 
@@ -4070,6 +4072,7 @@ async function getAdminViewModel(req, currentPage) {
   return {
     user: req.currentUser,
     currentPage,
+    menuIcons,
     users,
     adminCount: users.filter((u) => u.role === 'admin').length,
     students,
@@ -6976,6 +6979,7 @@ async function getStudentViewModel(req, currentPage) {
     user: req.currentUser,
     currentPage,
     today,
+    menuIcons,
     categories,
     activeTasks: [...rutinSatirlari, ...activeTasks],
     doneCount,

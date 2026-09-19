@@ -110,8 +110,28 @@ oradaki HSL token'larından çevrildi:
 - Tablo başlıkları mono/büyük harf: harf aralığı eklenince 0.75rem satırı
   taşırdığı için 0.7rem.
 
-Doğrulandı: 1440 / 580 / 390px'te tüm admin ve öğrenci sayfaları 200, sayfa
-taşması 0; kenar çubuğu üç genişlikte de koyu zeminli ve aktif satır görünür.
+### Menü yapısı
+
+Referans uygulamanın giriş arkasındaki düzeni görüldükten sonra menü de aynı
+yapıya getirildi:
+
+- **Marka bloğu:** kare işaret (ikon) + ad + mono alt başlık, altında ayıraç.
+- **İkonlu satırlar:** her menü satırında 16px çizgi ikon (`src/menuIcons.js`).
+  İkonlar bir paketten gelmiyor — derleme adımı olmayan bir EJS uygulamasına
+  bağımlılık eklememek için SVG'ler tek dosyada duruyor ve `stroke:
+  currentColor` ile metinle aynı rengi alıyor. Görünüm modeline `menuIcons`
+  olarak geçilir, şablonda `<%- menuIcons.ad %>` ile basılır.
+- **Aktif satır** dolgulu (`--sidebar-hover` + açık mavi metin); referansta sol
+  şerit yok, o yüzden bizdeki şerit de kaldırıldı. Mobilde şerit alt çizgi
+  olarak kalır (yatay menüde dolgu yeterince ayırt edici değil).
+- **Kimlik bloğu en altta:** ad + mono rol etiketi + Çıkış, üstte ayıraçla.
+  Önce menünün başındaydı ve listenin ilk 60px'ini kaplıyordu. Mobilde üst
+  barda sağa yaslanır (dikeydeki `margin-top:auto` orada anlamsız).
+- **Özet sayıları serif** (Playfair 600 / 30px) — referansta ölçüldü. Bir ara
+  Inter'e çevrilmişti; ölçüm bunu düzeltti.
+
+Doğrulandı: 1440 / 390px'te 14 admin + 9 öğrenci sayfası 200, sayfa taşması 0,
+menü ikonları her iki panelde de basılıyor.
 
 > Giriş ekranındaki tanıtım metni kaldırılmış puan sistemine atıf yapıyordu
 > ("Ödül-ceza puanlama"); güncellendi.
