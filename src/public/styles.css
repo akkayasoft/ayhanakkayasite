@@ -1941,6 +1941,24 @@ tr.day-off td {
   min-width: 1280px;
 }
 
+/* Rutin gun tablosu (uyanma / spor): 6 bilgi sutununun yanina bir de elle
+   kayit formu (saat + gerekce + dugmeler) giriyor. 1440 ve 1180'de kapsayiciya
+   sigiyor; daha dar masaustunde tarih "202 6-0 9-1 9" diye dikey dilimlere
+   bolunuyordu. Analiz tablolarindaki kabul edilen desen: kapsayici icinde
+   yatay kaydir. Telefonda .stack-mobile karta cevirir (min-width orada 0). */
+.routine-log-table {
+  min-width: 820px;
+}
+
+/* Tarih, gun adi ve saat sutunlari kisa ve sabit bicimli; dar masaustunde
+   sarmak "202 6-0 9-1 9" / "Cum artes i" gibi dikey dilimler uretiyordu.
+   Sarmak yerine kapsayici kaydirsin (analiz tablolarindaki karar). Durum ve
+   elle kayit sutunlari sarmaya devam eder. */
+.routine-log-table td:nth-child(-n + 5),
+.routine-log-table th:nth-child(-n + 5) {
+  white-space: nowrap;
+}
+
 /* Ogrenci gorev listesi: masaustunde sabit duzen. Onceden baslik ve aciklama
    sutunlari icerige gore buyuyup tabloyu 1440px ekranda bile 505px disari
    itiyordu; sabit duzende ikisi de sarar. */

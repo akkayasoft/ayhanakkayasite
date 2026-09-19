@@ -1503,8 +1503,13 @@
             Seri <%= sa.detail.streak %> gün ·
             Ortalama saat <%= sa.detail.summary.averageTime || '-' %>
           </p>
+          <p class="muted">
+            Öğrenci işaretlemeyi unuttuysa günün saatini elle yazabilirsiniz;
+            saat, kaydın kendi aralığına göre değerlendirilir. Elle yazılan
+            kayıt kimin yazdığıyla birlikte saklanır.
+          </p>
           <div class="table-wrap">
-            <table class="stack-mobile">
+            <table class="stack-mobile routine-log-table">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1513,6 +1518,7 @@
                   <th>Yapıldı</th>
                   <th>Gecikme</th>
                   <th>Durum</th>
+                  <th>Elle Kayıt</th>
                 </tr>
               </thead>
               <tbody>
@@ -1535,6 +1541,27 @@
                     <% } else { %>
                     <span class="muted">-</span>
                     <% } %>
+                    <% if (r.correctionText) { %>
+                    <small class="muted status-fix-trace"><%= r.correctionText %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="post" action="/admin/routines/sport/log" class="status-fix-form">
+                      <input type="hidden" name="next" value="/admin/sport?sportStudentId=<%= sa.selected.id %>" />
+                      <input type="hidden" name="studentId" value="<%= sa.selected.id %>" />
+                      <input type="hidden" name="day" value="<%= r.day %>" />
+                      <input type="time" name="time" value="<%= r.doneAt || '' %>" aria-label="<%= r.day %> spor saati" />
+                      <input type="text" name="note" maxlength="300" placeholder="Gerekçe (opsiyonel)" />
+                      <div class="task-table-actions">
+                        <button type="submit" name="action" value="set">Kaydet</button>
+                        <% if (r.status !== 'missed') { %>
+                        <button type="submit" name="action" value="missed">Yapılmadı</button>
+                        <% } %>
+                        <% if (r.canClear) { %>
+                        <button type="submit" name="action" value="clear" class="danger">Temizle</button>
+                        <% } %>
+                      </div>
+                    </form>
                   </td>
                 </tr>
                 <% }) %>
@@ -1660,9 +1687,20 @@
           </article>
         </section>
 
+        <%# ELLE KAYIT. Ogrenci tarafinda "ilk basis gecerli" kurali durur;
+            burada admin bir GUNUN kaydini kendisi yazar ya da duzeltir.
+            Her yazma kim/ne zaman/neyin uzerine bilgisiyle saklanir. %>
         <section class="panel">
+          <h3>Günlük Kayıtlar</h3>
+          <p class="muted">
+            Öğrenci işaretlemeyi unuttuysa günün saatini buradan elle
+            yazabilirsiniz; saat, rutinin o güne kopyalanan hedefine göre
+            <strong>zamanında</strong> ya da <strong>geç</strong> sayılır.
+            Elle yazılan kayıt, <strong>kimin yazdığı ve neyin üzerine
+            yazıldığı</strong> ile birlikte saklanır ve satırda görünür.
+          </p>
           <div class="table-wrap">
-            <table class="stack-mobile">
+            <table class="stack-mobile routine-log-table">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -1671,6 +1709,7 @@
                   <th>Kalkış</th>
                   <th>Gecikme</th>
                   <th>Durum</th>
+                  <th>Elle Kayıt</th>
                 </tr>
               </thead>
               <tbody>
@@ -1693,6 +1732,30 @@
                     <% } else { %>
                     <span class="muted">-</span>
                     <% } %>
+                    <% if (r.correctionText) { %>
+                    <small class="muted status-fix-trace"><%= r.correctionText %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="post" action="/admin/routines/wake/log" class="status-fix-form">
+                      <input type="hidden" name="next" value="/admin/wake?wakeStudentId=<%= wakeAdmin.selected.id %>" />
+                      <input type="hidden" name="studentId" value="<%= wakeAdmin.selected.id %>" />
+                      <input type="hidden" name="day" value="<%= r.day %>" />
+                      <input type="time" name="time" value="<%= r.wokeAt || '' %>" aria-label="<%= r.day %> kalkış saati" />
+                      <input type="text" name="note" maxlength="300" placeholder="Gerekçe (opsiyonel)" />
+                      <div class="task-table-actions">
+                        <button type="submit" name="action" value="set">Kaydet</button>
+                        <% if (r.status !== 'missed') { %>
+                        <button type="submit" name="action" value="missed">Kaçırıldı</button>
+                        <% } %>
+                        <%# Silme yalnizca KALICI oldugunda acik: muhurleyicinin
+                            pencerisindeki bir gunde kayit 5 dakika icinde geri
+                            gelirdi. %>
+                        <% if (r.canClear) { %>
+                        <button type="submit" name="action" value="clear" class="danger">Temizle</button>
+                        <% } %>
+                      </div>
+                    </form>
                   </td>
                 </tr>
                 <% }) %>

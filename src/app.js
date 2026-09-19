@@ -104,7 +104,14 @@ function normalizeIdList(value) {
 function toDateOnly(value) {
   if (!value) return '';
   if (typeof value === 'string') return value.slice(0, 10);
-  return new Date(value).toISOString().slice(0, 10);
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  // pg, DATE sutunlarini YEREL gece yarisi olan bir Date nesnesi olarak
+  // dondurur. toISOString() bunu UTC'ye cevirdigi icin saat dilimi UTC'nin
+  // ILERISINDE olan bir makinede (ör. TZ=Europe/Istanbul) her tarih bir gun
+  // geriye kayiyordu: 2026-09-17 kaydi ekranda 2026-09-16 satirinda cikti.
+  // Yerel parcalardan okumak sunucu UTC iken davranisi degistirmez.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function shiftDate(dateStr, offsetDays) {
@@ -300,6 +307,22 @@ function wakeStatusText(status) {
   return 'Bekliyor';
 }
 
+/**
+ * Admin elle kayit izini tek satirlik metne cevirir. Gorevlerdeki
+ * "Duzeltildi · Kim (Onceki → Yeni) · gerekce" satirinin rutin karsiligi;
+ * saat de degerin parcasi oldugu icin onceki saat de yazilir.
+ */
+function routineCorrectionText(row, statusTextFn, yeniEtiket) {
+  if (!row || !row.correctedAt) return '';
+  const kim = row.correctedByName || 'Admin';
+  const oncekiSaat = normalizeEstimatedTimeForDisplay(row.previousTime);
+  const onceki = row.previousStatus
+    ? `${statusTextFn(row.previousStatus)}${oncekiSaat ? ' ' + oncekiSaat : ''}`
+    : 'Kayıtsız';
+  const gerekce = normalizeText(row.correctionNote);
+  return `Elle yazıldı · ${kim} (${onceki} → ${yeniEtiket})${gerekce ? ' · ' + gerekce : ''}`;
+}
+
 function mapWakeLog(row) {
   const wokeAt = normalizeEstimatedTimeForDisplay(row.wokeAt);
   return {
@@ -311,6 +334,12 @@ function mapWakeLog(row) {
     statusText: wakeStatusText(row.status),
     delayMinutes: Number(row.delayMinutes) || 0,
     note: row.note || '',
+    correctedAt: row.correctedAt || null,
+    correctionText: routineCorrectionText(
+      row,
+      wakeStatusText,
+      `${wakeStatusText(row.status)}${wokeAt ? ' ' + wokeAt : ''}`
+    ),
     gunAdi: getDayName(toDateOnly(row.day))
   };
 }
@@ -322,7 +351,8 @@ async function getWakeRoutine(studentId) {
         student_id AS "studentId",
         target_time AS "targetTime",
         tolerance_minutes AS "toleranceMinutes",
-        is_active AS "isActive"
+        is_active AS "isActive",
+        created_at AS "createdAt"
       FROM wake_routines
       WHERE student_id = $1
     `,
@@ -334,7 +364,8 @@ async function getWakeRoutine(studentId) {
     studentId: row.studentId,
     targetTime: normalizeEstimatedTimeForDisplay(row.targetTime),
     toleranceMinutes: Number(row.toleranceMinutes) || 0,
-    isActive: row.isActive
+    isActive: row.isActive,
+    createdDay: toDateOnly(row.createdAt)
   };
 }
 
@@ -372,15 +403,22 @@ function sportStatusText(status) {
 }
 
 function mapSportLog(row) {
+  const doneAt = normalizeEstimatedTimeForDisplay(row.doneAt);
   return {
     day: toDateOnly(row.day),
     startTime: normalizeEstimatedTimeForDisplay(row.startTime),
     endTime: normalizeEstimatedTimeForDisplay(row.endTime),
-    doneAt: normalizeEstimatedTimeForDisplay(row.doneAt),
+    doneAt,
     status: row.status,
     statusText: sportStatusText(row.status),
     delayMinutes: Number(row.delayMinutes) || 0,
     note: row.note || '',
+    correctedAt: row.correctedAt || null,
+    correctionText: routineCorrectionText(
+      row,
+      sportStatusText,
+      `${sportStatusText(row.status)}${doneAt ? ' ' + doneAt : ''}`
+    ),
     gunAdi: getDayName(toDateOnly(row.day))
   };
 }
@@ -389,7 +427,8 @@ async function getSportRoutine(studentId) {
   const res = await query(
     `
       SELECT student_id AS "studentId", start_time AS "startTime",
-             end_time AS "endTime", is_active AS "isActive"
+             end_time AS "endTime", is_active AS "isActive",
+             created_at AS "createdAt"
       FROM sport_routines
       WHERE student_id = $1
     `,
@@ -401,7 +440,10 @@ async function getSportRoutine(studentId) {
     studentId: row.studentId,
     startTime: normalizeEstimatedTimeForDisplay(row.startTime),
     endTime: normalizeEstimatedTimeForDisplay(row.endTime),
-    isActive: row.isActive
+    isActive: row.isActive,
+    // Muhurleyici rutin kurulmadan onceki gunlere inmez; elle silmenin
+    // kalici olup olmadigini bu tarih belirler.
+    createdDay: toDateOnly(row.createdAt)
   };
 }
 
@@ -449,11 +491,15 @@ async function buildSportView(studentId, gunSayisi = 14) {
 
   const res = await query(
     `
-      SELECT day, start_time AS "startTime", end_time AS "endTime",
-             done_at AS "doneAt", status, delay_minutes AS "delayMinutes", note
-      FROM sport_logs
-      WHERE student_id = $1 AND day >= $2
-      ORDER BY day DESC
+      SELECT sl.day, sl.start_time AS "startTime", sl.end_time AS "endTime",
+             sl.done_at AS "doneAt", sl.status, sl.delay_minutes AS "delayMinutes", sl.note,
+             sl.corrected_at AS "correctedAt", sl.previous_status AS "previousStatus",
+             sl.previous_time AS "previousTime", sl.correction_note AS "correctionNote",
+             u.name AS "correctedByName"
+      FROM sport_logs sl
+      LEFT JOIN users u ON u.id = sl.corrected_by
+      WHERE sl.student_id = $1 AND sl.day >= $2
+      ORDER BY sl.day DESC
     `,
     [studentId, shiftDate(today, -(gunSayisi - 1))]
   );
@@ -574,11 +620,15 @@ async function buildWakeView(studentId, gunSayisi = 14) {
 
   const res = await query(
     `
-      SELECT day, target_time AS "targetTime", tolerance_minutes AS "toleranceMinutes",
-             woke_at AS "wokeAt", status, delay_minutes AS "delayMinutes", note
-      FROM wake_logs
-      WHERE student_id = $1 AND day >= $2
-      ORDER BY day DESC
+      SELECT wl.day, wl.target_time AS "targetTime", wl.tolerance_minutes AS "toleranceMinutes",
+             wl.woke_at AS "wokeAt", wl.status, wl.delay_minutes AS "delayMinutes", wl.note,
+             wl.corrected_at AS "correctedAt", wl.previous_status AS "previousStatus",
+             wl.previous_time AS "previousTime", wl.correction_note AS "correctionNote",
+             u.name AS "correctedByName"
+      FROM wake_logs wl
+      LEFT JOIN users u ON u.id = wl.corrected_by
+      WHERE wl.student_id = $1 AND wl.day >= $2
+      ORDER BY wl.day DESC
     `,
     [studentId, shiftDate(today, -(gunSayisi - 1))]
   );
@@ -3200,7 +3250,9 @@ async function buildScheduleView(req) {
 function adminRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|yds|schedule|tasks(?:\/(?:create|update|active|status))?)(\?.*)?$/.test(requestedNext)
+  // sport ve goals bu listede yoktu: o sayfalardaki formlar next="/admin/sport"
+  // gonderdigi halde kayittan sonra panoya donuyordu.
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|yz-program|wake|sport|goals|yds|schedule|tasks(?:\/(?:create|update|active|status))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -3484,6 +3536,28 @@ async function buildTaskStatusFixView(req, students, tasks, today) {
   };
 }
 
+/**
+ * Rutin gun tablosuna elle kayit kontrollerini ekler.
+ *
+ * "Temizle" yalnizca silme KALICI oldugunda cikar: muhurleyicinin 5 dakika
+ * icinde geri yazacagi bir dugme olu kontrol olurdu (gorevlerdeki canClear
+ * kararinin aynisi). Satirlar zaten taban tarih ile bugun arasinda uretilir.
+ */
+function withRoutineLogControls(kind, detail, today) {
+  if (!detail || !detail.rows) return detail;
+  return {
+    ...detail,
+    rows: detail.rows.map((row) => {
+      const hasLog = row.status !== 'pending' && row.status !== 'unknown';
+      return {
+        ...row,
+        hasLog,
+        canClear: hasLog && !wouldRoutineSealerRewrite(kind, detail.routine, row.day, today)
+      };
+    })
+  };
+}
+
 async function getAdminViewModel(req, currentPage) {
   const [usersRes, studentsRes, categoriesRes, tasksRes] = await Promise.all([
     query(
@@ -3573,8 +3647,10 @@ async function getAdminViewModel(req, currentPage) {
     );
     sportAdmin = {
       selected: secilen,
-      detail: detay,
+      detail: detay ? withRoutineLogControls(ROUTINE_KINDS.sport, detay, today) : null,
       defaults: { startTime: SPORT_DEFAULT_START, endTime: SPORT_DEFAULT_END },
+      today,
+      systemStartDate: SYSTEM_START_DATE,
       rows: students.map((s) => ({ student: s, routine: routineByStudent.get(s.id) || null }))
     };
   }
@@ -3606,7 +3682,9 @@ async function getAdminViewModel(req, currentPage) {
 
     wakeAdmin = {
       selected: secilen,
-      detail: detay,
+      detail: detay ? withRoutineLogControls(ROUTINE_KINDS.wake, detay, today) : null,
+      today,
+      systemStartDate: SYSTEM_START_DATE,
       rows: students.map((s) => ({ student: s, routine: routineByStudent.get(s.id) || null }))
     };
   }
@@ -5369,6 +5447,228 @@ app.post(
       return adminRedirect(req, res, { error: 'Bu öğrencide tanımlı rutin yok.' });
     }
     return adminRedirect(req, res, { message: 'Uyanma rutini kaldırıldı; geçmiş kayıtlar korundu.' });
+  })
+);
+
+// --- Rutin kayitlarini admin elle girer ------------------------------------
+//
+// Ogrenci tarafinda kural DEGISMEDI: gunde tek kayit, ilk basis gecerli,
+// basilmayan gecmis gun "kacirildi/yapilmadi" muhurlenir. Ama basmayi unutan
+// (ya da telefonu yaninda olmayan) bir gunun telafisi yoktu. Gorevlerdeki
+// "Durum Duzelt" kapisinin rutin karsiligi: admin bir GUNUN kaydini elle
+// yazar, duzeltir ya da -kalici olacaksa- siler.
+//
+// Kapi sessiz degil: her yazma kimin, ne zaman ve neyin uzerine yazdigiyla
+// birlikte satirin icinde durur (corrected_by / corrected_at /
+// previous_status / previous_time / correction_note).
+const ROUTINE_LOG_ACTIONS = new Set(['set', 'missed', 'clear']);
+
+// Uyanma ve spor tablolari bilerek ayri duruyor (bkz. CLAUDE.md); burada
+// yalnizca ikisinin FARKLARI tarif edilir, govde ortaktir.
+const ROUTINE_KINDS = {
+  wake: {
+    ad: 'Uyanma',
+    tablo: 'wake_logs',
+    saatSutunu: 'woke_at',
+    saatEtiketi: 'Kalkış saati',
+    idOneki: 'wake',
+    geriyeBakisGun: WAKE_LOOKBACK_DAYS,
+    durumMetni: wakeStatusText,
+    rutinGetir: getWakeRoutine,
+    ayarSutunlari: ['target_time', 'tolerance_minutes'],
+    // Ayarlar kaydin icine kopyalanir: degerlendirme, satir zaten varsa onun
+    // KENDI kopyasina gore yapilir (rutin sonradan degisse de gecmis bozulmaz).
+    rutinAyarlari: (r) => [r.targetTime, r.toleranceMinutes],
+    kayitAyarlari: (row) => [
+      normalizeEstimatedTimeForDisplay(row.target_time),
+      Number(row.tolerance_minutes) || 0
+    ],
+    degerlendir: (hm, [hedef, tolerans]) => evaluateWake(hm, hedef, tolerans)
+  },
+  sport: {
+    ad: 'Spor',
+    tablo: 'sport_logs',
+    saatSutunu: 'done_at',
+    saatEtiketi: 'Yapılan saat',
+    idOneki: 'sport',
+    geriyeBakisGun: SPORT_LOOKBACK_DAYS,
+    durumMetni: sportStatusText,
+    rutinGetir: getSportRoutine,
+    ayarSutunlari: ['start_time', 'end_time'],
+    rutinAyarlari: (r) => [r.startTime, r.endTime],
+    kayitAyarlari: (row) => [
+      normalizeEstimatedTimeForDisplay(row.start_time),
+      normalizeEstimatedTimeForDisplay(row.end_time)
+    ],
+    degerlendir: (hm, [baslangic, bitis]) => evaluateSport(hm, baslangic, bitis)
+  }
+};
+
+/**
+ * Bu gunun kaydini SILMEK kalici mi?
+ *
+ * Muhurleyici (sealMissedWakeLogs / sealMissedSportLogs) 5 dakikada bir
+ * calisir ve aktif rutinin GECMIS gunlerine kayit yoksa "kacirildi" yazar.
+ * O pencereye dusen bir kaydi silmek en fazla 5 dakika yasar; "temizlendi"
+ * demek yalan olurdu (gorevlerdeki wouldSealerRewriteStatus ile ayni karar).
+ */
+function wouldRoutineSealerRewrite(kind, routine, day, today) {
+  if (!routine || !routine.isActive) return false;
+  if (day >= today) return false; // muhurleyici bugune dokunmaz
+  const basladi = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const pencereBasi = [shiftDate(today, -kind.geriyeBakisGun), basladi].sort().pop();
+  return day >= pencereBasi;
+}
+
+app.post(
+  '/admin/routines/:tur/log',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const kind = ROUTINE_KINDS[normalizeText(req.params.tur)];
+    if (!kind) {
+      return adminRedirect(req, res, { error: 'Rutin bulunamadı.' });
+    }
+
+    const studentId = normalizeText(req.body.studentId);
+    const day = normalizeText(req.body.day);
+    const action = normalizeText(req.body.action);
+
+    if (!ROUTINE_LOG_ACTIONS.has(action)) {
+      return adminRedirect(req, res, { error: 'Geçersiz işlem.' });
+    }
+    if (!isDateOnly(day)) {
+      return adminRedirect(req, res, { error: 'Geçersiz gün.' });
+    }
+
+    const notDogrulama = validateTaskDescription(req.body.note);
+    if (!notDogrulama.ok) {
+      return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+    const ogrenciAdi = studentRes.rows[0].name;
+
+    const today = todayDateString();
+    if (day > today) {
+      return adminRedirect(req, res, { error: 'Gelecek bir güne rutin kaydı yazılamaz.' });
+    }
+    // Sistem taban tarihinden onceki gunler her acilista siliniyor; oraya
+    // yazmak "kaydettim" deyip kaydi kaybetmek olurdu.
+    if (day < SYSTEM_START_DATE) {
+      return adminRedirect(req, res, {
+        error: `Sistem ${SYSTEM_START_DATE} tarihinde başlıyor; daha eski günlere kayıt yazılamaz.`
+      });
+    }
+
+    const routine = await kind.rutinGetir(studentId);
+    const mevcutRes = await query(
+      `SELECT * FROM ${kind.tablo} WHERE student_id = $1 AND day = $2::date`,
+      [studentId, day]
+    );
+    const mevcut = mevcutRes.rowCount ? mevcutRes.rows[0] : null;
+    const mevcutSaat = mevcut ? normalizeEstimatedTimeForDisplay(mevcut[kind.saatSutunu]) : '';
+    const kunye = `${ogrenciAdi} · ${day}`;
+
+    if (action === 'clear') {
+      if (!mevcut) {
+        return adminRedirect(req, res, { error: `${kunye} için zaten kayıt yok.` });
+      }
+      if (wouldRoutineSealerRewrite(kind, routine, day, today)) {
+        return adminRedirect(req, res, {
+          error: `${kunye} geçmiş bir gün; kayıt silinse otomatik mühürleme 5 dakika içinde yeniden "${kind.durumMetni('missed')}" yazar. Bunun yerine saat girin.`
+        });
+      }
+      await query(`DELETE FROM ${kind.tablo} WHERE student_id = $1 AND day = $2::date`, [
+        studentId,
+        day
+      ]);
+      return adminRedirect(req, res, {
+        message: `${kunye} ${kind.ad.toLowerCase()} kaydı silindi (${kind.durumMetni(mevcut.status)}${mevcutSaat ? ' ' + mevcutSaat : ''} → kayıtsız).`
+      });
+    }
+
+    // Ayarlar: satir zaten varsa onun kendi kopyasi, yoksa rutinin bugunku
+    // ayari. Rutin hic yoksa yazacak deger yok (sutunlar NOT NULL).
+    const ayarlar = mevcut
+      ? kind.kayitAyarlari(mevcut)
+      : routine
+        ? kind.rutinAyarlari(routine)
+        : null;
+    if (!ayarlar) {
+      return adminRedirect(req, res, {
+        error: `${ogrenciAdi} için ${kind.ad.toLowerCase()} rutini tanımlı değil; kayıt rutinin ayarlarıyla değerlendirilir.`
+      });
+    }
+
+    let yeniSaat = null;
+    let yeniDurum = 'missed';
+    let gecikme = 0;
+    if (action === 'set') {
+      const saat = normalizeEstimatedTimeForStorage(req.body.time);
+      if (!saat.ok || !saat.value) {
+        return adminRedirect(req, res, {
+          error: `${kind.saatEtiketi} HH:MM biçiminde olmalı (ör. 06:20).`
+        });
+      }
+      const sonuc = kind.degerlendir(saat.value, ayarlar);
+      if (!sonuc) {
+        return adminRedirect(req, res, { error: 'Saat hesaplanamadı.' });
+      }
+      yeniSaat = saat.value;
+      yeniDurum = sonuc.status;
+      gecikme = sonuc.delayMinutes;
+    }
+
+    if (mevcut && mevcut.status === yeniDurum && mevcutSaat === (yeniSaat || '')) {
+      return adminRedirect(req, res, {
+        error: `${kunye} zaten "${kind.durumMetni(yeniDurum)}${yeniSaat ? ' ' + yeniSaat : ''}" olarak kayıtlı.`
+      });
+    }
+
+    const ayarYerleri = ayarlar.map((_, i) => `$${4 + i}`).join(', ');
+    const s = 4 + ayarlar.length;
+    await query(
+      `
+        INSERT INTO ${kind.tablo}
+          (id, student_id, day, ${kind.ayarSutunlari.join(', ')}, ${kind.saatSutunu}, status,
+           delay_minutes, corrected_by, corrected_at, previous_status, previous_time, correction_note)
+        VALUES ($1, $2, $3::date, ${ayarYerleri}, $${s}, $${s + 1}, $${s + 2}, $${s + 3}, NOW(), NULL, NULL, $${s + 4})
+        ON CONFLICT (student_id, day) DO UPDATE
+        SET ${kind.saatSutunu} = EXCLUDED.${kind.saatSutunu},
+            status = EXCLUDED.status,
+            delay_minutes = EXCLUDED.delay_minutes,
+            corrected_by = EXCLUDED.corrected_by,
+            corrected_at = NOW(),
+            previous_status = ${kind.tablo}.status,
+            previous_time = ${kind.tablo}.${kind.saatSutunu},
+            correction_note = EXCLUDED.correction_note
+      `,
+      [
+        makeId(kind.idOneki),
+        studentId,
+        day,
+        ...ayarlar,
+        yeniSaat,
+        yeniDurum,
+        gecikme,
+        req.currentUser.id,
+        notDogrulama.value
+      ]
+    );
+
+    const onceki = mevcut
+      ? `${kind.durumMetni(mevcut.status)}${mevcutSaat ? ' ' + mevcutSaat : ''}`
+      : 'Kayıtsız';
+    const yeni = `${kind.durumMetni(yeniDurum)}${yeniSaat ? ' ' + yeniSaat : ''}`;
+    const gecikmeNotu = gecikme ? ` (${gecikme} dk gecikme)` : '';
+    return adminRedirect(req, res, {
+      message: `${kunye} ${kind.ad.toLowerCase()} kaydı: ${onceki} → ${yeni}${gecikmeNotu}.`
+    });
   })
 );
 

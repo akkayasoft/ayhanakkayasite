@@ -422,6 +422,20 @@ async function initDb() {
   // rutin karsiligi; rutin gorev listesinde ayni sutunda gosterilir.
   await query(`ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT ''`);
 
+  // ADMIN ELLE KAYDININ IZI (gorevlerdeki "Durum Duzelt" deseninin aynisi).
+  // Ogrenci tarafinda "ilk basis gecerli" kurali degismedi; admin bir GUNUN
+  // kaydini elle girebilir ya da duzeltebilir. Kapi sessiz olmasin diye her
+  // yazma kimin, ne zaman ve NEYIN uzerine yazdigiyla satirin icinde durur.
+  await query(
+    `ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL`
+  );
+  await query(`ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS previous_status TEXT`);
+  await query(`ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS previous_time TIME`);
+  await query(
+    `ALTER TABLE wake_logs ADD COLUMN IF NOT EXISTS correction_note TEXT NOT NULL DEFAULT ''`
+  );
+
   // --- Gunluk spor rutini ------------------------------------------------
   //
   // Uyanma rutininin kardesi. Fark: hedef saat + tolerans yerine bir ARALIK
@@ -456,6 +470,17 @@ async function initDb() {
   await query(`CREATE INDEX IF NOT EXISTS sport_logs_student_day_idx ON sport_logs (student_id, day DESC)`);
 
   await query(`ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT ''`);
+
+  // Uyanmadaki elle kayit izinin aynisi (bkz. wake_logs).
+  await query(
+    `ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL`
+  );
+  await query(`ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS previous_status TEXT`);
+  await query(`ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS previous_time TIME`);
+  await query(
+    `ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS correction_note TEXT NOT NULL DEFAULT ''`
+  );
 
   // --- Puan sistemi kaldirildi -------------------------------------------
   //

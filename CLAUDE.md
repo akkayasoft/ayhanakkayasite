@@ -951,6 +951,70 @@ kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
 > verisini taşımayı gerektirirdi. Bir üçüncü rutin gerekirse önce o soyutlama
 > yapılmalı; iki kopya sınırdır.
 
+### Elle kayıt (admin) — rutinlerin tek geri dönüşü
+
+Öğrenci tarafında kural **değişmedi**: günde tek kayıt, ilk basış geçerli,
+basılmayan geçmiş gün mühürlenir. Ama basmayı unutulan (ya da telefonun
+yanında olmadığı) bir günün telafisi yoktu. Görevlerdeki **Durum Düzelt**
+kapısının rutin karşılığı: `/admin/wake` ve `/admin/sport` sayfalarındaki
+**Günlük Kayıtlar** tablosunda admin, her günün satırında saati elle yazar.
+
+- Rota: `POST /admin/routines/:tur/log` (`tur` = `wake` | `sport`,
+  `requireRole('admin')`; doğrulandı: öğrenci **403**, oturumsuz **302**).
+  İşlemler: `set` (saat yaz), `missed` (kaçırıldı/yapılmadı), `clear` (sil).
+- Gövde ortaktır; iki rutinin **farkları** `ROUTINE_KINDS` tablosunda durur
+  (tablo adı, saat sütunu, ayar sütunları, değerlendirme fonksiyonu). Tablolar
+  hâlâ ayrı — paylaşılan tek şey rota gövdesi.
+- **Kapı sessiz değil.** Her yazma satırın içine işlenir: `corrected_by` /
+  `corrected_at` / `previous_status` / `previous_time` / `correction_note`.
+  Tabloda *"Elle yazıldı · Sistem Yöneticisi (Kaçırıldı → Zamanında 06:05) ·
+  gerekçe"* olarak görünür. Gerekçe **opsiyonel** (görevlerdeki kararın aynısı:
+  kim/ne zaman/ne üzerine zaten otomatik kaydediliyor).
+- **Değerlendirme kaydın kendi kopyasına göre yapılır.** Satır zaten varsa
+  (ör. mühürleyicinin yazdığı `missed`) hedef/tolerans ya da aralık o satırdan
+  okunur; yoksa rutinin bugünkü ayarı kopyalanır. Rutin sonradan değişse de
+  geçmiş bozulmaz. Rutin hiç yoksa yazılamaz (sütunlar NOT NULL) — rota
+  *"rutin tanımlı değil"* der.
+- **Gelecek güne yazılamaz**; **taban tarihten önceye de** (`SYSTEM_START_DATE`
+  — açılıştaki temizlik o kayıtları zaten siler).
+- **"Temizle" yalnızca kalıcı olduğunda açıktır.** Mühürleyici penceresine
+  düşen geçmiş bir günün kaydı silinse 5 dakika içinde yeniden `missed`
+  yazılırdı; panel düğmeyi göstermez, rota da reddeder ve *"bunun yerine saat
+  girin"* der. Bugünün kaydı silinebilir (mühürleyici bugüne dokunmaz).
+- Mühürleyiciler `ON CONFLICT DO NOTHING` kullandığı için admin'in yazdığı
+  kayıt **ezilmez**; öğrencinin aynı güne basması da reddedilir (ilk kayıt
+  geçerli).
+
+Doğrulandı (16-19 Eylül, temiz rutinle): 06:20 → `late`/20, üzerine 05:55 →
+`on_time`/0 ve `previous_status='late'`, `previous_time='06:20'`, gerekçe
+kaydedildi; aynı değeri tekrar göndermek **reddedildi**; mühürlenmiş
+*Kaçırıldı* günü 06:05 ile düzeltildi (`previous_status='missed'`) ve
+**uygulama yeniden başlatıldıktan sonra mühürleyici onu ezmedi**; boş günü
+temizlemek, gelecek gün, taban öncesi gün, geçersiz saat/işlem/tür ve olmayan
+öğrenci **reddedildi**; mühürleyici penceresindeki geçmiş günün *Temizle*'si
+**reddedildi**, bugünün kaydı silinebildi. Spor tarafında 06:22 → zamanında/7,
+06:31 → geç/16, 05:40 → zamanında/0 (erken yapmak geç değildir). Admin bugüne
+yazdıktan sonra öğrencinin basışı *"zaten kaydedilmiş"* dedi ve satır
+değişmedi. Dört genişlikte (1440 / 1180 / 1024 / 390px) **sayfa taşması 0**.
+
+> ⚠️ **Bu iş sırasında bulunan hata: `toDateOnly()` tarihleri bir gün geriye
+> kaydırıyordu.** pg, `DATE` sütunlarını *yerel* gece yarısı olan bir `Date`
+> nesnesi döndürür; `toISOString()` bunu UTC'ye çevirdiği için saat dilimi
+> UTC'nin **ilerisinde** olan bir makinede (TZ=Europe/Istanbul) 17 Eylül kaydı
+> ekranda 16 Eylül satırında çıkıyordu. Fonksiyon artık yerel parçalardan
+> okuyor. Sunucu UTC iken davranış aynıdır — bu yüzden canlıda görünmüyordu,
+> ama sunucunun TZ'si Istanbul yapılsaydı bütün tarihler kayardı.
+
+> Tablo 7 sütuna çıktığı için `.routine-log-table` sınıfı geldi:
+> `min-width: 820px` ve ilk beş sütunda `white-space: nowrap`. 1440 ve
+> 1180'de kapsayıcıya sığar, daha dar masaüstünde kapsayıcı içinde yatay
+> kaydırır (analiz tablolarındaki kabul edilen desen), telefonda `.stack-mobile`
+> ile karta döner.
+
+> Not: `adminRedirect`'in `next` beyaz listesinde `sport` ve `goals` yoktu;
+> o sayfalardaki formlar `next="/admin/sport"` göndermesine rağmen kayıttan
+> sonra panoya dönüyordu. Liste tamamlandı.
+
 ### Rutinler görev listesinde de görünür
 
 Uyanma ve spor, panonun tepesindeki şeride **ek olarak** "Görevlerim"
@@ -1166,6 +1230,7 @@ yalnızca gelecek yeniden düzenlenir.*
 | Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
 | YDS uygulamasında "ilerlemeyi sıfırla" | Yalnızca `yds:` kaynaklı ayna satırları silinir | ✅ elle girilen soru kaydı korundu |
 | Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
+| Admin bir rutin kaydını elle yazar | Satır değişir ama **izi kalır** (+ `previous_time`); değerlendirme kaydın kendi hedef/aralık kopyasına göre yapılır | ✅ mühürleyici ezmedi, öğrencinin basışı reddedildi |
 | Bir hafta özelleştirilir / varsayılana döndürülür | Yalnızca o haftanın `class_schedule` satırları değişir; **işlenen konular silinmez** (ders/sınıf adı kaydın içinde) | ✅ döndürme sonrası defter satırları durdu |
 
 > Tek istisna bilinçli: aylık hedefte "Başarılamadı" işaretlerken kanıt alanı
