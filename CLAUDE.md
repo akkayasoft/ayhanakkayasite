@@ -82,6 +82,12 @@ npm start                                 # http://localhost:3000
 
 ## Deploy (GERÇEK durum)
 
+> `/healthz` çalışan **commit'i** döner (`version`, açılışta
+> `git rev-parse --short HEAD`) ve uygulamanın başlama zamanını (`startedAt`).
+> "Değişiklik canlıda mı?" sorusu artık tahminle değil bununla yanıtlanır —
+> önceden yalnızca public bir dosyanın içeriğine bakarak tahmin edilebiliyordu.
+
+
 > ⚠️ Repo içindeki eski "Hostinger" dokümanları (`scripts/deploy-hostinger.sh`, `.env.deploy`, `.github/workflows/deploy-hostinger.yml`) gerçeği yansıtmaz; geçmişten kalmadır.
 
 - **Canlı URL:** https://takip.obs.akkayasoft.com/
@@ -708,6 +714,15 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   > yanıtlar. Doğrulandı: cumartesi açılan liste haftanın 7 dersini
   > durumlarıyla gösterdi (1 ✓, 6 ✕); mühürlenmiş bir dersin konusu yazılınca
   > satır ✓'ya döndü ve sayaç 2 → 3 oldu.
+
+> ⚠️ **Panel, çizelge boşken de görünmeli.** Önce "Ders Görevleri",
+> "Defteri Kim Yazabilir" ve "Excel Çıktısı" panellerinin üçü de
+> *"çizelge dolu"* dalının içindeydi: o haftada hiç ders yoksa şablon
+> `<% } else { %>` dalına girmiyor ve paneller **tamamen kayboluyordu** — tam
+> da durumu anlamak gereken anda. Kullanıcı "görev yok falan da yazmıyor"
+> dedi. Paneller koşulun dışına alındı; ayrıca panel artık *"Bu haftanın
+> çizelgesinde N ders saati var"* satırını yazıyor ve N=0 ise nedenini
+> açıklıyor.
 
 **Panel her öğrencinin o haftaki durumunu ayrı satırda gösterir**
 (*"Ayhan Test · Görev yok"* / *"Muhammed Gök · 7 ders · 2 konusu yazıldı"*).

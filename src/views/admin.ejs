@@ -1889,7 +1889,13 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             </div>
           </section>
         </form>
+        <% } %>
 
+        <%# Ders Gorevleri / Defteri Kim Yazabilir / Excel panelleri cizelge BOS
+            olsa da gorunur. Once hepsi "cizelge dolu" dalinin icindeydi: tam da
+            durumu anlamak gereken anda (bu haftada hic ders yokken) panel
+            ortadan kayboluyordu — kullanici "gorev yok falan da yazmiyor"
+            dedi. %>
         <section class="panel narrow">
           <h3>Ders Görevleri</h3>
           <p class="muted">
@@ -1903,8 +1909,23 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               "Olusturdum ama gorunmuyor" vakasinin en olasi sebebi yanlis
               ogrenci oldugu icin her ogrencinin bu haftaki sayisi ayri ayri
               gosteriliyor. %>
+          <%# Once CIZELGE: bu haftada hic ders yoksa gorev de olmaz. Iki
+              durumu ayirt etmek icin sayiyi acikca yaziyoruz. %>
+          <p class="muted">
+            Bu haftanın çizelgesinde
+            <strong><%= tw.yazilabilir %> ders saati</strong> var
+            (<%= tw.weekStart %> - <%= tw.weekEnd %>).
+            <% if (!tw.yazilabilir) { %>
+            <br />
+            <span class="day-badge miss">Çizelge boş</span>
+            Bu hafta hiç ders tanımlı değil; ders görevi de açılmaz.
+            <strong>Çizelge</strong> sekmesinde ders girin — hafta seçmeden
+            girerseniz <em>varsayılan çizelgeye</em>, hafta seçerek girerseniz
+            yalnızca <em>o haftaya</em> yazılır.
+            <% } %>
+          </p>
           <% if (tw.haftaGorevleri && tw.haftaGorevleri.length) { %>
-          <p class="muted">Bu hafta (<%= tw.weekStart %> - <%= tw.weekEnd %>) ders görevleri:</p>
+          <p class="muted">Bu haftanın ders görevleri:</p>
           <ul class="clean-list">
             <% tw.haftaGorevleri.forEach((g) => { %>
             <li class="row space-between center">
@@ -1996,7 +2017,6 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             <button type="submit">Excel İndir</button>
           </form>
         </section>
-        <% } %>
         <% } %>
         <% } %>
 
