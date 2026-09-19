@@ -4899,13 +4899,23 @@ async function getStudentViewModel(req, currentPage) {
   const latestStatusByTaskId = new Map(latestStatusesRes.rows.map((row) => [row.taskId, row]));
   const allTasks = tasksRes.rows.map(mapTask);
 
-  // Ders gorevi ogretim yilindaki her ders saati icin acilir (yuzlerce).
-  // Listede yalnizca BUGUNUN dersleri kalir — rutinlerle ayni kural. Digerleri
-  // silinmez: takvimde kendi gununde, haftalik analizde ve raporlarda aynen
-  // gorunur.
+  // Ders gorevi ogretim yilindaki her ders saati icin acilir (yuzlerce);
+  // listede yalnizca ICINDE BULUNULAN HAFTA'nin dersleri kalir.
+  //
+  // Once "yalnizca bugun" idi ve hafta sonu liste bombos kaliyordu: cumartesi
+  // acan kullanici gorevleri olusturdugu halde hicbir sey goremedi. Hafta
+  // penceresi hem o sorunu cozer hem de "bu hafta hangi dersin konusunu
+  // yazmadim" sorusunu yanitlar. Digerleri silinmez: takvimde kendi gununde,
+  // haftalik analizde ve raporlarda aynen gorunur.
+  const buHaftaBaslangic = startOfWeek(today);
+  const buHaftaBitis = shiftDate(buHaftaBaslangic, 6);
   const activeTasks = allTasks
     .filter((task) => !task.isArchived)
-    .filter((task) => !isLessonTask(task.sourceKey) || task.singleDate === today)
+    .filter(
+      (task) =>
+        !isLessonTask(task.sourceKey) ||
+        (task.singleDate >= buHaftaBaslangic && task.singleDate <= buHaftaBitis)
+    )
     .sort(compareTasksBySchedule)
     .map((task) => {
       const category = categories.find((c) => c.id === task.categoryId);

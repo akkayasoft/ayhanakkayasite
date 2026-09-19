@@ -696,10 +696,18 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
 > (`corrected_by` dolu) ezilmez**; yalnızca otomatik mührün üzerine yazılır ve
 > `previous_status` ile izi kalır.
 
-- **Öğrenci listesinde yalnızca BUGÜNÜN dersleri görünür** — rutinlerle aynı
-  kural. Diğerleri silinmez: Haftalık Takvim, Yıllık Plan, haftalık analiz ve
+- **Öğrenci listesinde içinde bulunulan HAFTA'nın dersleri görünür.**
+  Diğerleri silinmez: Haftalık Takvim, Yıllık Plan, haftalık analiz ve
   raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
   açılır; hepsi listede dursaydı sayfa kullanılamazdı.)
+
+  > ⚠️ Önce **"yalnızca bugün"** idi ve hafta sonu liste bomboş kalıyordu:
+  > cumartesi bakan kullanıcı görevleri oluşturduğu hâlde hiçbir şey göremedi
+  > (hafta içi çizelgede cumartesi ders yok). Hafta penceresi hem o boşluğu
+  > kapatır hem de *"bu hafta hangi dersin konusunu yazmadım"* sorusunu
+  > yanıtlar. Doğrulandı: cumartesi açılan liste haftanın 7 dersini
+  > durumlarıyla gösterdi (1 ✓, 6 ✕); mühürlenmiş bir dersin konusu yazılınca
+  > satır ✓'ya döndü ve sayaç 2 → 3 oldu.
 
 Doğrulandı (7 ders saatlik çizelge, 14 Eylül'den itibaren): **287 ders görevi**,
 205 güne yayıldı; başlıklar *"1. ders · Matematik"*, açıklamada zil saati +
