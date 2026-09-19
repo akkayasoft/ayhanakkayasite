@@ -1467,6 +1467,49 @@ tr.day-off td {
   border-bottom: 1px solid var(--border);
 }
 
+/* --------------------------------------------------------------------------
+   Yillik plan (ogrenci)
+   -------------------------------------------------------------------------- */
+
+/* Gun kartindaki plan satiri: baslik + durum ust satirda, kategori ve
+   aciklama altta. .clean-list li varsayilani tek satirlik icerik icin;
+   burada ikinci/ucuncu satirlar kendi araligini ister. */
+.program-day-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.program-task-desc {
+  /* Aktarilan gorevlerin aciklamasi uzun olabiliyor ("Kurs adi · ders");
+     kirpmak yerine sarsin, kart yuksekligi icerige gore buyusun. */
+  overflow-wrap: anywhere;
+}
+
+.program-week-picker {
+  flex-wrap: wrap;
+  margin-top: var(--sp-4);
+}
+
+/* Genel input kurali width:100% veriyor; secici kendi satirini kaplamasin. */
+.program-week-picker select {
+  width: auto;
+  min-width: 260px;
+  max-width: 100%;
+}
+
+/* 41 haftalik liste: tarih araligi ve donem etiketi kisa ve sabit bicimli,
+   sarmak "202 6-0 9-1 4" uretiyordu. Icerik sutunu (kategori kirilimi)
+   sarmaya devam eder. */
+.program-week-table {
+  min-width: 780px;
+}
+
+.program-week-table td:nth-child(-n + 3),
+.program-week-table th:nth-child(-n + 3) {
+  white-space: nowrap;
+}
+
 .lesson-period {
   display: inline-block;
   min-width: 20px;

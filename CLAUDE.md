@@ -32,8 +32,9 @@ scripts/      deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
 
 Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle —
-form), `calendar`, `questions`, `wake` (Uyanma Rutini), `schedule` (Ders
-Programı — **salt okunur**). Görev ekleme formu ile aktif görev listesi
+form), `calendar`, `program` (Yıllık Plan — hafta hafta), `questions`,
+`wake` (Uyanma Rutini), `schedule` (Ders Programı — **salt okunur**).
+Görev ekleme formu ile aktif görev listesi
 **ayrı sayfalardadır**; form gönderimi `next=/student/dashboard` ile listeye
 döner. Yeni bir öğrenci sayfası eklerken `/student/:page` içindeki
 `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi birlikte
@@ -138,6 +139,36 @@ denetleyicisi onları "tanımsız" görür, bu beklenen durumdur.
 > taşma değerleri çıkıyor. Ayrıca `styles.css` bir Google Fonts `@import`'u
 > içerdiği için `load` bu ortamda proxy'de takılır; ölçüm betiğinde dış
 > istekleri `page.route` ile kesmek gerekir.
+
+## Yıllık plan (öğrenci) — hafta hafta içerik
+
+`/student/program` → **Yıllık Plan**. Haftalık takvim tek haftayı gösterir ve
+ileri/geri **tek tek** gidilir; 2026-2027 planını baştan sona görmek 40 tık
+demekti. Bu sayfa öğretim yılının **bütün haftalarını** listeler, seçilen
+haftanın içeriğini gün gün açar.
+
+- `buildStudentProgramView(studentId, allTasks, categories, today, hafta)`:
+  öğretim yılının ilk haftasından son haftasına (41 hafta) döner; her hafta
+  için görev sayısı, tamamlanan ve **kategori kırılımı** (*"Yapay Zeka 5 ·
+  Doktora 2"*) üretir. **İçerik (başlık + açıklama) yalnızca seçili hafta
+  için** üretilir — 41 haftanın tüm görevlerini görüntüye taşımak gereksiz.
+- Yılın **tüm durumları tek sorguda** çekilir (`BETWEEN` ilk hafta - son
+  hafta); hafta hafta gitmek 41 gidiş olurdu.
+- Seçili hafta `?hafta=YYYY-MM-DD` ile gelir, öğretim yılına **kırpılır**;
+  parametre yoksa içinde bulunulan hafta. Sayfada hafta seçici (41 haftalık
+  açılır liste), önceki/sonraki/bu hafta ve *"Takvimde Aç"* bağlantısı var.
+- Görev listesinden farkı: **defter görevleri kendi haftasında görünür**
+  (listede yalnızca içinde bulunulan haftanınki kalır — orada günlük görevleri
+  boğmasın diye). Arşivli görevler elenir.
+- Sayfa yalnızca **öğretim yılı içindeki** haftaları gösterir; yıl dışına
+  düşen görevler (varsa) Haftalık Takvim ve Görevlerim'de durur.
+
+Doğrulandı (149 derslik YZ programı aktarılmış öğrenciyle): 41 hafta, 149
+görev; ilk hafta Pzt-Cum beş ders, 29 Ekim haftası **4 ders** (bayram atlandı),
+1. Ara Tatil haftası **0 görev** ve gün kartlarında *"1. Ara Tatil"* etiketi;
+hafta seçiciyle Mayıs 2027'ye atlandı; sayfa **10 ms**, 44 KB. Admin →
+`/student/program` **403**, oturumsuz **302**. Üç genişlikte (1440 / 1024 /
+390px) sayfa taşması **0**, konsol hatası 0.
 
 ## Eğitim öğretim yılı takvimi
 

@@ -830,6 +830,130 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
   };
 }
 
+/**
+ * Yillik plan (ogrenci): 2026-2027 ogretim yilinin BUTUN haftalari bir
+ * listede, secili haftanin icerigi gun gun.
+ *
+ * Haftalik takvim tek haftayi gosterir ve ileri/geri tek tek gidilir; yilin
+ * tamamini gormek icin 40 tik gerekiyordu. Burada hafta secilir, icerik
+ * (gorev basligi + aciklamasi) hemen altta acilir.
+ *
+ * Gorev listesinden iki farki var:
+ *  - DEFTER gorevleri kendi haftalarinda gorunur (listede yalnizca icinde
+ *    bulunulan haftaninki kalir; burada "plan" gosteriliyor).
+ *  - Gun bazli oldugu icin tekrarli gorevler her dustugu gunde sayilir.
+ */
+async function buildStudentProgramView(studentId, allTasks, categories, today, requestedWeek) {
+  const yil = academicCalendar.ACADEMIC_YEAR;
+  const ilkHafta = startOfWeek(yil.start);
+  const sonHafta = startOfWeek(yil.end);
+
+  const tasks = allTasks.filter((task) => !task.isArchived);
+  const kategoriAdi = new Map(categories.map((c) => [c.id, c.name]));
+
+  // Tum yilin durumlari tek sorguda; hafta hafta gitmek 40 gidis olurdu.
+  const statusRes = await query(
+    `
+      SELECT task_id AS "taskId", day, status
+      FROM task_statuses
+      WHERE student_id = $1 AND day BETWEEN $2::date AND $3::date
+    `,
+    [studentId, ilkHafta, shiftDate(sonHafta, 6)]
+  );
+  const durumlar = new Map(
+    statusRes.rows.map((row) => [`${row.taskId}:${toDateOnly(row.day)}`, row.status])
+  );
+
+  // Secili hafta ogretim yilinin disina cikmaz; parametre yoksa icinde
+  // bulunulan hafta (yil disindaysak yilin ilk/son haftasi).
+  const buHafta = startOfWeek(today);
+  const sinirla = (hafta) => (hafta < ilkHafta ? ilkHafta : hafta > sonHafta ? sonHafta : hafta);
+  const secilen = sinirla(normalizeWeekStart(requestedWeek, null) || buHafta);
+
+  const haftalar = [];
+  let secilenGunler = [];
+  for (let hafta = ilkHafta; hafta <= sonHafta; hafta = shiftDate(hafta, 7)) {
+    const secili = hafta === secilen;
+    const gunler = [];
+    const kategoriSayaci = new Map();
+    let toplam = 0;
+    let yapilan = 0;
+
+    for (const gun of getWeekDates(hafta)) {
+      const gunObj = new Date(`${gun}T00:00:00`);
+      const gunGorevleri = tasks.filter((task) => isTaskDueOnDate(task, gunObj, gun));
+      const satirlar = [];
+
+      for (const gorev of gunGorevleri) {
+        const durum = durumlar.get(`${gorev.id}:${gun}`) || 'not_set';
+        const kategori = kategoriAdi.get(gorev.categoryId) || 'Kategori Yok';
+        toplam += 1;
+        if (durum === 'done') yapilan += 1;
+        kategoriSayaci.set(kategori, (kategoriSayaci.get(kategori) || 0) + 1);
+        // Icerik yalnizca secili hafta icin uretilir: 41 haftanin tum
+        // gorevlerini goruntuye tasimak gereksiz.
+        if (secili) {
+          satirlar.push({
+            id: gorev.id,
+            title: gorev.title,
+            description: gorev.description || '',
+            categoryName: kategori,
+            estimatedTime: normalizeEstimatedTimeForDisplay(gorev.estimatedTime),
+            status: durum
+          });
+        }
+      }
+
+      if (secili) {
+        const bilgi = academicCalendar.getDayInfo(gun);
+        gunler.push({
+          date: gun,
+          dayName: getDayName(gun),
+          dayLabel: bilgi.label,
+          isSchoolDay: bilgi.isSchoolDay,
+          isToday: gun === today,
+          tasks: satirlar,
+          doneCount: satirlar.filter((s) => s.status === 'done').length
+        });
+      }
+    }
+
+    if (secili) secilenGunler = gunler;
+
+    haftalar.push({
+      weekStart: hafta,
+      weekEnd: shiftDate(hafta, 6),
+      academic: academicCalendar.describeWeek(hafta, shiftDate(hafta, 6)),
+      isCurrent: hafta === buHafta,
+      isSelected: secili,
+      isPast: shiftDate(hafta, 6) < today,
+      total: toplam,
+      done: yapilan,
+      // Kategori kirilimi haftanin "ne icerdigini" tek bakista anlatir:
+      // "Yapay Zeka 5 · Doktora 2 · Ders Defteri 1".
+      categories: [...kategoriSayaci.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'tr'))
+    });
+  }
+
+  const sira = haftalar.findIndex((h) => h.isSelected);
+  return {
+    yearLabel: yil.label,
+    weeks: haftalar,
+    selected: haftalar[sira] || null,
+    days: secilenGunler,
+    prevWeek: sira > 0 ? haftalar[sira - 1].weekStart : '',
+    nextWeek: sira >= 0 && sira < haftalar.length - 1 ? haftalar[sira + 1].weekStart : '',
+    currentWeek: buHafta >= ilkHafta && buHafta <= sonHafta ? buHafta : '',
+    totals: {
+      weeks: haftalar.length,
+      tasks: haftalar.reduce((toplam, h) => toplam + h.total, 0),
+      done: haftalar.reduce((toplam, h) => toplam + h.done, 0)
+    }
+  };
+}
+
 // Haftalik analiz: bir hafta icin ogrenci basina gorev tamamlama, soru
 // dogrulugu ve calisma suresi; ayrica secili ogrenci icin kategori ve gun
 // kirilimi ile onceki haftaya gore degisim.
@@ -3264,7 +3388,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|wake|schedule|goals|sport)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|program|wake|schedule|goals|sport)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -6563,6 +6687,18 @@ async function getStudentViewModel(req, currentPage) {
     );
   }
 
+  // Yillik plan: ogretim yilinin tum haftalari + secili haftanin icerigi.
+  const program =
+    currentPage === 'program'
+      ? await buildStudentProgramView(
+          req.currentUser.id,
+          allTasks,
+          categories,
+          today,
+          normalizeText(req.query.hafta)
+        )
+      : null;
+
   // Uyanma karti hem kendi sayfasinda hem panonun tepesinde gorunur:
   // sabah uygulamayi acinca ilk isin ona basmak olmali.
   const wake =
@@ -6653,6 +6789,7 @@ async function getStudentViewModel(req, currentPage) {
     questionEntry: null,
     questionHistory,
     calendar,
+    program,
     wake,
     sport,
     scheduleView,
@@ -6668,7 +6805,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'wake', 'schedule', 'goals', 'sport']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);

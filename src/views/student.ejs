@@ -21,6 +21,7 @@
           <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>">Spor Rutini</a>
           <a href="/student/new-task" class="menu-link <%= currentPage === 'new-task' ? 'active' : '' %>">Görev Ekle</a>
           <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>">Haftalık Takvim</a>
+          <a href="/student/program" class="menu-link <%= currentPage === 'program' ? 'active' : '' %>">Yıllık Plan</a>
           <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>">Ders Programı</a>
           <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>">Soru Takibi</a>
           <a href="/student/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>">Aylık Hedefler</a>
@@ -856,6 +857,159 @@
             <% } %>
           </article>
           <% }) %>
+        </section>
+        <% } %>
+
+        <%# YILLIK PLAN. Haftalik takvim tek haftayi gosterir ve ileri/geri tek
+            tek gidilir; yilin tamamini gormek 40 tik demekti. Burada ogretim
+            yilinin butun haftalari listelenir, secili haftanin icerigi gun gun
+            acilir. %>
+        <% if (currentPage === 'program' && program) { %>
+        <% const pv = program; %>
+        <header class="content-header row space-between center">
+          <div>
+            <h2>Yıllık Plan</h2>
+            <p class="muted">
+              <%= pv.yearLabel %> Eğitim Öğretim Yılı &nbsp;·&nbsp;
+              <%= pv.totals.weeks %> hafta &nbsp;·&nbsp;
+              <%= pv.totals.tasks %> görev<% if (pv.totals.done) { %>, <%= pv.totals.done %> tamamlandı<% } %>
+            </p>
+            <p class="muted">Haftayı seç; o haftanın içeriği gün gün aşağıda açılır.</p>
+          </div>
+          <div class="row">
+            <% if (pv.currentWeek) { %>
+            <a class="button-link" href="/student/program?hafta=<%= pv.currentWeek %>">Bu Hafta</a>
+            <% } %>
+            <% if (pv.prevWeek) { %>
+            <a class="button-link" href="/student/program?hafta=<%= pv.prevWeek %>">Önceki Hafta</a>
+            <% } %>
+            <% if (pv.nextWeek) { %>
+            <a class="button-link" href="/student/program?hafta=<%= pv.nextWeek %>">Sonraki Hafta</a>
+            <% } %>
+            <% if (pv.selected) { %>
+            <a class="button-link" href="/student/calendar?weekStart=<%= pv.selected.weekStart %>">Takvimde Aç</a>
+            <% } %>
+          </div>
+        </header>
+
+        <% if (pv.selected) { %>
+        <section class="panel">
+          <h3>
+            <%= pv.selected.academic.termLabel || pv.yearLabel %><%
+              if (pv.selected.academic.weekNo) { %> · <%= pv.selected.academic.weekNo %>. Hafta<% }
+            %> &nbsp;·&nbsp; <%= pv.selected.weekStart %> - <%= pv.selected.weekEnd %>
+          </h3>
+          <p class="muted">
+            <%= pv.selected.total %> görev · <%= pv.selected.done %> tamamlandı
+            <% if (pv.selected.categories.length) { %>
+              &nbsp;·&nbsp;
+              <%= pv.selected.categories.map((c) => `${c.name} ${c.count}`).join(' · ') %>
+            <% } %>
+            <% if (pv.selected.academic.note) { %>
+              &nbsp;·&nbsp; <span class="day-badge off"><%= pv.selected.academic.note %></span>
+            <% } %>
+          </p>
+
+          <form method="get" action="/student/program" class="row center program-week-picker">
+            <label for="hafta">Hafta</label>
+            <select id="hafta" name="hafta">
+              <% pv.weeks.forEach((w) => { %>
+              <option value="<%= w.weekStart %>" <%= w.isSelected ? 'selected' : '' %>>
+                <%= w.weekStart %> - <%= w.weekEnd %><%
+                  if (w.academic.weekNo) { %> · <%= w.academic.termLabel %> <%= w.academic.weekNo %>. hafta<% }
+                %><% if (w.academic.note) { %> · <%= w.academic.note %><% } %> (<%= w.total %> görev)
+              </option>
+              <% }) %>
+            </select>
+            <button type="submit">Göster</button>
+          </form>
+        </section>
+
+        <section class="grid two">
+          <% pv.days.forEach((d) => { %>
+          <article class="panel">
+            <h3 class="row space-between center">
+              <span><%= d.dayName %> - <%= d.date %><% if (d.isToday) { %> <span class="day-badge school">Bugün</span><% } %></span>
+              <% if (!d.isSchoolDay && d.dayLabel) { %>
+              <span class="day-badge off"><%= d.dayLabel %></span>
+              <% } %>
+            </h3>
+            <% if (!d.tasks.length) { %>
+            <p class="muted">Plan yok.</p>
+            <% } else { %>
+            <p class="muted"><%= d.tasks.length %> görev · <%= d.doneCount %> tamamlandı</p>
+            <ul class="clean-list program-day-list">
+              <% d.tasks.forEach((t) => { %>
+              <li>
+                <div class="row space-between center">
+                  <span><strong><%= t.title %></strong></span>
+                  <span class="status-pill <%= t.status === 'done' ? 'ok' : t.status === 'not_done' ? 'bad' : 'idle' %>">
+                    <%= t.status === 'done' ? 'Yapıldı' : t.status === 'not_done' ? 'Yapılmadı' : 'İşaretlenmedi' %>
+                  </span>
+                </div>
+                <small class="muted">
+                  <%= t.categoryName %><% if (t.estimatedTime) { %> · son saat <%= t.estimatedTime %><% } %>
+                </small>
+                <% if (t.description) { %>
+                <small class="muted program-task-desc"><%= t.description %></small>
+                <% } %>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </article>
+          <% }) %>
+        </section>
+        <% } %>
+
+        <section class="panel">
+          <h3>Öğretim Yılının Haftaları</h3>
+          <div class="table-wrap">
+            <table class="stack-mobile program-week-table">
+              <thead>
+                <tr>
+                  <th>Hafta</th>
+                  <th>Tarih</th>
+                  <th>Dönem</th>
+                  <th>Görev (yapılan/toplam)</th>
+                  <th>İçerik</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% pv.weeks.forEach((w) => { %>
+                <tr class="<%= w.isSelected ? 'day-partial' : w.isCurrent ? 'day-ok' : !w.academic.schoolDays ? 'day-off' : '' %>">
+                  <%# Hafta hucresi de link: dar ekranda tablo kapsayici icinde
+                      kaydigi icin sagdaki "Aç" dugmesi gorunmeyebiliyor. %>
+                  <td>
+                    <a href="/student/program?hafta=<%= w.weekStart %>"><%= w.academic.weekNo ? w.academic.weekNo + '. hafta' : w.weekStart %></a>
+                    <% if (w.isCurrent) { %><span class="day-badge school">Bu hafta</span><% } %>
+                  </td>
+                  <td><%= w.weekStart %> - <%= w.weekEnd %></td>
+                  <td>
+                    <%= w.academic.termLabel || '-' %>
+                    <% if (w.academic.note) { %><span class="day-badge off"><%= w.academic.note %></span><% } %>
+                  </td>
+                  <td><%= w.done %> / <%= w.total %></td>
+                  <td>
+                    <% if (!w.categories.length) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <%= w.categories.map((c) => `${c.name} ${c.count}`).join(' · ') %>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (w.isSelected) { %>
+                    <span class="muted">Seçili</span>
+                    <% } else { %>
+                    <a class="button-link" href="/student/program?hafta=<%= w.weekStart %>">Aç</a>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
         </section>
         <% } %>
 
