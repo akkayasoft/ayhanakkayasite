@@ -709,6 +709,12 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   > durumlarıyla gösterdi (1 ✓, 6 ✕); mühürlenmiş bir dersin konusu yazılınca
   > satır ✓'ya döndü ve sayaç 2 → 3 oldu.
 
+**Panel her öğrencinin o haftaki durumunu ayrı satırda gösterir**
+(*"Ayhan Test · Görev yok"* / *"Muhammed Gök · 7 ders · 2 konusu yazıldı"*).
+Görevler yalnızca aktarım yapılan öğrenciye yazıldığı için "oluşturdum ama
+görünmüyor" vakalarının en olası sebebi **yanlış öğrenci**; panel bunu artık
+söylüyor. Öğrenci tarafındaki boş liste de neden boş olduğunu yazar.
+
 Doğrulandı (7 ders saatlik çizelge, 14 Eylül'den itibaren): **287 ders görevi**,
 205 güne yayıldı; başlıklar *"1. ders · Matematik"*, açıklamada zil saati +
 sınıf. Açılışta geçmiş 7 ders görevi `not_done` mühürlendi; sonra **tek bir

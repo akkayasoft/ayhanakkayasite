@@ -1797,18 +1797,24 @@ async function buildTopicWeekView(req, ayar) {
   const donem =
     academicCalendar.ACADEMIC_YEAR.terms.find((t) => today >= t.start && today <= t.end) || null;
 
-  // Bu haftanin ders gorevleri: kac tanesi var, kac tanesi konusu yazildigi
-  // icin isaretlenmis?
+  // Bu haftanin ders gorevleri OGRENCI OGRENCI: gorevler yalnizca aktarim
+  // yapilan ogrenciye yazilir; "olusturdum ama gorunmuyor" vakalarinin en
+  // olasi sebebi yanlis ogrenci. Panel bunu acikca gostersin diye her
+  // ogrencinin o haftaki gorev/isaret sayisi ayri ayri doner.
   const buHaftaGorev = await query(
     `
-      SELECT count(*)::int AS toplam,
-             count(st.id)::int AS isaretli,
-             min(u.name) AS "studentName"
-      FROM tasks t
-      JOIN users u ON u.id = t.student_id
+      SELECT u.id AS "studentId", u.name AS "studentName",
+             count(t.id)::int AS toplam,
+             count(st.id) FILTER (WHERE st.status = 'done')::int AS isaretli
+      FROM users u
+      LEFT JOIN tasks t
+        ON t.student_id = u.id
+       AND t.source_key LIKE $1
+       AND t.single_date BETWEEN $2::date AND $3::date
       LEFT JOIN task_statuses st ON st.task_id = t.id
-      WHERE t.source_key LIKE $1
-        AND t.single_date BETWEEN $2::date AND $3::date
+      WHERE u.role = 'student'
+      GROUP BY u.id, u.name
+      ORDER BY u.name
     `,
     [`${LESSON_PREFIX}:%`, weekStart, weekEnd]
   );
@@ -1819,13 +1825,12 @@ async function buildTopicWeekView(req, ayar) {
     prevWeekStart: shiftDate(weekStart, -7),
     nextWeekStart: shiftDate(weekStart, 7),
     thisWeekStart: startOfWeek(today),
-    logTask: buHaftaGorev.rowCount
-      ? {
-          studentName: buHaftaGorev.rows[0].studentName || '',
-          toplam: Number(buHaftaGorev.rows[0].toplam) || 0,
-          isaretli: Number(buHaftaGorev.rows[0].isaretli) || 0
-        }
-      : null,
+    haftaGorevleri: buHaftaGorev.rows.map((r) => ({
+      studentId: r.studentId,
+      studentName: r.studentName,
+      toplam: Number(r.toplam) || 0,
+      isaretli: Number(r.isaretli) || 0
+    })),
     exportFrom: donem ? donem.start : academicCalendar.ACADEMIC_YEAR.start,
     exportTo: donem ? donem.end : academicCalendar.ACADEMIC_YEAR.end,
     exportLabel: donem ? donem.label : 'Öğretim yılı',

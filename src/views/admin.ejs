@@ -1896,15 +1896,34 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             Çizelgedeki <strong>her ders saati kendi görevidir</strong>
             (ör. "3. ders · Matematik") ve kendi gününe düşer. O dersin
             <strong>işlenen konusu yazılınca görev anında "Yapıldı"</strong>
-            işaretlenir. Öğrencinin listesinde yalnızca <strong>o günün</strong>
-            dersleri görünür.
+            işaretlenir. Öğrencinin listesinde <strong>içinde bulunulan
+            haftanın</strong> dersleri görünür.
           </p>
-          <% if (tw.logTask && tw.logTask.toplam) { %>
+          <%# TESHIS: gorevler yalnizca aktarim yapilan ogrenciye yazilir.
+              "Olusturdum ama gorunmuyor" vakasinin en olasi sebebi yanlis
+              ogrenci oldugu icin her ogrencinin bu haftaki sayisi ayri ayri
+              gosteriliyor. %>
+          <% if (tw.haftaGorevleri && tw.haftaGorevleri.length) { %>
+          <p class="muted">Bu hafta (<%= tw.weekStart %> - <%= tw.weekEnd %>) ders görevleri:</p>
+          <ul class="clean-list">
+            <% tw.haftaGorevleri.forEach((g) => { %>
+            <li class="row space-between center">
+              <span><%= g.studentName %></span>
+              <% if (!g.toplam) { %>
+              <span class="day-badge miss">Görev yok</span>
+              <% } else { %>
+              <span class="day-badge <%= g.isaretli >= g.toplam ? 'ok' : 'off' %>">
+                <%= g.toplam %> ders · <%= g.isaretli %> konusu yazıldı
+              </span>
+              <% } %>
+            </li>
+            <% }) %>
+          </ul>
           <p class="muted">
-            Bu haftanın dersleri <strong><%= tw.logTask.studentName %></strong> için açık ·
-            <span class="day-badge <%= tw.logTask.isaretli >= tw.logTask.toplam ? 'ok' : 'off' %>">
-              <%= tw.logTask.isaretli %> / <%= tw.logTask.toplam %> işaretlendi
-            </span>
+            Bir öğrenci için <strong>"Görev yok"</strong> yazıyorsa o öğrenciye
+            aktarım yapılmamıştır — aşağıdan onu seçip tekrar oluşturun.
+            Öğrencinin <strong>Görevlerim</strong> sayfasında bu haftanın
+            dersleri görünür.
           </p>
           <% } %>
           <% if (!students.length) { %>
