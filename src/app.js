@@ -1661,8 +1661,6 @@ async function buildYzProgramView(req, students) {
 
 /**
  * Programdaki dersleri gorev olarak yazar. Kategori (kurs adi) yoksa olusturur.
- * estimated_time bilerek bos birakilir: otomatik kilit boylece gun sonunu
- * (23:59) son saat kabul eder, dersin sure bilgisi aciklamaya yazilir.
  */
 // yapayzeka.obs mufredatinin TAMAMI tek kategoride toplanir. Once her kurs
 // ayri bir kategoriydi (24 tane) ve kategori listesi YZ kurslariyla doluyordu.
@@ -1671,6 +1669,38 @@ async function buildYzProgramView(req, students) {
 const YZ_CATEGORY = 'Yapay Zeka';
 // yds.obs calisma programinin tamami tek kategoride: doktora hazirligi.
 const YDS_CATEGORY = 'Doktora';
+
+// --- Gunluk calisma pencereleri -------------------------------------------
+//
+// Iki program da GUNDE 1 SAAT, sabit pencerede calisilacak sekilde planlandi
+// (yogunluk nedeniyle 180 dk/gunluk YDS duzeni surdurulemiyordu):
+//
+//   Yapay Zeka : her gun 06:30 - 07:30
+//   Doktora    : her aksam 20:00 - 21:00
+//
+// Pencerenin BITISI gorevin son saatidir (tasks.estimated_time): o saat
+// gecince otomatik muhurleme isaretlenmemis gorevi "yapilmadi" yazar. Baslangic
+// saati bilgi amaclidir, gorev aciklamasinin basina yazilir.
+//
+// Ortam degiskeniyle degistirilebilir; gecersiz deger varsayilana duser.
+function calismaPenceresi(envAd, varsayilanBaslangic, varsayilanBitis) {
+  const ham = normalizeText(process.env[envAd]);
+  const eslesme = ham.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+  const baslangic = eslesme ? eslesme[1] : varsayilanBaslangic;
+  const bitis = eslesme ? eslesme[2] : varsayilanBitis;
+  const dogrula = (deger, yedek) =>
+    /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(deger) ? deger : yedek;
+  return {
+    start: dogrula(baslangic, varsayilanBaslangic),
+    end: dogrula(bitis, varsayilanBitis),
+    get label() {
+      return `${this.start}-${this.end}`;
+    }
+  };
+}
+
+const YZ_WINDOW = calismaPenceresi('YZ_CALISMA_PENCERESI', '06:30', '07:30');
+const YDS_WINDOW = calismaPenceresi('YDS_CALISMA_PENCERESI', '20:00', '21:00');
 
 /**
  * Bir kaynagin (source_key oneki) TUM gorevlerini tek bir kategoride toplar.
@@ -1843,21 +1873,50 @@ async function importYzProgram(studentId, createdBy) {
             single_date, weekly_day, monthly_day, custom_dates,
             start_date, end_date, estimated_time, is_archived, created_by, source_key
           )
-          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$9,false,$7,$8)
           ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
         `,
         [
           makeId('task'),
           lesson.baslik,
-          yzProgram.describeLesson(lesson),
+          `${YZ_WINDOW.label} · ${yzProgram.describeLesson(lesson)}`,
           categoryId,
           studentId,
           lesson.tarih,
           createdBy,
-          lesson.sourceKey
+          lesson.sourceKey,
+          YZ_WINDOW.end
         ]
       );
       inserted += result.rowCount || 0;
+    }
+
+    // Daha once aktarilmis gorevleri de pencereye tasi: son saat ve aciklama
+    // yalnizca ISARETLENMEMIS ve GUNU GELMEMIS gorevlerde tazelenir. Ogrencinin
+    // kendi yazdigi aciklama (description_edited) korunur.
+    let timed = 0;
+    for (const lesson of program.gorevler) {
+      const pencere = await client.query(
+        `
+          UPDATE tasks t
+          SET estimated_time = $1,
+              description = CASE WHEN t.description_edited THEN t.description ELSE $2 END
+          WHERE t.student_id = $3
+            AND t.source_key = $4
+            AND t.single_date >= $5::date
+            AND (t.estimated_time IS DISTINCT FROM $1::time
+                 OR (NOT t.description_edited AND t.description IS DISTINCT FROM $2))
+            AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
+        `,
+        [
+          YZ_WINDOW.end,
+          `${YZ_WINDOW.label} · ${yzProgram.describeLesson(lesson)}`,
+          studentId,
+          lesson.sourceKey,
+          bugun
+        ]
+      );
+      timed += pencere.rowCount || 0;
     }
 
     await client.query('COMMIT');
@@ -1869,7 +1928,8 @@ async function importYzProgram(studentId, createdBy) {
       removedCategories,
       keptCategories,
       moved,
-      pinned
+      pinned,
+      timed
     };
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2272,7 +2332,10 @@ async function importYdsProgram(studentId, createdBy) {
     let inserted = 0;
     let updated = 0;
     for (const gorev of planGorevleri) {
-      const aciklama = ydsProgram.describeItem(gorev);
+      // Gunluk calisma penceresi (20:00-21:00) aciklamanin basinda; pencerenin
+      // BITISI gorevin son saati olur, o saatten sonra otomatik muhurleme
+      // isaretlenmemis gorevi "yapilmadi" yazar.
+      const aciklama = `${YDS_WINDOW.label} · ${ydsProgram.describeItem(gorev)}`;
       const ekleme = await client.query(
         `
           INSERT INTO tasks (
@@ -2280,7 +2343,7 @@ async function importYdsProgram(studentId, createdBy) {
             single_date, weekly_day, monthly_day, custom_dates,
             start_date, end_date, estimated_time, is_archived, created_by, source_key
           )
-          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,NULL,false,$7,$8)
+          VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$9,false,$7,$8)
           ON CONFLICT (student_id, source_key) WHERE source_key IS NOT NULL DO NOTHING
         `,
         [
@@ -2291,7 +2354,8 @@ async function importYdsProgram(studentId, createdBy) {
           studentId,
           gorev.tarih,
           createdBy,
-          gorev.sourceKey
+          gorev.sourceKey,
+          YDS_WINDOW.end
         ]
       );
 
@@ -2307,16 +2371,18 @@ async function importYdsProgram(studentId, createdBy) {
           UPDATE tasks t
           SET title = $1,
               description = CASE WHEN t.description_edited THEN t.description ELSE $2 END,
-              category_id = $3
+              category_id = $3,
+              estimated_time = $7
           WHERE t.student_id = $4
             AND t.source_key = $5
             AND t.single_date >= $6::date
             AND (t.title IS DISTINCT FROM $1
                  OR (NOT t.description_edited AND t.description IS DISTINCT FROM $2)
-                 OR t.category_id IS DISTINCT FROM $3)
+                 OR t.category_id IS DISTINCT FROM $3
+                 OR t.estimated_time IS DISTINCT FROM $7::time)
             AND NOT EXISTS (SELECT 1 FROM task_statuses st WHERE st.task_id = t.id)
         `,
-        [gorev.baslik, aciklama, kategoriId, studentId, gorev.sourceKey, today]
+        [gorev.baslik, aciklama, kategoriId, studentId, gorev.sourceKey, today, YDS_WINDOW.end]
       );
       updated += guncelleme.rowCount || 0;
     }

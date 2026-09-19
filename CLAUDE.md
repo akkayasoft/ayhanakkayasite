@@ -365,6 +365,62 @@ saatleri gün sonudur. Saat **sonradan elle girilebilir**:
   görevinde 404; geçersiz saatte 400; aktarılan görevin başlığını değiştirmek
   hâlâ 404.
 
+## Günlük 1 saat düzeni (19 Eylül 2026)
+
+İki program da **günde bir saat, sabit pencerede** çalışılacak şekilde
+düzenlendi. Sebep: 180 dk/gün YDS temposu sürdürülemiyordu ("yoğunluğum fazla
+diye çalışamıyorum").
+
+| Program | Pencere | Son saat | Gün |
+|---|---|---|---|
+| Yapay Zeka | 06:30 - 07:30 | **07:30** | her gün |
+| Doktora (YDS) | 20:00 - 21:00 | **21:00** | her gün |
+
+- Pencerenin **bitişi görevin son saatidir** (`tasks.estimated_time`): o saat
+  geçince otomatik mühürleme işaretlenmemiş görevi **"Yapılmadı"** yazar.
+  Başlangıç saati bilgi amaçlıdır, görev açıklamasının başına yazılır
+  (*"06:30-07:30 · Python Temelleri · 26 dk · …"*).
+- Pencereler `YZ_CALISMA_PENCERESI` / `YDS_CALISMA_PENCERESI` ortam
+  değişkenleriyle değiştirilebilir (`HH:MM-HH:MM`); geçersiz değer varsayılana
+  düşer.
+- Son saat ve açıklama **aktarımda** yazılır; daha önce aktarılmış görevlere de
+  işlenir — ama yalnızca **işaretlenmemiş ve günü gelmemiş** olanlara.
+  Öğrencinin kendi yazdığı açıklama (`description_edited`) korunur.
+
+**YDS: 60 dk/gün + uzun dersler bölünüyor.** `yds_program_settings` açılışta
+**Her Gün + 60 dk** olarak seed edilir (yalnızca satır yoksa; admin başka bir
+düzen seçtiyse dokunulmaz). Video dersler 150-180 dk olduğu için
+`ydsPlan.bolumlereAyir()` bütçeden uzun her parçayı bölümlere ayırır:
+*"03. ders — Bölüm 2/3"*, kimlik `<parçaId>#2`. Bölme olmasaydı motor bütçeyi
+aşan parçaya günün tamamını verirdi ve o gün 3 saat çalışmak gerekirdi.
+
+**YZ: her güne 60 dakikalık paket.** `scripts/yz-program-yeniden-yay.js`
+commit'li `yzProgram.json`'daki ders listesini yeniden tarihlendirir (platform
+deposuna ihtiyaç duymaz): `--gunler` (varsayılan her gün), `--dakika`
+(varsayılan 60), `--baslangic` (varsayılan bugün; öncesi oynatılmaz). Dersler
+**bölünmez** — kimlik `yz:<dersId>` müfredat dersidir, uydurma alt-ders
+üretilmemeli; bütçeye sığmayan tek ders (en uzunu 65 dk) günü tek başına alır.
+Bu yüzden günler ortalama 41 dk (118 gün tek ders, 13 gün iki ders).
+
+> ⚠️ `yz-program-uret.js` (platformdan ders listesini tazeleyen üretici) hâlâ
+> **günde tek ders / hafta içi** düzeniyle yazar. Platform güncellenip o script
+> çalıştırılırsa ardından `yz-program-yeniden-yay.js` de çalıştırılmalı, yoksa
+> günlük 1 saat düzeni kaybolur.
+
+**Sonuç takvim:** YZ içeriği 29 Ocak 2027'de, YDS içeriği 4 Şubat 2027'de
+biter. YDS **sınavı 22 Kasım 2026**: 1 saat/gün ile içeriğin ancak ~%49'u
+sınava yetişir — bu bilinçli bir tercihti (alternatifi 120 dk/gün ya da sınava
+kadar test+kelime önceliklendirmesiydi). İçerik bitince günler **serbest
+çalışma** görevine döner; günlük disiplin sürer, konu uydurulmaz.
+
+Doğrulandı (19 Eylül, iki programı da aktarılmış öğrenciyle): YDS aktarımı
+**298 görev** yazdı (89 bayat görev kaldırıldı), hepsinin son saati 21:00;
+video dersler 3'er bölüme ayrıldı ve ardışık günlere düştü. YZ aktarımı
+**144 görevin tarihini** hizaladı ve son saatlerini 07:30 yaptı; geçmişteki 5
+görev (mühürlenmiş) **oynamadı**. Uygulama yeniden başlatıldığında bugünün YZ
+görevleri (07:30 geçmiş) otomatik **"Yapılmadı"**, YDS görevi (21:00) hâlâ
+**açık** kaldı. Öğrenci listesinde ve Yıllık Plan'da taşma 0.
+
 ## Yapay zekâ programı (yapayzeka.obs → takip.obs)
 
 `akkayasoft/uretken-yz-platform` müfredatı (149 ders) 2026-2027 takvimine
@@ -400,8 +456,9 @@ yayılıp görev olarak aktarılır.
 - **Idempotent:** `(student_id, source_key)` üzerinde partial unique index var.
   Platforma yeni ders eklenince programı yeniden üret, commit'le, aynı düğmeye
   bas — yalnızca yeni dersler eklenir.
-- Görevler `estimated_time` olmadan yazılır; otomatik kilit son saati gün sonu
-  (23:59) kabul eder.
+- Görevlerin son saati **07:30**'dur (günlük çalışma penceresi 06:30-07:30,
+  bkz. "Günlük 1 saat düzeni"). Önceden saatsiz yazılıyordu ve son saat gün
+  sonuna (23:59) düşüyordu.
 
 Aktarım tekrar çalıştırıldığında üç şey birden olur:
 
@@ -597,10 +654,12 @@ kullanılamaz. Şu an dosyanın sahibi bu betik. `yds-program-uret.js`'i
 > Kullanıcı günleri açıkça vermişti. Doğru çözüm taşmayı **son haftaya**
 > vermekti. Ders penceresi yetmediğinde kısıt esnetilmez, taşma bildirilir.
 
-**Uygulama ayarı dosyayla eşleşmeli.** Program her güne içerik yazdığı için
-dosyanın `gunSet`'i `0,1,2,3,4,5,6` ve `gunlukDakika`'sı 180'dir. `/admin/yds`
-→ Çalışma Günleri **"Her Gün" + 180 dk** olmalı; farklı olursa aktarım
-programı *yeniden yayar* ve bu takvim bozulur.
+**Uygulama ayarı artık bilerek dosyadan FARKLI.** Dosya 180 dk/gün üretilmiş
+(sınav programı), uygulama ayarı ise **Her Gün + 60 dk**; aktarım bu yüzden
+programı bugünden itibaren *yeniden yayar* ve uzun video dersleri bölümlere
+ayırır. Sebebi ve sonuçları: "Günlük 1 saat düzeni" bölümü. Sınav takvimini
+(Pzt·Çar·Cmt·Paz ders / Sal·Per·Cum uygulama) geri istersen ayarı 180 dk'ya
+çevirmen yeterli.
 
 Doğrulandı (temiz veritabanı, 16 Eylül saatiyle): **97 görev** aktarıldı —
 30 video ders, 10 deneme analizi (7-20 Kasım), 56 yds.obs uygulaması (8 konu
@@ -675,11 +734,14 @@ Toplama **açılışta kendiliğinden** çalışır (YZ ile aynı mekanizma —
 `consolidateCategory`), düğmeye basmak gerekmez.
 `source_key` = `ydsp:<tarih>:<parçaId>`.
 
-Bugünkü durum: **25 içerikli gün** (19 Eyl → 12 Ara, ort 112 dk/gün),
-**53 bekleyen hafta sonu günü**, toplam **221 görev**.
+Bugünkü durum (19 Eylül, günde 1 saat düzeniyle): **166 içerik görevi**
+(19 Eyl → 4 Şubat), ardından içerik bitene kadar her güne bir **serbest
+çalışma** görevi (132 gün, 25 Haziran'a kadar) — toplam **298 görev**.
 
-**İki program çakışmaz:** YZ hafta içi (Pzt-Cum, ~20-42 dk/gün), YDS hafta sonu
-(Cmt+Paz, ~112 dk/gün). Doğrulandı: ortak gün 0.
+**İki program artık aynı günlere düşer** (ikisi de her gün), ama farklı
+saatlerde: YZ sabah 06:30-07:30, YDS akşam 20:00-21:00. Eski "ortak gün 0"
+garantisi (YZ hafta içi / YDS hafta sonu) geçerli değil; ayrım gün değil
+**saat** üzerinden.
 
 > Gün düzeni değişince (ör. hafta içinden hafta sonuna geçiş) yeniden aktarım
 > eski günlerdeki görevleri bayat sayıp siler — ama yalnızca işaretlenmemiş ve

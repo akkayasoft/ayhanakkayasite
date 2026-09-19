@@ -215,6 +215,21 @@ async function initDb() {
     )
   `);
 
+  // GUNLUK 1 SAAT duzeni: her gun 60 dk. Program dosyasi 180 dk/gun (sinav
+  // programi) olarak uretilmisti; bu tempo surdurulemedigi icin calisma duzeni
+  // gunde bir saate indirildi ve uzun video dersler aktarimda bolumlere
+  // ayriliyor (bkz. ydsPlan.bolumlereAyir).
+  //
+  // Yalnizca satir YOKSA yazilir: admin panelden baska bir duzen sectiyse
+  // (kendi karari) her acilista ustune yazmak yanlis olurdu.
+  await query(
+    `
+      INSERT INTO yds_program_settings (id, gun_set, gunluk_dakika)
+      VALUES ('default', '0,1,2,3,4,5,6', 60)
+      ON CONFLICT (id) DO NOTHING
+    `
+  );
+
   await query(`
     CREATE TABLE IF NOT EXISTS school_settings (
       id TEXT PRIMARY KEY,

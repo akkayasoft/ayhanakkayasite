@@ -114,13 +114,53 @@ function calismaGunleri({ gunSet, baslangic, bitis } = {}) {
 }
 
 /**
+ * Gunluk butceden UZUN parcalari bolumlere ayirir.
+ *
+ * Video dersler 150-180 dk. Gunluk butce 60 dk'ya indirilince bolunmeseydi
+ * boyle bir parca gunu TEK BASINA alirdi (motor sonsuz donguye girmesin diye
+ * butceyi asan parcaya gunun tamamini verir) ve "gunde 1 saat" sozu tutulmazdi:
+ * o gun 3 saat calismak gerekirdi.
+ *
+ * Bolunen parca kendi kimligini tasir ("<id>#2") — source_key
+ * "ydsp:<tarih>:<parcaId>" oldugu icin bolumler ayri gorev olur ve ardisik
+ * gunlere dusen bolumler birbirini ezmez.
+ */
+function bolumlereAyir(parcalar, butce) {
+  const sinir = Number(butce) > 0 ? Math.floor(Number(butce)) : 0;
+  const sonuc = [];
+  for (const parca of parcalar || []) {
+    const sure = Number(parca.sure) || 0;
+    if (!sinir || sure <= sinir) {
+      sonuc.push(parca);
+      continue;
+    }
+    const adet = Math.ceil(sure / sinir);
+    const taban = Math.floor(sure / adet);
+    for (let i = 1; i <= adet; i += 1) {
+      sonuc.push({
+        ...parca,
+        id: `${parca.id}#${i}`,
+        baslik: `${parca.baslik} — Bölüm ${i}/${adet}`,
+        // Son bolum artani alir; toplam sure korunur.
+        sure: i === adet ? sure - taban * (adet - 1) : taban,
+        bolum: i,
+        bolumAdet: adet
+      });
+    }
+  }
+  return sonuc;
+}
+
+/**
  * Gunleri doldurur. Her gun once VADESI GELEN tekrarlar, sonra YENI parcalar
  * yerlestirilir; boylece tekrar birikip kaymaz. Icerik bitince kalan gunler
  * "bekliyor" kalir — konu uydurulmaz.
  */
 function programUret(parcalar, gunler, { gunlukDakika = VARSAYILAN_DAKIKA } = {}) {
   const butce = Number(gunlukDakika) > 0 ? Math.floor(Number(gunlukDakika)) : VARSAYILAN_DAKIKA;
-  const yeniKuyruk = [...parcalar];
+  // Butceden uzun parcalar once bolumlere ayrilir; yoksa bir video ders gunu
+  // tek basina alir ve gunluk sure sozu tutulmaz.
+  const yeniKuyruk = bolumlereAyir(parcalar, butce);
   const tekrarlar = []; // { parca, vade, sira }
   const program = [];
 
@@ -204,7 +244,7 @@ function programUret(parcalar, gunler, { gunlukDakika = VARSAYILAN_DAKIKA } = {}
  */
 function yenidenYay(occurrences, gunler, { gunlukDakika = VARSAYILAN_DAKIKA } = {}) {
   const butce = Number(gunlukDakika) > 0 ? Math.floor(Number(gunlukDakika)) : VARSAYILAN_DAKIKA;
-  const kuyruk = [...occurrences];
+  const kuyruk = bolumlereAyir(occurrences, butce);
   const program = [];
   let i = 0;
 
@@ -275,6 +315,7 @@ module.exports = {
   duzenAdi,
   gunSetEtiketi,
   calismaGunleri,
+  bolumlereAyir,
   programUret,
   yenidenYay,
   parcalariCikar
