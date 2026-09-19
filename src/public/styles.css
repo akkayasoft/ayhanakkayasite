@@ -3,61 +3,82 @@
 
    Tek kaynak ilkesi: butun renk, tipografi, bosluk ve yaricap degerleri
    asagidaki token'lardan gelir. Bilesenler sabit renk kodu kullanmaz.
-   Onceki dosyada iki ayri :root paleti ust uste biniyordu (lacivert + mor);
-   burada tek palet var.
+
+   Palet ve tipografi gapdekont.akkayasoft.com ile ayni dile getirildi
+   (kullanicinin kendi projesi, tasarimi ornek alindi):
+     - lacivert ana renk, buz mavisi zemin, KOYU LACIVERT kenar cubugu
+     - sert koseler (4-6px)
+     - Inter (arayuz) + Playfair Display (basliklar) + IBM Plex Mono
+       (buyuk harf, harf arali etiketler)
+   Degerler oradaki HSL token'larindan cevrildi; markup degismedi, bilesenler
+   ayni sinif adlariyla calisiyor.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
   /* Yuzeyler */
-  --bg: #f6f7f9;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-soft: #fafbfc;
-  --surface-hover: #f4f5f7;
-  --surface-sunken: #eff1f4;
+  --surface-soft: #fbfcfe;
+  --surface-hover: #f1f5fa;
+  --surface-sunken: #ebeff5;
 
   /* Kenarliklar */
-  --border: #e5e8ec;
-  --border-strong: #d3d7de;
+  --border: #d9dfe8;
+  --border-strong: #ccd5e0;
 
   /* Metin */
-  --text: #15181e;
-  --text-secondary: #474d59;
-  --muted: #6b7280;
-  --faint: #989ea9;
+  --text: #0f1729;
+  --text-secondary: #364059;
+  --muted: #5e6778;
+  --faint: #89909f;
 
-  /* Vurgu (tek marka rengi) */
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-active: #3730a3;
-  --primary-soft: #eef2ff;
-  --primary-border: #c7d2fe;
+  /* Vurgu (tek marka rengi): lacivert */
+  --primary: #0d1e45;
+  --primary-hover: #12295e;
+  --primary-active: #08122b;
+  --primary-soft: #e3effc;
+  --primary-border: #adcbeb;
+
+  /* Kenar cubugu kendi paletini tasir: koyu lacivert zemin, acik mavi metin,
+     parlak mavi vurgu. Ana palette bunlarin karsiligi yok, ayri token'lar. */
+  --sidebar-bg: #0c1731;
+  --sidebar-fg: #cdd9ea;
+  --sidebar-muted: #8b9cb1;
+  --sidebar-hover: #192643;
+  --sidebar-active: #77b5f8;
+  --sidebar-border: #222f4f;
 
   /* Anlamsal renkler - sadece durum bildirmek icin */
-  --success: #047857;
-  --success-soft: #ecfdf5;
-  --success-border: #a7f3d0;
-  --danger: #be123c;
-  --danger-hover: #9f1239;
-  --danger-soft: #fff1f2;
-  --danger-border: #fecdd3;
-  --warning: #b45309;
-  --warning-soft: #fffbeb;
-  --warning-border: #fde68a;
+  --success: #17825e;
+  --success-soft: #ebfaf5;
+  --success-border: #b5e3d4;
+  --danger: #c52020;
+  --danger-hover: #a51a1a;
+  --danger-soft: #fdf2f2;
+  --danger-border: #f3cece;
+  --warning: #a5660d;
+  --warning-soft: #fef6e7;
+  --warning-border: #f2d9a6;
 
-  /* Yaricap */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
+  /* Yaricap - referans tasarim sert koseli: girdi/dugme 4px, kart 6-10px */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
   --radius-pill: 999px;
 
   /* Golge - profesyonel panellerde golge azdir, ayrimi kenarlik tasir */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.03);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.07);
-  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.10);
-  --ring: 0 0 0 3px rgba(79, 70, 229, 0.16);
+  --shadow-xs: 0 1px 2px rgba(13, 30, 69, 0.04);
+  --shadow-sm: 0 1px 3px rgba(13, 30, 69, 0.07), 0 1px 2px rgba(13, 30, 69, 0.04);
+  --shadow-md: 0 4px 12px rgba(13, 30, 69, 0.08);
+  --shadow-lg: 0 12px 32px rgba(13, 30, 69, 0.12);
+  --ring: 0 0 0 3px rgba(24, 56, 129, 0.18);
+
+  /* Tipografi aileleri */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Bosluk olcegi (4px tabanli) */
   --sp-1: 4px;
@@ -84,7 +105,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -101,10 +122,33 @@ h4 {
   color: var(--text);
 }
 
-h1 { font-size: 1.375rem; }
-h2 { font-size: 1.125rem; }
+/* Sayfa basliklari serif (referans tasarimdaki "Giris" basligi gibi); panel
+   ve kart basliklari arayuz fontunda kalir - serif kucuk boyutta okunurlugu
+   dusuruyor ve tablolarin yanindaki h3'ler suslu duruyordu. */
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 1.75rem; line-height: 1.2; }
+h2 { font-size: 1.375rem; line-height: 1.25; }
 h3 { font-size: 0.9375rem; }
 h4 { font-size: 0.875rem; }
+
+/* Buyuk harf, harf arali kucuk etiketler: referans tasarimda bunlar mono
+   ("HESABINIZA GIRIS YAPIN"). Tek yerde tanimlanir, kullanan siniflar bunu
+   miras alir. */
+.sidebar-kicker,
+.kpi-label,
+.hero-tag {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
 
 p {
   margin: 0;
@@ -145,41 +189,40 @@ a:hover {
   flex-direction: column;
   gap: var(--sp-1);
   padding: var(--sp-5) var(--sp-3);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  color: var(--sidebar-fg);
 }
 
 .sidebar-kicker {
   padding: 0 var(--sp-3);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--faint);
+  color: var(--sidebar-muted);
 }
 
 .sidebar-title {
   padding: 0 var(--sp-3);
-  margin-top: 2px;
-  font-size: 1.0625rem;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text);
+  color: #ffffff;
 }
 
 /* Kullanici bilgisi kenar cubugunun kimlik blogunu kapatir */
 .sidebar-user {
   margin: var(--sp-3) 0 var(--sp-4);
   padding: var(--sp-3);
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
+  background: var(--sidebar-hover);
+  border: 1px solid var(--sidebar-border);
   border-radius: var(--radius);
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--sidebar-fg);
   line-height: 1.45;
 }
 
 .sidebar-user strong {
-  color: var(--text);
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -193,7 +236,7 @@ a:hover {
   display: block;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--sidebar-fg);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -201,20 +244,39 @@ a:hover {
 }
 
 .menu-link:hover {
-  background: var(--surface-hover);
-  color: var(--text);
+  background: var(--sidebar-hover);
+  color: #ffffff;
   text-decoration: none;
 }
 
+/* Aktif satir: sol kenarda parlak mavi seritle isaretlenir (referans
+   tasarimdaki vurgu). Serit border ile degil box-shadow ile cizilir ki
+   satirin ic boslugu kaymasin. */
 .menu-link.active {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--sidebar-hover);
+  color: var(--sidebar-active);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--sidebar-active);
 }
 
 .sidebar-logout {
   margin-top: auto;
   padding-top: var(--sp-4);
+  border-top: 1px solid var(--sidebar-border);
+  margin-bottom: 0;
+}
+
+/* Kenar cubugu koyu zeminli: icindeki "ghost" dugme de oraya gore. */
+.sidebar-logout button.ghost {
+  background: transparent;
+  border-color: var(--sidebar-border);
+  color: var(--sidebar-fg);
+}
+
+.sidebar-logout button.ghost:hover {
+  background: var(--sidebar-hover);
+  border-color: var(--sidebar-active);
+  color: #ffffff;
 }
 
 .content {
@@ -321,14 +383,14 @@ section.grid {
 .kpi-label {
   display: block;
   margin-bottom: var(--sp-2);
-  font-size: 0.75rem;
-  font-weight: 500;
   color: var(--muted);
-  letter-spacing: 0;
 }
 
 .kpi-value {
   display: block;
+  /* Sayilar arayuz fontunda kalir: Playfair'in rakamlari sayfada denendi,
+     "0" ile "o" birbirine benziyor ve tabular-nums karsiligi yok - veri
+     okunurlugu suslemeden once gelir. Serif yalnizca basliklarda. */
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.15;
@@ -660,8 +722,13 @@ th {
   background: var(--surface-soft);
   border-bottom: 1px solid var(--border-strong);
   text-align: left;
-  font-size: 0.75rem;
-  font-weight: 600;
+  /* Referans tasarimdaki kolon basligi: mono, buyuk harf, harf arali.
+     0.7rem cunku harf araligi eklenince 0.75rem satiri tasiriyordu. */
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -1667,26 +1734,28 @@ tr.day-off td {
    altlarinda genis bir bosluk kaliyordu. Artik paneller icerigi kadar.
    -------------------------------------------------------------------------- */
 
+/* Referans tasarimda giris ekrani KART degil, tam ekran ikiye bolunmus bir
+   duzen: solda koyu lacivert marka paneli, sagda beyaz form. Kart cercevesi
+   ve golgesi kalkti; iki panel de kendi zemininde tam yuksekligi kapliyor. */
 .login-hero {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-6);
-  background: var(--bg);
+  display: block;
+  padding: 0;
+  background: var(--surface);
 }
 
 .login-shell {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
+  min-height: 100vh;
   width: 100%;
-  max-width: 920px;
+  max-width: none;
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .login-brand-panel {
@@ -1695,35 +1764,37 @@ tr.day-off td {
   justify-content: center;
   gap: var(--sp-4);
   padding: var(--sp-8);
-  background: linear-gradient(160deg, #312e81 0%, var(--primary) 100%);
+  background: var(--sidebar-bg);
   color: #ffffff;
 }
 
+/* Rozet degil, mono buyuk harf ust-baslik (referanstaki "DEKONT TAKIP
+   SISTEMI" satiri gibi). */
 .hero-tag,
 .login-brand-panel .hero-tag {
   align-self: flex-start;
-  padding: 4px 11px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-pill);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #e0e7ff;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--sidebar-active);
 }
 
 .brand-title,
 .login-brand-panel .brand-title {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: #ffffff;
 }
 
 .brand-subtitle,
 .login-brand-panel .brand-subtitle {
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: #c7d2fe;
+  max-width: 42ch;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--sidebar-fg);
 }
 
 .login-feature-list {
@@ -1735,23 +1806,29 @@ tr.day-off td {
   gap: var(--sp-3);
 }
 
+/* Ozellik maddeleri: ustte ince ayirac, solda parlak mavi isaret. */
+.login-feature-list {
+  border-top: 1px solid var(--sidebar-border);
+  padding-top: var(--sp-4);
+}
+
 .login-feature-list li {
   position: relative;
   padding-left: var(--sp-5);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #e0e7ff;
+  color: var(--sidebar-fg);
 }
 
 .login-feature-list li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: #a5b4fc;
+  top: 6px;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--sidebar-active);
 }
 
 .login-auth-panel {
@@ -1759,12 +1836,13 @@ tr.day-off td {
   flex-direction: column;
   justify-content: center;
   gap: var(--sp-2);
-  padding: var(--sp-8);
+  /* Form dar bir sutunda dursun; panel genisledikce alanlar uzamasin. */
+  padding: var(--sp-8) clamp(var(--sp-8), 8vw, 96px);
   background: var(--surface);
 }
 
 .login-auth-panel h2 {
-  font-size: 1.25rem;
+  font-size: 1.875rem;
 }
 
 .login-form,
@@ -1821,7 +1899,8 @@ tr.day-off td {
     gap: var(--sp-3);
     padding: var(--sp-3) var(--sp-4);
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    /* Ust bar da koyu zeminli: cerceveler acik degil kendi paletinden. */
+    border-bottom: 1px solid var(--sidebar-border);
   }
 
   .sidebar-kicker {
@@ -1853,7 +1932,13 @@ tr.day-off td {
 
   .menu-link {
     white-space: nowrap;
-    border: 1px solid var(--border);
+    border: 1px solid var(--sidebar-border);
+  }
+
+  /* Yatay serit: aktif satirda sol serit yerine alt cizgi daha okunur. */
+  .menu-link.active {
+    box-shadow: inset 0 -2px 0 var(--sidebar-active);
+    border-color: var(--sidebar-active);
   }
 
   .sidebar-logout {
@@ -1875,12 +1960,19 @@ tr.day-off td {
 @media (max-width: 768px) {
   .login-shell {
     grid-template-columns: 1fr;
-    max-width: 460px;
+    /* Tam ekran duzende min-height:100vh iki panele birden uygulanirsa
+       telefonda ekranin iki kati uzunlugunda bir sayfa cikar. */
+    min-height: 0;
   }
 
   /* Mobilde marka paneli yer kaplamasin, forma oncelik ver */
   .login-brand-panel {
     padding: var(--sp-6);
+  }
+
+  .brand-title,
+  .login-brand-panel .brand-title {
+    font-size: 1.625rem;
   }
 
   .login-feature-list {
@@ -1889,6 +1981,10 @@ tr.day-off td {
 
   .login-auth-panel {
     padding: var(--sp-6);
+  }
+
+  .login-auth-panel h2 {
+    font-size: 1.5rem;
   }
 }
 

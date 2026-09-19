@@ -78,6 +78,44 @@ endpoint'inden beslenir (ileride mobil için de kullanılabilir).
   Bir island'ı değiştirdiğinde tekrar build edip dist'i commit'le.
 - Mevcut island'lar: `daily-board` (admin panosu "Bugünlük Öğrenci Durumu", `/api/admin/daily-board`).
 
+## Tema (gapdekont tasarım dili)
+
+Arayüz, kullanıcının kendi projesi **gapdekont.akkayasoft.com** ile aynı
+tasarım diline getirildi. O uygulama React + Tailwind/shadcn; bizimki EJS +
+elle yazılmış CSS, o yüzden **kod değil tasarım dili** taşındı. Değerler
+oradaki HSL token'larından çevrildi:
+
+| | değer |
+|---|---|
+| Ana renk | lacivert `#0d1e45` (hover `#12295e`) |
+| Zemin / yüzey | `#f8fafc` / `#ffffff` |
+| Kenar çubuğu | koyu lacivert `#0c1731`, metin `#cdd9ea`, vurgu `#77b5f8` |
+| Köşe | girdi/düğme 4px, panel 6-10px |
+| Tipografi | Inter (arayüz) · **Playfair Display** (h1/h2) · **IBM Plex Mono** (büyük harf, harf aralı etiketler) |
+
+- Bileşen sınıfları ve markup **değişmedi**; tema tamamen `:root` token'ları
+  üzerinden döndü (dosyanın başındaki "tek kaynak" ilkesi bunun için vardı).
+- Kenar çubuğu artık ana paletten değil **kendi token'larından** beslenir
+  (`--sidebar-*`): koyu zeminde açık metin gerektiği için ana paletin
+  karşılıkları yoktu.
+- Aktif menü satırı sol kenarda parlak mavi şeritle işaretlenir
+  (`box-shadow: inset`; border ile çizilseydi satırın iç boşluğu kayardı).
+  Mobilde menü yatay şeride döndüğü için şerit **alt çizgiye** iner.
+- Serif yalnızca **başlıklarda**: KPI sayıları denendi ve geri alındı —
+  Playfair'in "0"ı "o"ya benziyor ve tabular rakamı yok, veri okunurluğu
+  süslemeden önce gelir.
+- Giriş ekranı kart değil **tam ekran ikiye bölünmüş** düzen (solda koyu
+  lacivert marka paneli, sağda form); 768px altında alt alta yığılır ve
+  `min-height` sıfırlanır, yoksa telefonda sayfa iki ekran boyu olurdu.
+- Tablo başlıkları mono/büyük harf: harf aralığı eklenince 0.75rem satırı
+  taşırdığı için 0.7rem.
+
+Doğrulandı: 1440 / 580 / 390px'te tüm admin ve öğrenci sayfaları 200, sayfa
+taşması 0; kenar çubuğu üç genişlikte de koyu zeminli ve aktif satır görünür.
+
+> Giriş ekranındaki tanıtım metni kaldırılmış puan sistemine atıf yapıyordu
+> ("Ödül-ceza puanlama"); güncellendi.
+
 ## Tablolar ve sığma
 
 Tablolar **kapsayıcılarına sığar**; yatay kaydırma yalnızca gerçekten iki
