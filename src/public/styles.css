@@ -304,6 +304,136 @@ a:hover {
   font-weight: 500;
 }
 
+/* --------------------------------------------------------------------------
+   Acilir alt menu (sayfanin alanlari)
+
+   Her sayfa artik TEK ALAN gosterir; sayfanin diger alanlari menu satirinin
+   uzerine gelince ucan listede acilir. Liste `position: absolute` ile
+   kenar cubugunun DISINA tasar — menuyu asagi iterek acmak, imlecin altindaki
+   satirlari kaydirir ve yanlis satira tiklatirdi.
+   -------------------------------------------------------------------------- */
+
+.menu-item {
+  position: relative;
+}
+
+.menu-caret {
+  margin-left: auto;
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.menu-item.active > .menu-link .menu-caret {
+  opacity: 0.8;
+}
+
+.submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 4px);
+  z-index: 40;
+  min-width: 218px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: var(--sp-2);
+  background: var(--sidebar-bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(3, 10, 24, 0.5);
+}
+
+/* Klavye de acsin: `focus-within` olmadan alt bolumlere yalnizca fare ile
+   ulasilirdi. */
+.menu-item.has-sub:hover > .submenu,
+.menu-item.has-sub:focus-within > .submenu {
+  display: block;
+}
+
+/* Menunun ALT ucundaki satirlarda liste yukari dogru acilir; yoksa ekranin
+   altindan tasar ve imlec listeye ulasamadan kaybolurdu. */
+.menu-item:nth-last-child(-n + 4) > .submenu {
+  top: auto;
+  bottom: 0;
+}
+
+.submenu-title {
+  margin: 0 0 6px;
+  padding: 0 var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(205, 217, 234, 0.5);
+}
+
+.submenu-link {
+  display: block;
+  padding: 7px var(--sp-2);
+  border-radius: 2px;
+  color: rgba(205, 217, 234, 0.75);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.submenu-link:hover {
+  background: var(--sidebar-hover);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.submenu-link.active {
+  background: var(--sidebar-hover);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Alan sekmeleri (icerik alaninin tepesinde)
+
+   Ucan liste yalnizca fareyle calisir; telefonda hover yok. Ayrica "hangi
+   alandayim" sorusunun sayfanin kendi icinde de yanitlanmasi gerekiyor.
+   Bu serit her genislikte gorunur ve menudeki alt listeyle ayni alanlari
+   ayni sirada listeler.
+   -------------------------------------------------------------------------- */
+
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.section-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.section-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
 .sidebar-logout {
   margin-top: auto;
   padding-top: var(--sp-4);
@@ -2051,9 +2181,35 @@ tr.day-off td {
     scrollbar-width: thin;
   }
 
+  /* Yatay seritte kaydirilan oge artik satirin kendisi degil sarmalayici. */
+  .menu-item {
+    flex: 0 0 auto;
+  }
+
   .menu-link {
     white-space: nowrap;
     border: 1px solid var(--sidebar-border);
+  }
+
+  /* Telefonda hover yok: alanlara icerigin tepesindeki sekme seridinden
+     ulasilir, ucan liste hic acilmaz. */
+  .submenu,
+  .menu-caret {
+    display: none !important;
+  }
+
+  /* Sekmeler telefonda SARMAZ, yatay kaydirir: 11 alanli Ders Programi'nda
+     sarma 5 satir tutuyor ve ekranin yarisini icerikten once harciyordu.
+     Ustundeki menu seridi de ayni sekilde kayiyor. */
+  .section-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .section-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   /* Yatay serit: aktif satirda sol serit yerine alt cizgi daha okunur. */

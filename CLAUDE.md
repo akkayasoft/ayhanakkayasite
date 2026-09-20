@@ -54,6 +54,7 @@ src/
   db.js             şema + idempotent migration (açılışta otomatik) + admin seed
   academicCalendar.js  2026-2027 MEB çalışma takvimi
   schedule.js       ders çizelgesi / zil saatleri
+  menu.js           menü satırları + her sayfanın ALANLARI (tek kaynak)
   menuIcons.js      kenar çubuğu ve kart ikonları (SVG)
   views/            admin.ejs, student.ejs, login.ejs
   public/           styles.css, dist/ (React island'ları)
@@ -61,6 +62,66 @@ scripts/            deploy-hostinger.sh  (ARTIK KULLANILMIYOR — bkz. Deploy)
 ```
 
 Roller: `admin`, `student`. Auth middleware `requireAuth` / `requireRole(role)`.
+
+## Sayfa alanları ve açılır menü
+
+**Her sayfa TEK ALAN gösterir.** Önce her sayfa bütün panellerini alt alta
+basıyordu: Ders Programı tek ekranda 6, Uyanma Rutini 4 panel gösteriyordu ve
+sayfa okunmaz haldeydi (kullanıcı: *"sayfalar çok karışık … ben bir sayfada bir
+alan görmek istiyorum"*). Sayfanın diğer alanları iki yerden açılır:
+
+1. **Kenar çubuğunda uçan liste** — menü satırının üzerine gelince (ya da
+   klavyeyle odaklanınca) o sayfanın alanları sağda açılır.
+2. **İçeriğin tepesindeki alan sekmeleri** — aynı listeyi her genişlikte
+   gösterir. Telefonda hover olmadığı için tek yol budur; masaüstünde de
+   *"hangi alandayım"* sorusunu sayfanın kendi içinde yanıtlar.
+
+- **Tek kaynak `src/menu.js`**: menü satırları, ikonları ve her sayfanın alan
+  listesi orada. Şablon karar vermez — görünüm modeline `menuTree` (aktiflik ve
+  bağlantılar hesaplanmış), `currentSection` ve `currentSectionLabel` geçer.
+- Alan seçimi **`?bolum=<anahtar>`** ile gelir. Tanımsız ya da geçersiz değer
+  **ilk alana düşer**; yani bölümsüz eski bağlantılar (`/admin/wake`) kırılmaz.
+- `sections` tanımlanmamış sayfa (Genel Durum, Raporlar, Görevlerim, Haftalık
+  Takvim) tek alanlıdır ve menü satırı düz bir bağlantıdır.
+- **Görevler** sayfasının iki alanı zaten ayrı rotada (`/admin/tasks/active`,
+  `/admin/tasks/status`); bölüm tanımı `href` taşır ve `?bolum=` kullanılmaz.
+- **Ders Programı'nda `gorunum` parametresi kalktı**: defter alanları
+  (`konular` / `gorevler` / `defter` / `excel`) konular ızgarasını, diğerleri
+  çizelgeyi hesaplar (`scheduleGorunum`). Eski `?gorunum=konular` bağlantıları
+  hâlâ çalışır.
+- **Bağlantılar ve form dönüşleri alanı korur.** Hafta/ay gezinmesi
+  `?bolum=<%= currentSection %>` taşır; form `next`'leri kullanıcıyı doğru alana
+  götürür (ekleme formları sonucun göründüğü **listeye**, düzenleme işlemleri
+  bulundukları alana). Aksi halde her kayıttan sonra ilk alana fırlatılırdı.
+  Çizelge ızgarasındaki boş hücre **Ders Ekle**'ye, karşılaştırma tablosundaki
+  öğrenci adı **Kategori Kırılımı**'na, rutin listesindeki öğrenci **Günlük
+  Kayıtlar**'a gider — alanı değiştirmeselerdi tıklama görünür bir şey
+  değiştirmezdi.
+
+> ⚠️ **Sayfa bağlamı alan değildir.** Sayfa başlığı, KPI özet şeridi, öğrenci/ay
+> seçicisi ve boş durum kartları **her alanda görünür**; bölünen şey içerik
+> panelleridir. Ders Programı'nda "Haftanın Ders Özeti" şeridi bu yüzden duruyor.
+
+> ⚠️ **Uçan liste menüyü aşağı itmez, ÜSTÜNE açılır** (`position: absolute`).
+> İtseydi imlecin altındaki satırlar kayar ve yanlış satıra tıklanırdı. Menünün
+> alt ucundaki satırlarda (`:nth-last-child(-n+4)`) liste **yukarı** açılır;
+> yoksa 11 alanlı Ders Programı listesi ekranın altından taşar ve imleç listeye
+> ulaşamadan kaybolurdu. `:focus-within` de açar: klavyeyle gezenler alt
+> alanlara ulaşamazdı.
+
+> ⚠️ **Alan bölünce boş ekran çıkabilir.** Rutini olmayan öğrencide *Günlük
+> Kayıtlar* alanı bomboş kalıyordu (eskiden uzun sayfanın dibinde fark
+> edilmiyordu); artık nedenini ve nereye gideceğini yazan bir kart çıkıyor.
+
+Telefonda uçan liste hiç açılmaz; menü şeridi ve alan sekmeleri **yatay
+kaydırır** (11 alanlı sayfada sarma 5 satır tutup ekranın yarısını içerikten
+önce harcıyordu).
+
+Doğrulandı: admin 34 + öğrenci 18 adres **200**; her alan tek panel gösteriyor
+ve doğru sekme aktif; geçersiz `?bolum=` ve bölümsüz eski bağlantı ilk alana
+düşüyor; zil saatleri / ders ekleme / zil çizelgesi kayıtları kendi alanlarına
+dönüyor; uçan liste 11 alanı ekran içinde açıyor (y 106-514, taşma yok);
+1440 ve 390px'te sayfa taşması **0**, konsol hatası yok.
 
 Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `calendar`,
 `program` (Yıllık Plan — hafta hafta), `questions`, `wake` (Uyanma Rutini),

@@ -17,18 +17,24 @@
           </div>
         </div>
 
+        <%# MENU TEK KAYNAKTAN (src/menu.js) basilir: satirlar, ikonlar,
+            aktiflik ve alt bolumler orada tanimli. Bir sayfanin alanlari
+            burada acilir; masaustunde satirin uzerine gelince (ya da klavyeyle
+            odaklaninca) ucan liste, telefonda aktif sayfanin altinda serit. %>
         <nav class="menu">
-          <a href="/admin/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>"><%- menuIcons.dashboard %>Genel Durum</a>
-          <a href="/admin/students" class="menu-link <%= currentPage === 'students' ? 'active' : '' %>"><%- menuIcons.students %>Öğrenciler</a>
-          <a href="/admin/users" class="menu-link <%= currentPage === 'users' ? 'active' : '' %>"><%- menuIcons.users %>Kullanıcı Yönetimi</a>
-          <a href="/admin/categories" class="menu-link <%= currentPage === 'categories' ? 'active' : '' %>"><%- menuIcons.categories %>Kategoriler</a>
-          <a href="/admin/tasks/active" class="menu-link <%= ['tasks', 'tasks-create', 'tasks-update', 'tasks-active', 'tasks-status'].includes(currentPage) ? 'active' : '' %>"><%- menuIcons.tasks %>Görevler</a>
-          <a href="/admin/analysis" class="menu-link <%= currentPage === 'analysis' ? 'active' : '' %>"><%- menuIcons.analysis %>Haftalık Analiz</a>
-          <a href="/admin/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>"><%- menuIcons.goals %>Aylık Hedefler</a>
-          <a href="/admin/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>"><%- menuIcons.wake %>Uyanma Rutini</a>
-          <a href="/admin/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>"><%- menuIcons.sport %>Spor Rutini</a>
-          <a href="/admin/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>"><%- menuIcons.schedule %>Ders Programı</a>
-          <a href="/admin/reports" class="menu-link <%= currentPage === 'reports' ? 'active' : '' %>"><%- menuIcons.reports %>Raporlar</a>
+          <% menuTree.forEach((item) => { %>
+          <div class="menu-item <%= item.aktif ? 'active' : '' %> <%= item.sections.length ? 'has-sub' : '' %>">
+            <a href="<%= item.href %>" class="menu-link <%= item.aktif ? 'active' : '' %>"><%- menuIcons[item.icon] %><%= item.label %><% if (item.sections.length) { %><span class="menu-caret" aria-hidden="true">›</span><% } %></a>
+            <% if (item.sections.length) { %>
+            <div class="submenu">
+              <p class="submenu-title"><%= item.label %></p>
+              <% item.sections.forEach((s) => { %>
+              <a href="<%= s.href %>" class="submenu-link <%= s.aktif ? 'active' : '' %>"><%= s.label %></a>
+              <% }) %>
+            </div>
+            <% } %>
+          </div>
+          <% }) %>
         </nav>
 
         <%# Kullanici blogu ve cikis en altta (referans tasarimdaki gibi):
@@ -50,6 +56,18 @@
         <% } %>
         <% if (error) { %>
         <div class="alert error"><%= error %></div>
+        <% } %>
+
+        <%# ALAN SEKMELERI: aktif sayfanin alanlari. Menudeki ucan listeyle
+            ayni kaynaktan (src/menu.js) gelir; o liste yalnizca fareyle
+            calistigi icin telefonda tek yol budur. %>
+        <% const aktifMenu = menuTree.find((m) => m.aktif); %>
+        <% if (aktifMenu && aktifMenu.sections.length) { %>
+        <nav class="section-tabs" aria-label="<%= aktifMenu.label %> alanları">
+          <% aktifMenu.sections.forEach((s) => { %>
+          <a href="<%= s.href %>" class="section-tab <%= s.aktif ? 'active' : '' %>"><%= s.label %></a>
+          <% }) %>
+        </nav>
         <% } %>
 
         <% if (currentPage === 'dashboard') { %>
@@ -80,11 +98,12 @@
         <header class="content-header">
           <h2>Öğrenci Yönetimi</h2>
         </header>
-        <section class="grid two">
+        <section class="grid">
+        <% if (currentSection === 'ekle') { %>
           <article class="panel">
             <h3>Yeni Öğrenci</h3>
             <form method="post" action="/admin/students" class="stack">
-              <input type="hidden" name="next" value="/admin/students" />
+              <input type="hidden" name="next" value="/admin/students?bolum=liste" />
               <label>Ad Soyad</label>
               <input type="text" name="name" required />
               <label>Kullanıcı Adı</label>
@@ -94,7 +113,9 @@
               <button type="submit">Kaydet</button>
             </form>
           </article>
+        <% } %>
 
+        <% if (currentSection === 'liste') { %>
           <article class="panel">
             <h3>Mevcut Öğrenciler</h3>
             <ul class="clean-list">
@@ -103,6 +124,7 @@
               <% }) %>
             </ul>
           </article>
+        <% } %>
         </section>
         <% } %>
 
@@ -112,11 +134,12 @@
           <p class="muted">Toplam kullanıcı: <strong><%= users.length %></strong> | Admin: <strong><%= adminCount %></strong></p>
         </header>
 
+        <% if (currentSection === 'ekle') { %>
         <section class="grid two">
           <article class="panel">
             <h3>Yeni Kullanıcı</h3>
             <form method="post" action="/admin/users" class="stack">
-              <input type="hidden" name="next" value="/admin/users" />
+              <input type="hidden" name="next" value="/admin/users?bolum=liste" />
               <label>Ad Soyad</label>
               <input type="text" name="name" required />
               <label>Kullanıcı Adı</label>
@@ -141,7 +164,9 @@
             </ul>
           </article>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'liste') { %>
         <section class="panel">
           <h3>Mevcut Kullanıcılar</h3>
           <div class="table-wrap">
@@ -162,7 +187,7 @@
                   <td>@<%= u.username %></td>
                   <td>
                     <form method="post" action="/admin/users/<%= u.id %>/role" class="row center">
-                      <input type="hidden" name="next" value="/admin/users" />
+                      <input type="hidden" name="next" value="/admin/users?bolum=liste" />
                       <select name="role" <%= u.id === user.id ? 'disabled' : '' %>>
                         <option value="student" <%= u.role === 'student' ? 'selected' : '' %>>Öğrenci</option>
                         <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
@@ -174,7 +199,7 @@
                   </td>
                   <td>
                     <form method="post" action="/admin/users/<%= u.id %>/password" class="row center">
-                      <input type="hidden" name="next" value="/admin/users" />
+                      <input type="hidden" name="next" value="/admin/users?bolum=liste" />
                       <input type="text" name="password" minlength="6" placeholder="Yeni şifre" required />
                       <button type="submit">Şifre Değiştir</button>
                     </form>
@@ -182,7 +207,7 @@
                   <td>
                     <% if (u.id !== user.id) { %>
                     <form method="post" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Bu kullanıcı silinsin mi?')">
-                      <input type="hidden" name="next" value="/admin/users" />
+                      <input type="hidden" name="next" value="/admin/users?bolum=liste" />
                       <button type="submit" class="danger">Sil</button>
                     </form>
                     <% } %>
@@ -194,22 +219,26 @@
           </div>
         </section>
         <% } %>
+        <% } %>
 
         <% if (currentPage === 'categories') { %>
         <header class="content-header">
           <h2>Kategori Yönetimi</h2>
         </header>
-        <section class="grid two">
+        <section class="grid">
+        <% if (currentSection === 'ekle') { %>
           <article class="panel">
             <h3>Yeni Kategori</h3>
             <form method="post" action="/admin/categories" class="stack">
-              <input type="hidden" name="next" value="/admin/categories" />
+              <input type="hidden" name="next" value="/admin/categories?bolum=liste" />
               <label>Kategori Adı</label>
               <input type="text" name="name" required />
               <button type="submit">Ekle</button>
             </form>
           </article>
+        <% } %>
 
+        <% if (currentSection === 'liste') { %>
           <article class="panel">
             <h3>Kategori Listesi</h3>
             <ul class="clean-list">
@@ -217,13 +246,14 @@
               <li class="row space-between center">
                 <span><%= c.name %></span>
                 <form method="post" action="/admin/categories/<%= c.id %>/delete" onsubmit="return confirm('Kategori silinsin mi?')">
-                  <input type="hidden" name="next" value="/admin/categories" />
+                  <input type="hidden" name="next" value="/admin/categories?bolum=liste" />
                   <button type="submit" class="danger">Sil</button>
                 </form>
               </li>
               <% }) %>
             </ul>
           </article>
+        <% } %>
         </section>
         <% } %>
 
@@ -720,9 +750,9 @@
             </p>
           </div>
           <div class="row">
-            <a class="button-link" href="/admin/analysis<%= weeklyAnalysis.selectedStudentId ? `?analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Bu Hafta</a>
-            <a class="button-link" href="/admin/analysis?weekStart=<%= weeklyAnalysis.prevWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Önceki Hafta</a>
-            <a class="button-link" href="/admin/analysis?weekStart=<%= weeklyAnalysis.nextWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Sonraki Hafta</a>
+            <a class="button-link" href="/admin/analysis?bolum=<%= currentSection %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Bu Hafta</a>
+            <a class="button-link" href="/admin/analysis?bolum=<%= currentSection %>&weekStart=<%= weeklyAnalysis.prevWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Önceki Hafta</a>
+            <a class="button-link" href="/admin/analysis?bolum=<%= currentSection %>&weekStart=<%= weeklyAnalysis.nextWeekStart %><%= weeklyAnalysis.selectedStudentId ? `&analysisStudentId=${weeklyAnalysis.selectedStudentId}` : '' %>">Sonraki Hafta</a>
           </div>
         </header>
 
@@ -765,6 +795,7 @@
           </article>
         </section>
 
+        <% if (currentSection === 'karsilastirma') { %>
         <section class="panel">
           <h3>Öğrenci Karşılaştırması</h3>
           <% if (!weeklyAnalysis.studentRows.length) { %>
@@ -848,7 +879,7 @@
                   <td><%= r.current.averageSport || '-' %></td>
                   <td>
                     <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
-                       href="/admin/analysis?weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
+                       href="/admin/analysis?bolum=kategori&weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
                   </td>
                 </tr>
                 <% }) %>
@@ -857,8 +888,10 @@
           </div>
           <% } %>
         </section>
+        <% } %>
 
         <% if (weeklyAnalysis.detail) { %>
+        <% if (currentSection === 'kategori') { %>
         <section class="panel">
           <h3><%= weeklyAnalysis.detail.student.name %> — Kategori Kırılımı</h3>
           <% if (!weeklyAnalysis.detail.categories.length) { %>
@@ -902,7 +935,9 @@
           </div>
           <% } %>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'gun') { %>
         <section class="panel">
           <h3><%= weeklyAnalysis.detail.student.name %> — Gün Kırılımı</h3>
           <div class="table-wrap">
@@ -978,10 +1013,13 @@
             </table>
           </div>
         </section>
+        <% } %>
         <% } else { %>
+        <% if (['kategori', 'gun'].includes(currentSection)) { %>
         <section class="panel">
           <p class="muted">Kategori ve gün kırılımını görmek için yukarıdaki tablodan bir öğrenci seçin.</p>
         </section>
+        <% } %>
         <% } %>
         <% } %>
 
@@ -997,9 +1035,9 @@
             </p>
           </div>
           <div class="row">
-            <a class="button-link" href="/admin/goals?ay=<%= gv.thisMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Bu Ay</a>
-            <a class="button-link" href="/admin/goals?ay=<%= gv.prevMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Önceki Ay</a>
-            <a class="button-link" href="/admin/goals?ay=<%= gv.nextMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Sonraki Ay</a>
+            <a class="button-link" href="/admin/goals?bolum=<%= currentSection %>&ay=<%= gv.thisMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Bu Ay</a>
+            <a class="button-link" href="/admin/goals?bolum=<%= currentSection %>&ay=<%= gv.prevMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Önceki Ay</a>
+            <a class="button-link" href="/admin/goals?bolum=<%= currentSection %>&ay=<%= gv.nextMonth.slice(0,7) %><%= gv.student ? `&goalStudentId=${gv.student.id}` : '' %>">Sonraki Ay</a>
           </div>
         </header>
 
@@ -1022,6 +1060,7 @@
           </form>
         </section>
 
+        <% if (currentSection === 'kayit') { %>
         <section class="panel">
           <h3><%= gv.monthLabel %> Kaydı</h3>
           <p class="muted">
@@ -1067,11 +1106,13 @@
             </article>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'ekle') { %>
         <section class="panel narrow">
           <h3>Yeni Hedef</h3>
           <form method="post" action="/admin/goals" class="stack">
-            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <input type="hidden" name="next" value="/admin/goals?bolum=hedefler&ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
             <input type="hidden" name="studentId" value="<%= gv.student.id %>" />
             <input type="hidden" name="monthStart" value="<%= gv.monthStart %>" />
             <label>Hedef</label>
@@ -1084,7 +1125,9 @@
             </p>
           </form>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'hedefler') { %>
         <% if (!gv.goals.length) { %>
         <section class="panel narrow">
           <h3>Bu ay hedef yok</h3>
@@ -1102,7 +1145,7 @@
           </header>
 
           <form method="post" action="/admin/goals/<%= g.id %>/evaluate" class="stack">
-            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <input type="hidden" name="next" value="/admin/goals?bolum=hedefler&ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
             <label>Kanıt</label>
             <textarea name="evidence" rows="3" maxlength="2000" placeholder="Ne yapıldı, nereden görülüyor? (Başarıldı işaretlemek için zorunlu)"><%= g.evidence %></textarea>
             <label>Durum</label>
@@ -1120,11 +1163,12 @@
           </form>
 
           <form method="post" action="/admin/goals/<%= g.id %>/delete" onsubmit="return confirm('Bu hedef silinsin mi?')">
-            <input type="hidden" name="next" value="/admin/goals?ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
+            <input type="hidden" name="next" value="/admin/goals?bolum=hedefler&ay=<%= gv.monthStart.slice(0,7) %>&goalStudentId=<%= gv.student.id %>" />
             <button type="submit" class="danger">Hedefi Sil</button>
           </form>
         </section>
         <% }) %>
+        <% } %>
         <% } %>
         <% } %>
         <% } %>
@@ -1144,13 +1188,14 @@
           </p>
         </header>
 
+        <% if (currentSection === 'ayar') { %>
         <section class="panel narrow">
           <h3>Rutin Ayarla</h3>
           <% if (!students.length) { %>
           <p class="muted">Önce bir öğrenci ekleyin.</p>
           <% } else { %>
           <form method="post" action="/admin/sport" class="stack">
-            <input type="hidden" name="next" value="/admin/sport" />
+            <input type="hidden" name="next" value="/admin/sport?bolum=rutinler" />
             <label>Öğrenci</label>
             <select name="studentId" required>
               <% students.forEach((st) => { %>
@@ -1177,7 +1222,9 @@
           </form>
           <% } %>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'rutinler') { %>
         <section class="panel">
           <h3>Öğrenci Rutinleri</h3>
           <div class="table-wrap">
@@ -1206,10 +1253,10 @@
                   </td>
                   <td>
                     <div class="task-table-actions">
-                      <a class="button-link" href="/admin/sport?sportStudentId=<%= r.student.id %>">İncele</a>
+                      <a class="button-link" href="/admin/sport?bolum=kayitlar&sportStudentId=<%= r.student.id %>">İncele</a>
                       <% if (r.routine) { %>
                       <form method="post" action="/admin/sport/delete" onsubmit="return confirm('Rutin kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
-                        <input type="hidden" name="next" value="/admin/sport" />
+                        <input type="hidden" name="next" value="/admin/sport?bolum=rutinler" />
                         <input type="hidden" name="studentId" value="<%= r.student.id %>" />
                         <button type="submit" class="danger">Kaldır</button>
                       </form>
@@ -1222,7 +1269,9 @@
             </table>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'kayitlar') { %>
         <% if (sa.detail && sa.detail.routine) { %>
         <section class="panel">
           <h3><%= sa.selected.name %> — Son <%= sa.detail.summary.gunSayisi %> Gün</h3>
@@ -1276,7 +1325,7 @@
                   </td>
                   <td>
                     <form method="post" action="/admin/routines/sport/log" class="status-fix-form">
-                      <input type="hidden" name="next" value="/admin/sport?sportStudentId=<%= sa.selected.id %>" />
+                      <input type="hidden" name="next" value="/admin/sport?bolum=kayitlar&sportStudentId=<%= sa.selected.id %>" />
                       <input type="hidden" name="studentId" value="<%= sa.selected.id %>" />
                       <input type="hidden" name="day" value="<%= r.day %>" />
                       <input type="time" name="time" value="<%= r.doneAt || '' %>" aria-label="<%= r.day %> spor saati" />
@@ -1298,6 +1347,17 @@
             </table>
           </div>
         </section>
+        <% } else { %>
+        <section class="panel narrow">
+          <h3>Kayıt yok</h3>
+          <p class="muted">
+            <%= sportAdmin.selected ? sportAdmin.selected.name : 'Bu öğrenci' %> için henüz rutin tanımlı değil. Önce
+            <a href="/admin/sport?bolum=ayar">Rutin Ayarla</a> alanından bir hedef gir; günlük
+            kayıtlar bundan sonra burada listelenir. Başka bir öğrencinin kayıtlarına
+            <a href="/admin/sport?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
+          </p>
+        </section>
+        <% } %>
         <% } %>
         <% } %>
 
@@ -1312,13 +1372,14 @@
           </p>
         </header>
 
+        <% if (currentSection === 'ayar') { %>
         <section class="panel narrow">
           <h3>Rutin Ayarla</h3>
           <% if (!students.length) { %>
           <p class="muted">Önce bir öğrenci ekleyin.</p>
           <% } else { %>
           <form method="post" action="/admin/wake" class="stack">
-            <input type="hidden" name="next" value="/admin/wake" />
+            <input type="hidden" name="next" value="/admin/wake?bolum=rutinler" />
             <label>Öğrenci</label>
             <select name="studentId" required>
               <% students.forEach((s) => { %>
@@ -1345,7 +1406,9 @@
           </form>
           <% } %>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'rutinler') { %>
         <section class="panel">
           <h3>Öğrenci Rutinleri</h3>
           <div class="table-wrap">
@@ -1362,7 +1425,7 @@
               <tbody>
                 <% wakeAdmin.rows.forEach((r) => { %>
                 <tr>
-                  <td><a href="/admin/wake?wakeStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
+                  <td><a href="/admin/wake?bolum=kayitlar&wakeStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
                   <td><%= r.routine ? r.routine.targetTime : '-' %></td>
                   <td><%= r.routine ? '+' + r.routine.toleranceMinutes + ' dk' : '-' %></td>
                   <td>
@@ -1377,7 +1440,7 @@
                   <td>
                     <% if (r.routine) { %>
                     <form method="post" action="/admin/wake/delete" onsubmit="return confirm('<%= r.student.name %> için rutin kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
-                      <input type="hidden" name="next" value="/admin/wake" />
+                      <input type="hidden" name="next" value="/admin/wake?bolum=rutinler" />
                       <input type="hidden" name="studentId" value="<%= r.student.id %>" />
                       <button type="submit" class="danger">Kaldır</button>
                     </form>
@@ -1391,7 +1454,9 @@
             </table>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'kayitlar') { %>
         <% if (wakeAdmin.detail && wakeAdmin.detail.routine) { %>
         <header class="content-header">
           <h3><%= wakeAdmin.selected.name %> · Son <%= wakeAdmin.detail.summary.gunSayisi %> Gün</h3>
@@ -1472,7 +1537,7 @@
                   </td>
                   <td>
                     <form method="post" action="/admin/routines/wake/log" class="status-fix-form">
-                      <input type="hidden" name="next" value="/admin/wake?wakeStudentId=<%= wakeAdmin.selected.id %>" />
+                      <input type="hidden" name="next" value="/admin/wake?bolum=kayitlar&wakeStudentId=<%= wakeAdmin.selected.id %>" />
                       <input type="hidden" name="studentId" value="<%= wakeAdmin.selected.id %>" />
                       <input type="hidden" name="day" value="<%= r.day %>" />
                       <input type="time" name="time" value="<%= r.wokeAt || '' %>" aria-label="<%= r.day %> kalkış saati" />
@@ -1497,6 +1562,17 @@
             </table>
           </div>
         </section>
+        <% } else { %>
+        <section class="panel narrow">
+          <h3>Kayıt yok</h3>
+          <p class="muted">
+            <%= wakeAdmin.selected ? wakeAdmin.selected.name : 'Bu öğrenci' %> için henüz rutin tanımlı değil. Önce
+            <a href="/admin/wake?bolum=ayar">Rutin Ayarla</a> alanından bir hedef gir; günlük
+            kayıtlar bundan sonra burada listelenir. Başka bir öğrencinin kayıtlarına
+            <a href="/admin/wake?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
+          </p>
+        </section>
+        <% } %>
         <% } %>
         <% } %>
 
@@ -1519,10 +1595,6 @@
               <% } %>
             </p>
           </div>
-          <div class="row">
-            <a class="button-link <%= scheduleView.gorunum === 'cizelge' ? 'active' : '' %>" href="/admin/schedule">Çizelge</a>
-            <a class="button-link <%= scheduleView.gorunum === 'konular' ? 'active' : '' %>" href="/admin/schedule?gorunum=konular">İşlenen Konular</a>
-          </div>
         </header>
 
         <% if (scheduleView.gorunum === 'cizelge') { %>
@@ -1531,16 +1603,19 @@
             kullanilir. "Bu hafta ders yok" demek icin hafta ozellestirilip
             bosaltilir — takvim artik hicbir seyi engellemiyor. %>
         <% const hf = scheduleView.hafta; %>
-        <% const haftaSorgu = hf ? `?hafta=${hf}` : ''; %>
+        <%# Yollar secili ALANI tasir: kayittan sonra kullanici ayni alana
+            donmeli, ilk alana degil. %>
+        <% const haftaSorgu = hf ? `?bolum=${currentSection}&hafta=${hf}` : `?bolum=${currentSection}`; %>
         <% const cizelgeYolu = `/admin/schedule${haftaSorgu}`; %>
+        <% if (currentSection === 'hafta') { %>
         <section class="panel">
           <div class="datatable-toolbar">
             <div class="row center">
-              <a class="button-link <%= scheduleView.sablonModu ? 'active' : '' %>" href="/admin/schedule">Varsayılan çizelge</a>
-              <a class="button-link" href="/admin/schedule?hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
+              <a class="button-link <%= scheduleView.sablonModu ? 'active' : '' %>" href="/admin/schedule?bolum=<%= currentSection %>">Varsayılan çizelge</a>
+              <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
               <% if (!scheduleView.sablonModu) { %>
-              <a class="button-link" href="/admin/schedule?hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
-              <a class="button-link" href="/admin/schedule?hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+              <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
               <% } %>
             </div>
             <form method="get" action="/admin/schedule" class="row center">
@@ -1591,6 +1666,7 @@
           <% } %>
           <% } %>
         </section>
+        <% } %>
 
         <p class="section-label">Haftanın Ders Özeti</p>
         <section class="kpi-grid">
@@ -1619,6 +1695,7 @@
         </section>
 
         <section class="grid two">
+        <% if (currentSection === 'ders') { %>
           <article class="panel">
             <h3><%= scheduleView.form.isEdit ? 'Dersi Düzenle' : 'Ders Ekle' %></h3>
             <form method="post" action="/admin/schedule/entry" class="stack">
@@ -1666,11 +1743,13 @@
               </p>
             </form>
           </article>
+        <% } %>
 
+        <% if (currentSection === 'zil') { %>
           <article class="panel">
             <h3>Zil Çizelgesi</h3>
             <form method="post" action="/admin/schedule/settings" class="stack">
-              <input type="hidden" name="next" value="/admin/schedule" />
+              <input type="hidden" name="next" value="/admin/schedule?bolum=zil" />
               <label>İlk Ders Başlangıcı</label>
               <input type="time" name="startTime" required value="<%= scheduleView.ayar.startTime %>" />
 
@@ -1699,12 +1778,14 @@
               </p>
             </form>
           </article>
+        <% } %>
         </section>
 
         <%# GUNE OZEL ZIL SAATLERI. Varsayilan duzen yukaridaki ayardan
             hesaplanir; burasi yalnizca ISTISNADIR. Bos birakilan satir
             varsayilana doner (kayit silinir), bir satira saat yazmak sonraki
             saatleri KAYDIRMAZ. %>
+        <% if (currentSection === 'gunzil') { %>
         <section class="panel">
           <h3>Gün Gün Zil Saatleri</h3>
           <p class="muted">
@@ -1724,13 +1805,13 @@
             <% scheduleView.gunSayilari.forEach((g) => { %>
             <a
               class="button-link <%= scheduleView.saatGunu === g.dayOfWeek ? 'active' : '' %>"
-              href="/admin/schedule?saatGun=<%= g.dayOfWeek %><%= hf ? `&hafta=${hf}` : '' %>"
+              href="/admin/schedule?bolum=gunzil&saatGun=<%= g.dayOfWeek %><%= hf ? `&hafta=${hf}` : '' %>"
             ><%= g.gunAdi %><% if (g.ozelSayisi) { %> · <%= g.ozelSayisi %><% } %></a>
             <% }) %>
           </div>
 
           <form method="post" action="/admin/schedule/period-times" class="stack">
-            <input type="hidden" name="next" value="/admin/schedule?saatGun=<%= scheduleView.saatGunu %>" />
+            <input type="hidden" name="next" value="/admin/schedule?bolum=gunzil&saatGun=<%= scheduleView.saatGunu %>" />
             <input type="hidden" name="gun" value="<%= scheduleView.saatGunu %>" />
             <div class="table-wrap">
               <table class="stack-mobile">
@@ -1788,7 +1869,9 @@
             </p>
           </form>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'yapistir') { %>
         <section class="panel">
           <h3>Toplu Yapıştır</h3>
           <p class="muted">
@@ -1827,7 +1910,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             <button type="submit">Yapıştırılanı İşle</button>
           </form>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'cizelge') { %>
         <section class="panel">
           <h3>Haftalık Çizelge</h3>
           <p class="muted">Boş hücredeki <strong>+</strong> ile o gün/saate ders eklersin; dolu hücreye tıklayınca düzenlersin.</p>
@@ -1851,7 +1936,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               >
                 <span class="board-cell-time <%= h.saat.ozel ? 'ozel-saat' : '' %>" <%= h.saat.ozel ? 'title="Bu güne elle girilmiş saat"' : '' %>><%= satir.period %>. ders · <%= h.saat.start %>-<%= h.saat.end %></span>
                 <% if (h.entry) { %>
-                <a class="cell-link" href="/admin/schedule?duzenle=<%= h.entry.id %><%= hf ? `&hafta=${hf}` : '' %>">
+                <a class="cell-link" href="/admin/schedule?bolum=ders&duzenle=<%= h.entry.id %><%= hf ? `&hafta=${hf}` : '' %>">
                   <strong><%= h.entry.subject %></strong>
                   <% if (h.entry.className) { %><span><%= h.entry.className %></span><% } %>
                   <% if (h.entry.room) { %><span class="muted"><%= h.entry.room %></span><% } %>
@@ -1861,7 +1946,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                   <button type="submit" class="danger cell-delete" title="Sil">×</button>
                 </form>
                 <% } else { %>
-                <a class="cell-add" href="/admin/schedule?gun=<%= h.dayOfWeek %>&saat=<%= satir.period %><%= hf ? `&hafta=${hf}` : '' %>" title="<%= h.gunAdi %> <%= satir.period %>. ders">+</a>
+                <a class="cell-add" href="/admin/schedule?bolum=ders&gun=<%= h.dayOfWeek %>&saat=<%= satir.period %><%= hf ? `&hafta=${hf}` : '' %>" title="<%= h.gunAdi %> <%= satir.period %>. ders">+</a>
                 <% } %>
               </div>
               <% }) %>
@@ -1869,7 +1954,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             </div>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'ozet') { %>
         <section class="panel">
           <h3>Gün Özeti</h3>
           <div class="table-wrap">
@@ -1902,6 +1989,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           <% } %>
         </section>
         <% } %>
+        <% } %>
 
         <% if (scheduleView.gorunum === 'konular' && scheduleView.topicWeek) { %>
         <% const tw = scheduleView.topicWeek; %>
@@ -1915,23 +2003,24 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             </p>
           </div>
           <div class="row">
-            <a class="button-link" href="/admin/schedule?gorunum=konular&hafta=<%= tw.thisWeekStart %>">Bu Hafta</a>
-            <a class="button-link" href="/admin/schedule?gorunum=konular&hafta=<%= tw.prevWeekStart %>">Önceki Hafta</a>
-            <a class="button-link" href="/admin/schedule?gorunum=konular&hafta=<%= tw.nextWeekStart %>">Sonraki Hafta</a>
+            <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= tw.thisWeekStart %>">Bu Hafta</a>
+            <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= tw.prevWeekStart %>">Önceki Hafta</a>
+            <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= tw.nextWeekStart %>">Sonraki Hafta</a>
           </div>
         </header>
 
+        <% if (currentSection === 'konular') { %>
         <% if (!scheduleView.kayitlar.length) { %>
         <section class="panel narrow">
           <h3>Çizelge boş</h3>
           <p class="muted">
-            Önce <a href="/admin/schedule">Çizelge</a> sekmesinden ders programını gir;
+            Önce <a href="/admin/schedule?bolum=cizelge">Çizelge</a> sekmesinden ders programını gir;
             konu yazılacak ders saatleri oradan gelir.
           </p>
         </section>
         <% } else { %>
         <form method="post" action="/admin/schedule/topics">
-          <input type="hidden" name="next" value="/admin/schedule?gorunum=konular&hafta=<%= tw.weekStart %>" />
+          <input type="hidden" name="next" value="/admin/schedule?bolum=konular&hafta=<%= tw.weekStart %>" />
           <input type="hidden" name="weekStart" value="<%= tw.weekStart %>" />
 
           <section class="panel">
@@ -1986,12 +2075,14 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           </section>
         </form>
         <% } %>
+        <% } %>
 
         <%# Ders Gorevleri / Defteri Kim Yazabilir / Excel panelleri cizelge BOS
             olsa da gorunur. Once hepsi "cizelge dolu" dalinin icindeydi: tam da
             durumu anlamak gereken anda (bu haftada hic ders yokken) panel
             ortadan kayboluyordu — kullanici "gorev yok falan da yazmiyor"
             dedi. %>
+        <% if (currentSection === 'gorevler') { %>
         <section class="panel narrow">
           <h3>Ders Görevleri</h3>
           <p class="muted">
@@ -2041,7 +2132,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                 <% } %>
               </span>
               <form method="post" action="/admin/schedule/log-tasks">
-                <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+                <input type="hidden" name="next" value="/admin/schedule?bolum=gorevler" />
                 <input type="hidden" name="studentId" value="<%= g.studentId %>" />
                 <button type="submit" class="<%= g.toplam ? 'ghost' : '' %>">
                   <%= g.toplam ? 'Güncelle' : 'Görevleri Oluştur' %>
@@ -2062,7 +2153,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           <p class="muted">Önce bir öğrenci ekleyin.</p>
           <% } %>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'defter') { %>
         <section class="panel narrow">
           <h3>Defteri Kim Yazabilir</h3>
           <p class="muted">
@@ -2083,7 +2176,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                 <% if (st.isTeacher) { %><span class="day-badge ok">Defteri yazabilir</span><% } %>
               </span>
               <form method="post" action="/admin/schedule/teacher">
-                <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+                <input type="hidden" name="next" value="/admin/schedule?bolum=defter" />
                 <input type="hidden" name="studentId" value="<%= st.id %>" />
                 <input type="hidden" name="isTeacher" value="<%= st.isTeacher ? '0' : '1' %>" />
                 <button type="submit" class="ghost">
@@ -2095,7 +2188,9 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           </ul>
           <% } %>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'excel') { %>
         <section class="panel narrow">
           <h3>Excel Çıktısı</h3>
           <p class="muted">
@@ -2104,7 +2199,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             Varsayılan aralık <strong><%= tw.exportLabel %></strong>.
           </p>
           <form method="get" action="/admin/schedule/topics/export" class="stack">
-            <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+            <input type="hidden" name="next" value="/admin/schedule?bolum=excel" />
             <label>Başlangıç</label>
             <input type="date" name="from" value="<%= tw.exportFrom %>" />
             <label>Bitiş</label>
@@ -2112,6 +2207,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             <button type="submit">Excel İndir</button>
           </form>
         </section>
+        <% } %>
         <% } %>
         <% } %>
 

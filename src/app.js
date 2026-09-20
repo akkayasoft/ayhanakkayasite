@@ -15,6 +15,7 @@ const academicCalendar = require('./academicCalendar');
 const schedule = require('./schedule');
 // Kenar cubugu menusundeki cizgi ikonlari (bkz. src/menuIcons.js).
 const { menuIcons } = require('./menuIcons');
+const menu = require('./menu');
 
 const app = express();
 
@@ -1759,6 +1760,22 @@ async function getLessonTopics(weekStart) {
 }
 
 /**
+ * Ders Programi sayfasinin hangi izgarayi hesaplayacagi: secili BOLUM.
+ *
+ * Defter alanlari (islenen konular, ders gorevleri, defter yetkisi, Excel)
+ * konular gorunumunu; digerleri cizelgeyi kullanir. Eski `?gorunum=konular`
+ * baglantilari da calismaya devam eder.
+ */
+const DEFTER_BOLUMLERI = new Set(['konular', 'gorevler', 'defter', 'excel']);
+
+function scheduleGorunum(req) {
+  const bolum = normalizeText(req.query.bolum);
+  if (DEFTER_BOLUMLERI.has(bolum)) return 'konular';
+  if (bolum) return 'cizelge';
+  return normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
+}
+
+/**
  * "İşlenen Konular" gorunumu: cizelgeyle AYNI izgara, ama secili haftada her
  * dolu ders saatine konu yazilir. Tatil/bayrama denk gelen gunlerde giris
  * alani acilmaz — o gun ders islenmedi.
@@ -2182,7 +2199,10 @@ async function buildStudentScheduleView(req) {
     getPeriodTimes()
   ]);
   const haftaBilgi = await getWeekScheduleInfo(hafta);
-  const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
+  // Gorunum artik ayri bir parametre degil, SECILI BOLUMDEN turer: defter
+  // alanlari (konular/gorevler/defter/excel) konular gorunumunu kullanir.
+  // `gorunum` parametresi geriye donuk kabul edilir (eski baglantilar).
+  const gorunum = scheduleGorunum(req);
 
   return {
     gorunum,
@@ -2407,7 +2427,10 @@ async function buildScheduleView(req) {
   const haftaBilgi = hafta ? await getWeekScheduleInfo(hafta) : { ozel: false, satirSayisi: 0 };
   const saatler = schedule.buildPeriods(ayar);
   const izgara = schedule.buildGrid(kayitlar, ayar, ozelSaatler);
-  const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
+  // Gorunum artik ayri bir parametre degil, SECILI BOLUMDEN turer: defter
+  // alanlari (konular/gorevler/defter/excel) konular gorunumunu kullanir.
+  // `gorunum` parametresi geriye donuk kabul edilir (eski baglantilar).
+  const gorunum = scheduleGorunum(req);
   const topicWeek = gorunum === 'konular' ? await buildTopicWeekView(req, ayar, ozelSaatler) : null;
 
   // Form on dolgusu: bos hucreye basilinca gun/saat secili gelsin.
@@ -3086,9 +3109,21 @@ async function getAdminViewModel(req, currentPage) {
     };
   }
 
+  // Her sayfa TEK ALAN gosterir; sayfanin diger alanlari menude o satirin
+  // altinda acilir. Gecersiz/eksik `bolum` ilk alana duser, boylece bolumsuz
+  // eski baglantilar kirilmaz.
+  const currentSection = menu.resolveSection(
+    menu.ADMIN_MENU,
+    currentPage,
+    normalizeText(req.query.bolum)
+  );
+
   return {
     user: req.currentUser,
     currentPage,
+    currentSection,
+    menuTree: menu.buildMenuTree(menu.ADMIN_MENU, currentPage, currentSection),
+    currentSectionLabel: menu.sectionLabel(menu.ADMIN_MENU, currentPage, currentSection),
     menuIcons,
     users,
     adminCount: users.filter((u) => u.role === 'admin').length,
@@ -5407,9 +5442,18 @@ async function getStudentViewModel(req, currentPage) {
     (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
   ).length;
 
+  const currentSection = menu.resolveSection(
+    menu.STUDENT_MENU,
+    currentPage,
+    normalizeText(req.query.bolum)
+  );
+
   return {
     user: req.currentUser,
     currentPage,
+    currentSection,
+    menuTree: menu.buildMenuTree(menu.STUDENT_MENU, currentPage, currentSection),
+    currentSectionLabel: menu.sectionLabel(menu.STUDENT_MENU, currentPage, currentSection),
     today,
     menuIcons,
     categories,

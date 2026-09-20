@@ -17,15 +17,24 @@
           </div>
         </div>
 
+        <%# MENU TEK KAYNAKTAN (src/menu.js) basilir: satirlar, ikonlar,
+            aktiflik ve alt bolumler orada tanimli. Bir sayfanin alanlari
+            burada acilir; masaustunde satirin uzerine gelince (ya da klavyeyle
+            odaklaninca) ucan liste, telefonda aktif sayfanin altinda serit. %>
         <nav class="menu">
-          <a href="/student/dashboard" class="menu-link <%= currentPage === 'dashboard' ? 'active' : '' %>"><%- menuIcons.tasks %>Görevlerim</a>
-          <a href="/student/wake" class="menu-link <%= currentPage === 'wake' ? 'active' : '' %>"><%- menuIcons.wake %>Uyanma Rutini</a>
-          <a href="/student/sport" class="menu-link <%= currentPage === 'sport' ? 'active' : '' %>"><%- menuIcons.sport %>Spor Rutini</a>
-          <a href="/student/calendar" class="menu-link <%= currentPage === 'calendar' ? 'active' : '' %>"><%- menuIcons.schedule %>Haftalık Takvim</a>
-          <a href="/student/program" class="menu-link <%= currentPage === 'program' ? 'active' : '' %>"><%- menuIcons.program %>Yıllık Plan</a>
-          <a href="/student/schedule" class="menu-link <%= currentPage === 'schedule' ? 'active' : '' %>"><%- menuIcons.yds %>Ders Programı</a>
-          <a href="/student/questions" class="menu-link <%= currentPage === 'questions' ? 'active' : '' %>"><%- menuIcons.questions %>Soru Takibi</a>
-          <a href="/student/goals" class="menu-link <%= currentPage === 'goals' ? 'active' : '' %>"><%- menuIcons.goals %>Aylık Hedefler</a>
+          <% menuTree.forEach((item) => { %>
+          <div class="menu-item <%= item.aktif ? 'active' : '' %> <%= item.sections.length ? 'has-sub' : '' %>">
+            <a href="<%= item.href %>" class="menu-link <%= item.aktif ? 'active' : '' %>"><%- menuIcons[item.icon] %><%= item.label %><% if (item.sections.length) { %><span class="menu-caret" aria-hidden="true">›</span><% } %></a>
+            <% if (item.sections.length) { %>
+            <div class="submenu">
+              <p class="submenu-title"><%= item.label %></p>
+              <% item.sections.forEach((s) => { %>
+              <a href="<%= s.href %>" class="submenu-link <%= s.aktif ? 'active' : '' %>"><%= s.label %></a>
+              <% }) %>
+            </div>
+            <% } %>
+          </div>
+          <% }) %>
         </nav>
 
         <div class="sidebar-footer">
@@ -45,6 +54,18 @@
         <% } %>
         <% if (error) { %>
         <div class="alert error"><%= error %></div>
+        <% } %>
+
+        <%# ALAN SEKMELERI: aktif sayfanin alanlari. Menudeki ucan listeyle
+            ayni kaynaktan (src/menu.js) gelir; o liste yalnizca fareyle
+            calistigi icin telefonda tek yol budur. %>
+        <% const aktifMenu = menuTree.find((m) => m.aktif); %>
+        <% if (aktifMenu && aktifMenu.sections.length) { %>
+        <nav class="section-tabs" aria-label="<%= aktifMenu.label %> alanları">
+          <% aktifMenu.sections.forEach((s) => { %>
+          <a href="<%= s.href %>" class="section-tab <%= s.aktif ? 'active' : '' %>"><%= s.label %></a>
+          <% }) %>
+        </nav>
         <% } %>
 
         <% if (currentPage === 'dashboard') { %>
@@ -480,6 +501,7 @@
         </section>
         <% } else { %>
 
+        <% if (currentSection === 'durum') { %>
         <section class="wake-hero <%= wake.todayLog ? wake.todayLog.status : 'pending' %>">
           <p class="wake-hero-target">
             Hedef <strong><%= wake.routine.targetTime %></strong><% if (wake.routine.toleranceMinutes) { %>
@@ -492,7 +514,7 @@
           <% } else { %>
           <p class="wake-hero-value"><%= wake.nowHm %></p>
           <form method="post" action="/student/wake">
-            <input type="hidden" name="next" value="/student/wake" />
+            <input type="hidden" name="next" value="/student/wake?bolum=durum" />
             <button type="submit" class="wake-button large">Uyandım</button>
           </form>
           <p class="muted">Bastığın saat kaydedilir. Günde bir kez, geri alınamaz.</p>
@@ -522,7 +544,9 @@
             <p class="kpi-value"><%= wake.summary.averageDelay === null ? '-' : wake.summary.averageDelay + ' dk' %></p>
           </article>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'gecmis') { %>
         <section class="panel">
           <h3>Son <%= wake.summary.gunSayisi %> Gün</h3>
           <p class="muted">
@@ -569,6 +593,7 @@
         </section>
         <% } %>
         <% } %>
+        <% } %>
 
         <% if (currentPage === 'sport' && sport) { %>
         <header class="content-header">
@@ -586,6 +611,7 @@
         </section>
         <% } else { %>
 
+        <% if (currentSection === 'durum') { %>
         <section class="wake-hero <%= sport.todayLog ? sport.todayLog.status : 'pending' %>">
           <p class="wake-hero-target">
             Aralık <strong><%= sport.routine.startTime %> - <%= sport.routine.endTime %></strong>
@@ -597,7 +623,7 @@
           <% } else { %>
           <p class="wake-hero-value"><%= sport.nowHm %></p>
           <form method="post" action="/student/sport">
-            <input type="hidden" name="next" value="/student/sport" />
+            <input type="hidden" name="next" value="/student/sport?bolum=durum" />
             <button type="submit" class="wake-button large">Spor Yaptım</button>
           </form>
           <p class="muted">Bastığın saat kaydedilir. Günde bir kez, geri alınamaz.</p>
@@ -622,7 +648,9 @@
             <p class="kpi-value"><%= sport.summary.averageTime || '-' %></p>
           </article>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'gecmis') { %>
         <section class="panel">
           <h3>Son <%= sport.summary.gunSayisi %> Gün</h3>
           <p class="muted">
@@ -667,6 +695,7 @@
             </table>
           </div>
         </section>
+        <% } %>
         <% } %>
         <% } %>
 
@@ -799,13 +828,13 @@
           </div>
           <div class="row">
             <% if (pv.currentWeek) { %>
-            <a class="button-link" href="/student/program?hafta=<%= pv.currentWeek %>">Bu Hafta</a>
+            <a class="button-link" href="/student/program?bolum=<%= currentSection %>&hafta=<%= pv.currentWeek %>">Bu Hafta</a>
             <% } %>
             <% if (pv.prevWeek) { %>
-            <a class="button-link" href="/student/program?hafta=<%= pv.prevWeek %>">Önceki Hafta</a>
+            <a class="button-link" href="/student/program?bolum=<%= currentSection %>&hafta=<%= pv.prevWeek %>">Önceki Hafta</a>
             <% } %>
             <% if (pv.nextWeek) { %>
-            <a class="button-link" href="/student/program?hafta=<%= pv.nextWeek %>">Sonraki Hafta</a>
+            <a class="button-link" href="/student/program?bolum=<%= currentSection %>&hafta=<%= pv.nextWeek %>">Sonraki Hafta</a>
             <% } %>
             <% if (pv.selected) { %>
             <a class="button-link" href="/student/calendar?weekStart=<%= pv.selected.weekStart %>">Takvimde Aç</a>
@@ -813,6 +842,7 @@
           </div>
         </header>
 
+        <% if (currentSection === 'icerik') { %>
         <% if (pv.selected) { %>
         <section class="panel">
           <h3>
@@ -882,7 +912,9 @@
           <% }) %>
         </section>
         <% } %>
+        <% } %>
 
+        <% if (currentSection === 'haftalar') { %>
         <section class="panel">
           <h3>Öğretim Yılının Haftaları</h3>
           <div class="table-wrap">
@@ -903,7 +935,7 @@
                   <%# Hafta hucresi de link: dar ekranda tablo kapsayici icinde
                       kaydigi icin sagdaki "Aç" dugmesi gorunmeyebiliyor. %>
                   <td>
-                    <a href="/student/program?hafta=<%= w.weekStart %>"><%= w.academic.weekNo ? w.academic.weekNo + '. hafta' : w.weekStart %></a>
+                    <a href="/student/program?bolum=<%= currentSection %>&hafta=<%= w.weekStart %>"><%= w.academic.weekNo ? w.academic.weekNo + '. hafta' : w.weekStart %></a>
                     <% if (w.isCurrent) { %><span class="day-badge school">Bu hafta</span><% } %>
                   </td>
                   <td><%= w.weekStart %> - <%= w.weekEnd %></td>
@@ -923,7 +955,7 @@
                     <% if (w.isSelected) { %>
                     <span class="muted">Seçili</span>
                     <% } else { %>
-                    <a class="button-link" href="/student/program?hafta=<%= w.weekStart %>">Aç</a>
+                    <a class="button-link" href="/student/program?bolum=<%= currentSection %>&hafta=<%= w.weekStart %>">Aç</a>
                     <% } %>
                   </td>
                 </tr>
@@ -932,6 +964,7 @@
             </table>
           </div>
         </section>
+        <% } %>
         <% } %>
 
         <% if (currentPage === 'goals' && goalsView) { %>
@@ -947,12 +980,13 @@
             </p>
           </div>
           <div class="row">
-            <a class="button-link" href="/student/goals?ay=<%= gv.thisMonth.slice(0,7) %>">Bu Ay</a>
-            <a class="button-link" href="/student/goals?ay=<%= gv.prevMonth.slice(0,7) %>">Önceki Ay</a>
-            <a class="button-link" href="/student/goals?ay=<%= gv.nextMonth.slice(0,7) %>">Sonraki Ay</a>
+            <a class="button-link" href="/student/goals?bolum=<%= currentSection %>&ay=<%= gv.thisMonth.slice(0,7) %>">Bu Ay</a>
+            <a class="button-link" href="/student/goals?bolum=<%= currentSection %>&ay=<%= gv.prevMonth.slice(0,7) %>">Önceki Ay</a>
+            <a class="button-link" href="/student/goals?bolum=<%= currentSection %>&ay=<%= gv.nextMonth.slice(0,7) %>">Sonraki Ay</a>
           </div>
         </header>
 
+        <% if (currentSection === 'kayit') { %>
         <section class="panel">
           <h3><%= gv.monthLabel %> Kaydı</h3>
           <p class="section-label">Ayın Kaydı</p>
@@ -994,7 +1028,9 @@
             </article>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'hedefler') { %>
         <% if (!gv.goals.length) { %>
         <section class="panel narrow">
           <h3>Bu ay hedef yok</h3>
@@ -1020,6 +1056,7 @@
         <% }) %>
         <% } %>
         <% } %>
+        <% } %>
 
         <% if (currentPage === 'schedule' && scheduleView) { %>
         <header class="content-header row space-between center">
@@ -1039,10 +1076,7 @@
               <% } %>
             </p>
           </div>
-          <div class="row">
-            <a class="button-link <%= scheduleView.gorunum === 'cizelge' ? 'active' : '' %>" href="/student/schedule">Çizelge</a>
-            <a class="button-link <%= scheduleView.gorunum === 'konular' ? 'active' : '' %>" href="/student/schedule?gorunum=konular">İşlenen Konular</a>
-          </div>
+
         </header>
 
         <%# Bos hafta ile "hic program yok" ayni sey degil: cizelge haftadan
@@ -1062,9 +1096,9 @@
               </p>
             </div>
             <div class="row center">
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
             </div>
           </div>
         </section>
@@ -1089,6 +1123,7 @@
           </article>
         </section>
 
+        <% if (currentSection === 'cizelge') { %>
         <section class="panel">
           <div class="datatable-toolbar">
             <div>
@@ -1106,9 +1141,9 @@
               </p>
             </div>
             <div class="row center">
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
-              <a class="button-link" href="/student/schedule?hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu Hafta</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
             </div>
           </div>
           <%
@@ -1148,7 +1183,9 @@
             </div>
           </div>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'ozet') { %>
         <section class="panel">
           <h3>Gün Özeti</h3>
           <div class="table-wrap">
@@ -1162,6 +1199,7 @@
             </table>
           </div>
         </section>
+        <% } %>
 
         <% } else if (scheduleView.topicWeek) { %>
         <% const tw = scheduleView.topicWeek; %>
@@ -1175,15 +1213,16 @@
             </p>
           </div>
           <div class="row">
-            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.thisWeekStart %>">Bu Hafta</a>
-            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.prevWeekStart %>">Önceki Hafta</a>
-            <a class="button-link" href="/student/schedule?gorunum=konular&hafta=<%= tw.nextWeekStart %>">Sonraki Hafta</a>
+            <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= tw.thisWeekStart %>">Bu Hafta</a>
+            <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= tw.prevWeekStart %>">Önceki Hafta</a>
+            <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= tw.nextWeekStart %>">Sonraki Hafta</a>
           </div>
         </header>
 
+        <% if (currentSection === 'konular') { %>
         <% if (scheduleView.canEditTopics) { %>
         <form method="post" action="/student/schedule/topics">
-          <input type="hidden" name="next" value="/student/schedule?gorunum=konular&hafta=<%= tw.weekStart %>" />
+          <input type="hidden" name="next" value="/student/schedule?bolum=konular&hafta=<%= tw.weekStart %>" />
           <input type="hidden" name="weekStart" value="<%= tw.weekStart %>" />
         <% } %>
 
@@ -1249,7 +1288,9 @@
         <% if (scheduleView.canEditTopics) { %>
         </form>
         <% } %>
+        <% } %>
 
+        <% if (currentSection === 'excel') { %>
         <section class="panel narrow">
           <h3>Excel Çıktısı</h3>
           <p class="muted">
@@ -1258,7 +1299,7 @@
             Varsayılan aralık <strong><%= tw.exportLabel %></strong>.
           </p>
           <form method="get" action="/student/schedule/topics/export" class="stack">
-            <input type="hidden" name="next" value="/student/schedule?gorunum=konular" />
+            <input type="hidden" name="next" value="/student/schedule?bolum=excel" />
             <label>Başlangıç</label>
             <input type="date" name="from" value="<%= tw.exportFrom %>" />
             <label>Bitiş</label>
@@ -1268,6 +1309,7 @@
         </section>
         <% } %>
         <% } %>
+        <% } %>
 
         <% if (currentPage === 'questions') { %>
         <header class="content-header">
@@ -1275,6 +1317,7 @@
           <p class="muted"><%= today %></p>
         </header>
 
+        <% if (currentSection === 'ekle') { %>
         <section class="panel">
           <form method="post" action="/student/questions" class="grid two">
             <div class="stack">
@@ -1307,7 +1350,9 @@
             </div>
           </form>
         </section>
+        <% } %>
 
+        <% if (currentSection === 'liste') { %>
         <section class="panel">
           <h3>Son Kayıtlar</h3>
           <% if (!questionHistory.length) { %>
@@ -1344,6 +1389,7 @@
           </div>
           <% } %>
         </section>
+        <% } %>
         <% } %>
 
       </section>
