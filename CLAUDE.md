@@ -716,10 +716,15 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
     içerideki `.day-group-inner`'da.
   - Mobil etiket betiği (`thead`'den `data-label` üretir) **colspan'li
     hücreleri atlar**; yoksa başlığın üstüne "Tarih" etiketi yapışıyordu.
-- **Satırda yazılan konu görünür:** ders görevinin başlığının altında
-  *"İşlenen: Türev tanımı ve kurallar"* satırı çıkar (o haftanın
-  `lesson_topics` kaydından okunur, göreve kopyalanmaz — konu düzeltilirse
-  satır da düzelir).
+- **Satırda yazılan konu, kendi sütununda:** *İşlenen Konu / Not* sütununda
+  o ders saatine yazılan konu görünür (yazılmadıysa *"Konu yazılmadı"*).
+  Görevin künyesi (zil saati, sınıf) başlığın altındaki küçük satıra indi;
+  üretilen açıklamadaki *"işlenen konuyu yaz"* kalıbı kaldırıldı.
+  - Konu `lesson_topics`ten okunur, göreve **kopyalanmaz** — konu
+    düzeltilirse satır da düzelir.
+  - Ders görevinde bu sütun **elle düzenlenemez** (`canEditDescription`
+    kapalı): kaynağı İşlenen Konular ekranıdır. Rutin satırlarında aynı sütun
+    öğrencinin kendi notudur, düzenlenebilir.
 - **Liste boşsa nedeni yazılır:** hesapta hiç ders görevi yoksa *"öğretmenin
   ... bu öğrenciyi seçip oluşturması gerekir"*, görev var ama bu haftaya
   düşmüyorsa *"N ders görevi var (tarih aralığı), hiçbiri bu haftaya

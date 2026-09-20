@@ -1908,12 +1908,14 @@ function lessonTaskTitle(satir) {
   return `${satir.period}. ders · ${satir.subject}`;
 }
 
+// Gorevin kendi kunyesi: zil saati, sinif, derslik. "Islenen konuyu yaz" gibi
+// kalip bir metin EKLENMEZ — ogrenci listesinde aciklama sutununda artik
+// YAZILAN KONU duruyor, kunye baslik altinda kucuk satirda.
 function lessonTaskDescription(satir) {
   const parcalar = [];
   if (satir.zil) parcalar.push(`${satir.zil.start}-${satir.zil.end}`);
   if (satir.className) parcalar.push(satir.className);
   if (satir.room) parcalar.push(satir.room);
-  parcalar.push('işlenen konuyu yaz');
   return parcalar.join(' · ');
 }
 
@@ -4959,17 +4961,26 @@ async function getStudentViewModel(req, currentPage) {
       // Tek seferlikte herhangi bir isaret, tekrarlida BUGUNKU isaret sayar.
       const isMarked = task.repeatType === 'once' ? Boolean(displayStatus) : Boolean(todayStatus);
       const locked = isMarked || isTaskLockedNow(task, today, nowHm);
-      // Ders gorevi ise o ders saatine yazilan konu (varsa) satirda gosterilir.
+      // Ders gorevinde ACIKLAMA SUTUNU = o ders saatine yazilan konu.
+      // Gorevin kunyesi (zil saati, sinif) baslik altinda kucuk satira iner.
+      const dersGorevi = isLessonTask(task.sourceKey);
       let lessonTopic = '';
-      if (isLessonTask(task.sourceKey) && task.singleDate) {
+      let lessonMeta = '';
+      if (dersGorevi && task.singleDate) {
         const parcalar = String(task.sourceKey).split(':');
         lessonTopic = haftaKonulari.get(`${schedule.dayOfWeek(task.singleDate)}:${Number(parcalar[2])}`) || '';
+        // Eski gorevlerde aciklamanin sonunda kalip metin kalmis olabilir.
+        lessonMeta = String(task.description || '').replace(/\s*·\s*işlenen konuyu yaz$/, '');
       }
 
       return {
         ...task,
         isMarked,
         lessonTopic,
+        lessonMeta,
+        // Ders gorevinde aciklama YAZILAN KONUDUR; elle duzenlenmez, kaynagi
+        // Islenen Konular ekranidir.
+        description: dersGorevi ? lessonTopic : task.description,
         categoryName: category ? category.name : 'Kategori Yok',
         scheduleText: formatTaskSchedule(task),
         todayStatus,
@@ -4983,7 +4994,7 @@ async function getStudentViewModel(req, currentPage) {
         // takildim", "yarim kaldi" gibi. Digerleri (baslik, kategori, tarih)
         // hala yalnizca kendi actigi gorevlerde acik.
         canEditTime: !locked,
-        canEditDescription: !locked,
+        canEditDescription: !locked && !dersGorevi,
         isLocked: locked
       };
     });
