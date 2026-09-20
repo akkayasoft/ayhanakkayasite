@@ -2758,6 +2758,8 @@ async function getAdminViewModel(req, currentPage) {
         estimated_time AS "estimatedTime",
         is_archived AS "isArchived",
         created_by AS "createdBy",
+        -- Ders gorevini tanimak ve yazilan konuyu eslestirmek icin gerekli.
+        source_key AS "sourceKey",
         created_at AS "createdAt"
       FROM tasks
       ORDER BY created_at DESC
@@ -2863,7 +2865,33 @@ async function getAdminViewModel(req, currentPage) {
   const activeTaskStudentIdRaw = normalizeText(req.query.activeTaskStudentId);
   const activeTaskStudentId = students.some((s) => s.id === activeTaskStudentIdRaw) ? activeTaskStudentIdRaw : '';
 
-  const sortedAllTasks = [...tasks].sort(compareTasksBySchedule);
+  // Ders gorevlerinde listede YAZILAN KONU gorunsun (ogrenci panelindeki ile
+  // ayni duzen). Konular tek sorguda haritaya alinir: tablo ogretim yilinin
+  // tamamini gosterdigi icin gorev basina sorgu atilamaz.
+  const tumKonularRes = await query(
+    `
+      SELECT week_start AS "weekStart", day_of_week AS "dayOfWeek", period, topic
+      FROM lesson_topics
+      WHERE topic <> ''
+    `
+  );
+  const konuHaritasi = new Map(
+    tumKonularRes.rows.map((r) => [`${toDateOnly(r.weekStart)}:${r.dayOfWeek}:${r.period}`, r.topic])
+  );
+  const dersGorevAyrinti = (task) => {
+    if (!isLessonTask(task.sourceKey) || !task.singleDate) return {};
+    const saat = Number(String(task.sourceKey).split(':')[2]);
+    const anahtar = `${startOfWeek(task.singleDate)}:${schedule.dayOfWeek(task.singleDate)}:${saat}`;
+    return {
+      lessonTopic: konuHaritasi.get(anahtar) || '',
+      // Eski gorevlerde aciklamanin sonunda kalip metin kalmis olabilir.
+      lessonMeta: String(task.description || '').replace(/\s*·\s*işlenen konuyu yaz$/, '')
+    };
+  };
+
+  const sortedAllTasks = [...tasks]
+    .sort(compareTasksBySchedule)
+    .map((task) => ({ ...task, ...dersGorevAyrinti(task) }));
   const taskTableTasks = activeTaskStudentId
     ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
     : sortedAllTasks;

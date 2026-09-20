@@ -725,6 +725,14 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   - Ders görevinde bu sütun **elle düzenlenemez** (`canEditDescription`
     kapalı): kaynağı İşlenen Konular ekranıdır. Rutin satırlarında aynı sütun
     öğrencinin kendi notudur, düzenlenebilir.
+  - **Admin "Görevler" tablosu da aynı düzendedir**: *Konu* sütunu *İşlenen
+    Konu* oldu, künye başlığın altına indi. Konular her satır için ayrı ayrı
+    sorgulanmaz — `lesson_topics` **tek sorguda** okunup
+    `hafta:gün:saat` anahtarlı bir haritaya konur (`konuHaritasi`), satırlar
+    `source_key`'den türetilen anahtarla eşlenir.
+    > Admin görev sorgusu `source_key` **seçmiyordu**; bu yüzden ilk denemede
+    > başlıklar değişti ama satırlar eski açıklamayı gösterdi. Görünüm modeli
+    > bir alanı kullanacaksa sorguya da eklenmeli.
 - **Liste boşsa nedeni yazılır:** hesapta hiç ders görevi yoksa *"öğretmenin
   ... bu öğrenciyi seçip oluşturması gerekir"*, görev var ama bu haftaya
   düşmüyorsa *"N ders görevi var (tarih aralığı), hiçbiri bu haftaya

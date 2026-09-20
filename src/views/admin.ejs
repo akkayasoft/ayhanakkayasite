@@ -438,7 +438,8 @@
                   <th><input id="bulkSelectAll" type="checkbox" /></th>
                   <% } %>
                   <th>Başlık</th>
-                  <th>Konu</th>
+                  <%# Ders gorevinde bu sutun o ders saatine YAZILAN KONUDUR. %>
+                  <th>İşlenen Konu</th>
                   <th>Öğrenci</th>
                   <th>Kategori</th>
                   <th>Son Saat</th>
@@ -453,8 +454,8 @@
                   <% if (isUpdatePage) { %>
                   <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
                   <% } %>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><%= t.description || '-' %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong><% if (t.lessonMeta) { %><small class="muted lesson-topic"><%= t.lessonMeta %></small><% } %></td>
+                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><% if (t.lessonMeta) { %><%= t.lessonTopic || 'Konu yazılmadı' %><% } else { %><%= t.description || '-' %><% } %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Öğrenci yok' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
                   <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= t.estimatedTime || '' %>"><%= t.estimatedTime || '-' %></td>
