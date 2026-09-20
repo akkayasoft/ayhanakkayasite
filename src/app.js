@@ -3532,7 +3532,19 @@ app.post(
     }
 
     const sonuc = await importLessonTasks(studentId, req.currentUser.id);
+
+    // Konusu ZATEN yazilmis dersler aktarimdan hemen sonra isaretlensin;
+    // yoksa yeni acilan gorevler muhurleyici turuna kadar (5 dk) "bekliyor"
+    // gorunuyordu.
+    let isaretlenen = 0;
+    try {
+      ({ completed: isaretlenen } = await completeLessonTasks());
+    } catch (err) {
+      console.error('Aktarım sonrası ders görevi tamamlama hatası:', err);
+    }
+
     const notlar = [];
+    if (isaretlenen) notlar.push(`${isaretlenen} görev, konusu yazılı olduğu için "Yapıldı" işaretlendi.`);
     if (sonuc.categories) notlar.push(`"${LESSON_CATEGORY}" kategorisi oluşturuldu.`);
     if (sonuc.updated) notlar.push(`${sonuc.updated} görev güncellendi.`);
     if (sonuc.removed) notlar.push(`${sonuc.removed} bayat görev kaldırıldı.`);

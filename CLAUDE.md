@@ -732,6 +732,19 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
 > çizelgesinde N ders saati var"* satırını yazıyor ve N=0 ise nedenini
 > açıklıyor.
 
+> ⚠️ **Açılır liste + tek düğme, görevlerin yanlış öğrenciye yazılmasına yol
+> açtı.** Kullanıcı listeyi değiştirmeden düğmeye bastığı için görevler ilk
+> öğrenciye gitti; kendi hesabında "Bu hesapta hiç ders görevi yok" gördü ve
+> özellik çalışmıyor sanıldı. Panel artık **her öğrencinin kendi satırında
+> kendi düğmesini** taşıyor (*"Görevleri Oluştur"* / *"Güncelle"*) — seçim
+> hatası yapısal olarak kalktı.
+>
+> Aktarım biter bitmez `completeLessonTasks()` de çalışır: konusu **zaten
+> yazılı** dersler anında "Yapıldı" olur, mühürleyici turu beklenmez.
+> Doğrulandı: aktarım mesajı *"287 ders görevi eklendi … 2 görev, konusu
+> yazılı olduğu için Yapıldı işaretlendi"* dedi ve öğrenci listesi
+> *Tamamlanan 2 / Bekleyen 5* gösterdi.
+
 **Panel her öğrencinin o haftaki durumunu ayrı satırda gösterir**
 (*"Ayhan Test · Görev yok"* / *"Muhammed Gök · 7 ders · 2 konusu yazıldı"*).
 Görevler yalnızca aktarım yapılan öğrenciye yazıldığı için "oluşturdum ama

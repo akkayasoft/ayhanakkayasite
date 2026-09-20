@@ -1925,46 +1925,45 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             <% } %>
           </p>
           <% if (tw.haftaGorevleri && tw.haftaGorevleri.length) { %>
+          <%# Her ogrencinin KENDI satirinda kendi dugmesi var. Once acilir
+              liste + tek dugme vardi: kullanici listeyi degistirmeden bastigi
+              icin gorevler yanlis ogrenciye yazildi ve "olusturdum ama
+              gorunmuyor" ortaya cikti. Satir bazinda dugme o hatayi
+              yapisal olarak kaldiriyor. %>
           <p class="muted">Bu haftanın ders görevleri:</p>
           <ul class="clean-list">
             <% tw.haftaGorevleri.forEach((g) => { %>
             <li class="row space-between center">
-              <span><%= g.studentName %></span>
-              <% if (!g.toplam) { %>
-              <span class="day-badge miss">Görev yok</span>
-              <% } else { %>
-              <span class="day-badge <%= g.isaretli >= g.toplam ? 'ok' : 'off' %>">
-                <%= g.toplam %> ders · <%= g.isaretli %> konusu yazıldı
+              <span>
+                <strong><%= g.studentName %></strong>
+                <% if (!g.toplam) { %>
+                <span class="day-badge miss">Görev yok</span>
+                <% } else { %>
+                <span class="day-badge <%= g.isaretli >= g.toplam ? 'ok' : 'off' %>">
+                  <%= g.toplam %> ders · <%= g.isaretli %> konusu yazıldı
+                </span>
+                <% } %>
               </span>
-              <% } %>
+              <form method="post" action="/admin/schedule/log-tasks">
+                <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
+                <input type="hidden" name="studentId" value="<%= g.studentId %>" />
+                <button type="submit" class="<%= g.toplam ? 'ghost' : '' %>">
+                  <%= g.toplam ? 'Güncelle' : 'Görevleri Oluştur' %>
+                </button>
+              </form>
             </li>
             <% }) %>
           </ul>
           <p class="muted">
-            Bir öğrenci için <strong>"Görev yok"</strong> yazıyorsa o öğrenciye
-            aktarım yapılmamıştır — aşağıdan onu seçip tekrar oluşturun.
-            Öğrencinin <strong>Görevlerim</strong> sayfasında bu haftanın
-            dersleri görünür.
+            Öğretim yılındaki tüm ders saatleri o öğrenci için açılır; tekrar
+            basmak yalnızca eksikleri tamamlar. Çizelge değişirse başlıklar
+            tazelenir — ama işaretlenmiş ve günü geçmiş görevler asla
+            oynatılmaz. Öğrencinin <strong>Görevlerim</strong> sayfasında bu
+            haftanın dersleri görünür.
           </p>
           <% } %>
           <% if (!students.length) { %>
           <p class="muted">Önce bir öğrenci ekleyin.</p>
-          <% } else { %>
-          <form method="post" action="/admin/schedule/log-tasks" class="stack">
-            <input type="hidden" name="next" value="/admin/schedule?gorunum=konular" />
-            <label>Öğrenci</label>
-            <select name="studentId" required>
-              <% students.forEach((st) => { %>
-              <option value="<%= st.id %>" <%= tw.logTask && tw.logTask.studentName === st.name ? 'selected' : '' %>><%= st.name %></option>
-              <% }) %>
-            </select>
-            <button type="submit">Ders Görevlerini Oluştur</button>
-            <p class="muted">
-              Öğretim yılındaki tüm ders saatleri için açılır; tekrar basmak
-              yalnızca eksikleri tamamlar. Çizelge değişirse başlıklar tazelenir —
-              ama işaretlenmiş ve günü geçmiş görevler asla oynatılmaz.
-            </p>
-          </form>
           <% } %>
         </section>
 
