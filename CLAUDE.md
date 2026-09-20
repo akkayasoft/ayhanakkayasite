@@ -702,6 +702,20 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
 > (`corrected_by` dolu) ezilmez**; yalnızca otomatik mührün üzerine yazılır ve
 > `previous_status` ile izi kalır.
 
+- **Liste GÜN GÜN okunur:** satırlar tarihe göre sıralanır ve her yeni günün
+  başına bir başlık bandı girer — *"PAZARTESİ · 2026-09-14 · 2 görev ·
+  1 tamamlandı"*, bugünse "Bugün" rozetiyle. Aynı gün içinde önce rutinler
+  (sabah), sonra ders saatleri gelir; ders sırası başlık metninden değil
+  `source_key`'deki sayıdan okunur ("10. ders" metinsel sıralamada "2. ders"in
+  önüne düşerdi).
+  - Başlık satırı tablo satırıdır (`colspan`), böylece mobil kart dönüşümü ve
+    filtreler bozulmaz. Filtre çalışınca **tüm satırları gizlenen günün başlığı
+    da gizlenir**.
+  - `display:flex` doğrudan `td`'ye verilince hücre table-cell olmaktan çıkıp
+    `colspan`'i yok sayıyor ve başlık ilk sütuna sıkışıyordu; flex artık
+    içerideki `.day-group-inner`'da.
+  - Mobil etiket betiği (`thead`'den `data-label` üretir) **colspan'li
+    hücreleri atlar**; yoksa başlığın üstüne "Tarih" etiketi yapışıyordu.
 - **Satırda yazılan konu görünür:** ders görevinin başlığının altında
   *"İşlenen: Türev tanımı ve kurallar"* satırı çıkar (o haftanın
   `lesson_topics` kaydından okunur, göreve kopyalanmaz — konu düzeltilirse

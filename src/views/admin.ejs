@@ -2100,7 +2100,11 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           );
           if (!basliklar.length) continue;
           for (const satir of tablo.querySelectorAll('tbody tr')) {
+            // Gun basligi gibi TUM SATIRI kaplayan hucreler etiketlenmez:
+            // "Tarih" etiketi basligin ustune yapisiyordu.
+            if (satir.classList.contains('day-group-row')) continue;
             [...satir.children].forEach((hucre, i) => {
+              if (hucre.colSpan > 1) return;
               const etiket = basliklar[i];
               if (etiket && !hucre.hasAttribute('data-label')) {
                 hucre.setAttribute('data-label', etiket);

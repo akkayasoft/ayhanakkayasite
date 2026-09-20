@@ -178,9 +178,33 @@
                 </tr>
               </thead>
               <tbody>
+                <%# GUN GUN: liste tarih sirali; her yeni gunde once bir baslik
+                    satiri basilir. Baslik satirinin data-gun'u, filtre
+                    calistiginda o gunun hepsi gizlendiyse basligi da gizlemek
+                    icin kullanilir. %>
+                <% let oncekiGun = null; %>
                 <% activeTasks.forEach((task) => { %>
+                <% if (task.gun !== oncekiGun) { oncekiGun = task.gun; %>
+                <tr class="day-group-row" data-gun="<%= task.gun %>">
+                  <td colspan="7">
+                    <%# Flex KAPSAYICI icerde: td'ye display:flex verilince
+                        hucre table-cell olmaktan cikiyor ve colspan calismiyor
+                        (basligi ilk sutuna sikistirmisti). %>
+                    <div class="day-group-inner">
+                      <span class="day-group-title">
+                        <%= task.gunAdi %> · <%= task.gun %><% if (task.gunBugun) { %>
+                        <span class="day-badge school">Bugün</span><% } %>
+                      </span>
+                      <span class="muted">
+                        <%= task.gunOzeti.toplam %> görev · <%= task.gunOzeti.yapilan %> tamamlandı
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                <% } %>
                 <tr
                   class="student-task-row <%= task.isRoutine ? 'routine-row' : '' %> <%= task.displayStatus?.status === 'done' ? 'task-row-success' : task.displayStatus?.status === 'not_done' ? 'task-row-error' : '' %>"
+                  data-gun="<%= task.gun %>"
                   data-task-id="<%= task.id %>"
                   <% if (task.cellEndpoint) { %>data-cell-endpoint="<%= task.cellEndpoint %>"<% } %>
                   data-title="<%= (task.title || '').toLowerCase() %>"
@@ -283,6 +307,15 @@
                   const matchCategory = !category || rowCategory.includes(category);
                   const matchDate = !date || rowDate.includes(date);
                   row.hidden = !(matchTitle && matchCategory && matchDate);
+                });
+
+                // Tum satirlari gizlenen gunun basligi da gizlenir; yoksa
+                // filtreden sonra bos gun basliklari asili kalirdi.
+                document.querySelectorAll('.day-group-row').forEach((baslik) => {
+                  const gun = baslik.getAttribute('data-gun');
+                  baslik.hidden = !rows.some(
+                    (row) => row.getAttribute('data-gun') === gun && !row.hidden
+                  );
                 });
               };
 
@@ -1320,7 +1353,11 @@
           );
           if (!basliklar.length) continue;
           for (const satir of tablo.querySelectorAll('tbody tr')) {
+            // Gun basligi gibi TUM SATIRI kaplayan hucreler etiketlenmez:
+            // "Tarih" etiketi basligin ustune yapisiyordu.
+            if (satir.classList.contains('day-group-row')) continue;
             [...satir.children].forEach((hucre, i) => {
+              if (hucre.colSpan > 1) return;
               const etiket = basliklar[i];
               if (etiket && !hucre.hasAttribute('data-label')) {
                 hucre.setAttribute('data-label', etiket);

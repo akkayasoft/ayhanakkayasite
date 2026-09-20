@@ -5121,8 +5121,41 @@ async function getStudentViewModel(req, currentPage) {
     };
   }
 
-  // Listede gorunen satirlarin tamami: once rutinler, sonra gorevler.
-  const listeSatirlari = [...rutinSatirlari, ...activeTasks];
+  // Listede gorunen satirlarin tamami, GUN GUN okunacak sekilde siralanir:
+  // once tarih, ayni gun icinde once rutinler (sabah), sonra ders saatleri.
+  // Ders saati sirasi baslik metninden degil source_key'deki sayidan gelir —
+  // "10. ders" metinsel siralamada "2. ders"in onune duserdi.
+  const satirSirasi = (satir) => {
+    if (satir.isRoutine) return satir.routineTur === 'wake' ? 0 : 1;
+    if (isLessonTask(satir.sourceKey)) {
+      const saat = Number(String(satir.sourceKey).split(':')[2]);
+      return Number.isFinite(saat) ? 100 + saat : 900;
+    }
+    return 900;
+  };
+  const listeSatirlari = [...rutinSatirlari, ...activeTasks].sort(
+    (a, b) =>
+      String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
+      satirSirasi(a) - satirSirasi(b) ||
+      String(a.title || '').localeCompare(String(b.title || ''), 'tr')
+  );
+
+  // Gun basliklari icin: her satirin gun adi ve o gunun ozeti.
+  const gunOzeti = new Map();
+  for (const satir of listeSatirlari) {
+    const gun = satir.singleDate || today;
+    if (!gunOzeti.has(gun)) gunOzeti.set(gun, { toplam: 0, yapilan: 0 });
+    const ozet = gunOzeti.get(gun);
+    ozet.toplam += 1;
+    if (satir.displayStatus && satir.displayStatus.status === 'done') ozet.yapilan += 1;
+  }
+  for (const satir of listeSatirlari) {
+    const gun = satir.singleDate || today;
+    satir.gun = gun;
+    satir.gunAdi = getDayName(gun);
+    satir.gunBugun = gun === today;
+    satir.gunOzeti = gunOzeti.get(gun);
+  }
   // "Tamamlanan" sayaci EKRANDA GORUNENI saymali. Once yalnizca gorev
   // satirlarinin BUGUNKU durumuna bakiyordu: rutinler hic sayilmiyordu ve
   // defter gorevinin durumu kendi son tarihine (haftanin pazari) yazildigi
