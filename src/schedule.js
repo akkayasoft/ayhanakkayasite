@@ -1,10 +1,18 @@
 /**
  * Okul ders programi yardimcilari.
  *
- * Zil saatleri SAKLANMAZ, hesaplanir: baslangic saati + ders/teneffus/ogle
- * sureleri verilir, her ders saatinin baslangic-bitisi bunlardan turetilir.
- * Boylece "8. ders kacta baslar" sorusunun tek dogru cevabi olur ve saatler
- * elle girilirken kaymaz.
+ * Zil saatleri iki katmanlidir:
+ *
+ * 1. VARSAYILAN, hesaplanir: baslangic saati + ders/teneffus/ogle sureleri
+ *    verilir, her ders saatinin baslangic-bitisi bunlardan turetilir. Boylece
+ *    "8. ders kacta baslar" sorusunun tek dogru cevabi olur ve saatler tek tek
+ *    girilirken kaymaz.
+ * 2. GUNE OZEL ISTISNA, elle girilir: (gun, ders saati) ciftine yazilan saat
+ *    yalnizca o gunun o dersini degistirir. Butun gunler ayni duzende degil
+ *    (ikili ogretim, DYK, kisa cuma, telafi); istisna olmadan bu duzenler
+ *    programa hic girilemiyordu.
+ *
+ * Istisna haritasi bos oldugunda davranis 1. katmanla birebir aynidir.
  */
 
 // Cizelge 7 GUNLUK. Once Pzt-Cum idi; hafta sonuna ders koyan bir duzen
@@ -69,6 +77,65 @@ function buildPeriods(ayar = VARSAYILAN_AYAR) {
   return saatler;
 }
 
+/* --------------------------------------------------------------------------
+   Gune ozel zil saatleri
+   -------------------------------------------------------------------------- */
+
+function periodTimeKey(gun, period) {
+  return `${gun}:${period}`;
+}
+
+/** DB satirlarini `gun:saat -> {start,end}` haritasina cevirir. */
+function buildPeriodTimeMap(rows = []) {
+  const harita = new Map();
+  for (const r of rows) {
+    const gun = Number(r.dayOfWeek);
+    const period = Number(r.period);
+    if (!GUNLER.includes(gun) || !Number.isInteger(period)) continue;
+    if (!r.start || !r.end) continue;
+    harita.set(periodTimeKey(gun, period), { start: r.start, end: r.end });
+  }
+  return harita;
+}
+
+/**
+ * Bir GUNUN ders saatleri: elle girilmis saat varsa o, yoksa hesaplanan.
+ *
+ * Istisna SATIR BAZINDADIR — bir saate elle deger girmek sonraki saatleri
+ * KAYDIRMAZ. Kaydirsaydi tek bir duzeltme gunun geri kalanini sessizce
+ * degistirirdi; oysa elle giris tam da "bu saat digerlerine uymuyor" demek.
+ */
+function periodsForDay(ayar = VARSAYILAN_AYAR, gun = null, ozelSaatler = null) {
+  const varsayilan = buildPeriods(ayar);
+  if (!ozelSaatler || ozelSaatler.size === 0 || !gun) {
+    return varsayilan.map((s) => ({ ...s, ozel: false }));
+  }
+  return varsayilan.map((s) => {
+    const ozel = ozelSaatler.get(periodTimeKey(gun, s.period));
+    return ozel
+      ? { ...s, start: ozel.start, end: ozel.end, ozel: true }
+      : { ...s, ozel: false };
+  });
+}
+
+/**
+ * Bir gunun ilk baslangici - son bitisi. Elle girilen saatler duzeni
+ * bozabildigi icin "en erken baslangic / en gec bitis" olarak hesaplanir,
+ * ilk/son dersin saati olarak degil.
+ */
+function dayRange(ayar = VARSAYILAN_AYAR, gun = null, ozelSaatler = null) {
+  const saatler = periodsForDay(ayar, gun, ozelSaatler);
+  if (!saatler.length) return null;
+  const baslar = saatler.map((s) => hmToMinutes(s.start)).filter((n) => n !== null);
+  const bitisler = saatler.map((s) => hmToMinutes(s.end)).filter((n) => n !== null);
+  if (!baslar.length || !bitisler.length) return null;
+  return {
+    start: minutesToHm(Math.min(...baslar)),
+    end: minutesToHm(Math.max(...bitisler)),
+    ozel: saatler.some((s) => s.ozel)
+  };
+}
+
 /** Gunun bitis saati (son dersin bitisi). */
 function endOfDay(ayar = VARSAYILAN_AYAR) {
   const saatler = buildPeriods(ayar);
@@ -91,23 +158,34 @@ function dayOfWeek(dateStr) {
  * Haftalik izgara: satir = ders saati, sutun = gun.
  * entries -> class_schedule satirlari (gun/saat ile eslenmis).
  */
-function buildGrid(entries, ayar = VARSAYILAN_AYAR) {
+function buildGrid(entries, ayar = VARSAYILAN_AYAR, ozelSaatler = null) {
   const saatler = buildPeriods(ayar);
   const kayitByKey = new Map(entries.map((e) => [`${e.dayOfWeek}:${e.period}`, e]));
+
+  // Saat artik SATIRIN degil HUCRENIN ozelligi: ayni ders saati gunden gune
+  // farkli olabilir. Satirdaki saat varsayilan duzeni (sol saat sutunu)
+  // gosterir, hucre kendi gununun saatini tasir.
+  const gunSaatleri = new Map(
+    GUNLER.map((gun) => [
+      gun,
+      new Map(periodsForDay(ayar, gun, ozelSaatler).map((s) => [s.period, s]))
+    ])
+  );
 
   return saatler.map((saat) => ({
     ...saat,
     hucreler: GUNLER.map((gun) => ({
       dayOfWeek: gun,
       gunAdi: GUN_ADLARI[gun],
+      saat: gunSaatleri.get(gun).get(saat.period) || { ...saat, ozel: false },
       entry: kayitByKey.get(`${gun}:${saat.period}`) || null
     }))
   }));
 }
 
 /** Bir gunun dersleri, saat sirasinda. */
-function lessonsForDay(entries, gun, ayar = VARSAYILAN_AYAR) {
-  const saatByPeriod = new Map(buildPeriods(ayar).map((s) => [s.period, s]));
+function lessonsForDay(entries, gun, ayar = VARSAYILAN_AYAR, ozelSaatler = null) {
+  const saatByPeriod = new Map(periodsForDay(ayar, gun, ozelSaatler).map((s) => [s.period, s]));
   return entries
     .filter((e) => e.dayOfWeek === gun)
     .sort((a, b) => a.period - b.period)
@@ -281,6 +359,9 @@ module.exports = {
   hmToMinutes,
   minutesToHm,
   buildPeriods,
+  buildPeriodTimeMap,
+  periodsForDay,
+  dayRange,
   endOfDay,
   dayOfWeek,
   buildGrid,

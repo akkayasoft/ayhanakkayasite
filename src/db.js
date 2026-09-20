@@ -216,6 +216,28 @@ async function initDb() {
     )
   `);
 
+  // GUNE OZEL ZIL SAATLERI.
+  //
+  // Varsayilan duzen hala school_settings'ten HESAPLANIR; burasi yalnizca
+  // ISTISNADIR: (gun, ders saati) ciftine elle saat girilir ve o gunun o
+  // dersi icin hesaplanan saatin yerine gecer. Butun gunler ayni duzende
+  // olmadigi icin gerekli (ikili ogretim, DYK, kisa cuma, telafi).
+  //
+  // Satir YOKSA o hucre hesaplanan saati kullanir — yani tablo bos oldugunda
+  // davranis eskisiyle birebir aynidir. Satir silmek "varsayilana don"
+  // demektir; bu yuzden "varsayilana esit" bir satir tutulmaz.
+  await query(`
+    CREATE TABLE IF NOT EXISTS period_times (
+      day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
+      period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (day_of_week, period),
+      CHECK (end_time > start_time)
+    )
+  `);
+
   // term: 0 = yil boyu, 1 = 1. donem, 2 = 2. donem.
   // NULL yerine 0 kullanildi ki UNIQUE kisiti calissin (Postgres'te NULL'lar
   // birbirinden farkli sayilir, NULL'lu bir kisit ayni hucreyi iki kez

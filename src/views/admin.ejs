@@ -1510,8 +1510,9 @@
               o hafta işlediğin konuyu yazarsın. <strong>Tatil ve bayram günleri de
               yazılabilir</strong> — takvim yalnızca rozetle uyarır, engellemez.
               <% } else { %>
-              Haftalık ders çizelgen. Zil saatleri elle girilmez — başlangıç saati ve
-              süreler verilir, her ders saatinin saati bunlardan hesaplanır.
+              Haftalık ders çizelgen. Zil saatleri başlangıç saati ve sürelerden
+              <strong>hesaplanır</strong>; bu düzene uymayan günlerde saatleri
+              <strong>gün gün elle</strong> de girebilirsin.
               Program Haftalık Takvim'de de görünür. <strong>Varsayılan çizelge</strong>
               her hafta için geçerlidir; bir haftayı seçip <strong>o haftaya özel</strong>
               çizelge de yapabilirsin.
@@ -1693,9 +1694,99 @@
                 Şu anki ayarla gün <strong><%= scheduleView.ayar.startTime %> - <%= scheduleView.bitisSaati %></strong>
                 arası. Bitiş saati tutmuyorsa süreleri değiştir.
                 <% if (scheduleView.ayar.isDefault) { %><br />Henüz kaydedilmedi, varsayılan gösteriliyor.<% } %>
+                <br />Bu ayar <strong>bütün günler</strong> için geçerlidir; tek bir günün
+                saatleri farklıysa aşağıdaki panelden o güne elle yaz.
               </p>
             </form>
           </article>
+        </section>
+
+        <%# GUNE OZEL ZIL SAATLERI. Varsayilan duzen yukaridaki ayardan
+            hesaplanir; burasi yalnizca ISTISNADIR. Bos birakilan satir
+            varsayilana doner (kayit silinir), bir satira saat yazmak sonraki
+            saatleri KAYDIRMAZ. %>
+        <section class="panel">
+          <h3>Gün Gün Zil Saatleri</h3>
+          <p class="muted">
+            Bütün günler aynı düzende olmayabilir (ikili öğretim, DYK, kısa cuma,
+            telafi). Burada <strong><%= scheduleView.saatGunAdi %></strong> gününün
+            ders saatlerini elle yazarsın; yazdığın saat yalnızca o günü etkiler ve
+            <strong>sonraki saatleri kaydırmaz</strong>. Boş bıraktığın satır
+            hesaplanan varsayılana döner.
+            <% if (scheduleView.ozelSaatSayisi) { %>
+            <br />Şu an toplam <strong><%= scheduleView.ozelSaatSayisi %></strong> ders saati elle girilmiş.
+            <% } else { %>
+            <br />Şu an hiçbir gün için elle saat girilmemiş; tüm günler hesaplanan çizelgeyi kullanıyor.
+            <% } %>
+          </p>
+
+          <div class="row" style="margin-bottom: 10px">
+            <% scheduleView.gunSayilari.forEach((g) => { %>
+            <a
+              class="button-link <%= scheduleView.saatGunu === g.dayOfWeek ? 'active' : '' %>"
+              href="/admin/schedule?saatGun=<%= g.dayOfWeek %><%= hf ? `&hafta=${hf}` : '' %>"
+            ><%= g.gunAdi %><% if (g.ozelSayisi) { %> · <%= g.ozelSayisi %><% } %></a>
+            <% }) %>
+          </div>
+
+          <form method="post" action="/admin/schedule/period-times" class="stack">
+            <input type="hidden" name="next" value="/admin/schedule?saatGun=<%= scheduleView.saatGunu %>" />
+            <input type="hidden" name="gun" value="<%= scheduleView.saatGunu %>" />
+            <div class="table-wrap">
+              <table class="stack-mobile">
+                <thead>
+                  <tr>
+                    <th>Ders Saati</th>
+                    <th>Başlangıç</th>
+                    <th>Bitiş</th>
+                    <th>Varsayılan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% scheduleView.saatSatirlari.forEach((sa) => { %>
+                  <tr>
+                    <td><%= sa.period %>. ders</td>
+                    <td>
+                      <input
+                        type="time"
+                        name="bas<%= sa.period %>"
+                        value="<%= sa.ozel ? sa.start : '' %>"
+                        placeholder="<%= sa.varsayilanStart %>"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="time"
+                        name="bit<%= sa.period %>"
+                        value="<%= sa.ozel ? sa.end : '' %>"
+                        placeholder="<%= sa.varsayilanEnd %>"
+                      />
+                    </td>
+                    <td class="single-line-cell">
+                      <%= sa.varsayilanStart %> - <%= sa.varsayilanEnd %>
+                      <% if (sa.ozel) { %><br /><span class="day-badge off">Elle girildi</span><% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+            <div class="row">
+              <button type="submit"><%= scheduleView.saatGunAdi %> Saatlerini Kaydet</button>
+              <button
+                type="submit"
+                name="islem"
+                value="sifirla"
+                class="danger"
+                onclick="return confirm('<%= scheduleView.saatGunAdi %> gününün elle girilmiş saatleri silinsin mi? Gün hesaplanan çizelgeye döner.')"
+              >Bu Günü Varsayılana Döndür</button>
+            </div>
+            <p class="muted">
+              Boş satır = varsayılan. Bir satıra varsayılanla <strong>aynı</strong> saati
+              yazarsan da kayıt tutulmaz: süreler sonradan değişince o hücrenin eski
+              saatte donmaması için.
+            </p>
+          </form>
         </section>
 
         <section class="panel">
@@ -1758,7 +1849,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                 class="board-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                 style="--g: <%= g + 1 %>; --s: <%= i + 2 %>"
               >
-                <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                <span class="board-cell-time <%= h.saat.ozel ? 'ozel-saat' : '' %>" <%= h.saat.ozel ? 'title="Bu güne elle girilmiş saat"' : '' %>><%= satir.period %>. ders · <%= h.saat.start %>-<%= h.saat.end %></span>
                 <% if (h.entry) { %>
                 <a class="cell-link" href="/admin/schedule?duzenle=<%= h.entry.id %><%= hf ? `&hafta=${hf}` : '' %>">
                   <strong><%= h.entry.subject %></strong>
@@ -1784,12 +1875,16 @@ Cuma&#9;8&#9;Nöbet"></textarea>
           <div class="table-wrap">
             <table class="stack-mobile">
               <thead>
-                <tr><th>Gün</th><th>Ders</th><th>Boş Saat</th><th>Nöbet</th></tr>
+                <tr><th>Gün</th><th>Saat Aralığı</th><th>Ders</th><th>Boş Saat</th><th>Nöbet</th></tr>
               </thead>
               <tbody>
                 <% scheduleView.gunSayilari.forEach((g) => { %>
                 <tr>
                   <td><%= g.gunAdi %></td>
+                  <td class="single-line-cell">
+                    <%= g.aralik ? `${g.aralik.start} - ${g.aralik.end}` : '-' %>
+                    <% if (g.ozelSayisi) { %><br /><span class="day-badge off"><%= g.ozelSayisi %> saat elle</span><% } %>
+                  </td>
                   <td><%= g.dersSayisi %></td>
                   <td><%= g.bosSaat %></td>
                   <td><% if (g.nobet) { %><span class="day-badge off">Var</span><% } else { %>-<% } %></td>
@@ -1861,7 +1956,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
                   class="board-cell <%= h.entry ? 'filled' : 'empty' %> <%= h.entry && h.olagandisi ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                   style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
                 >
-                  <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                  <span class="board-cell-time <%= h.saat && h.saat.ozel ? 'ozel-saat' : '' %>"><%= satir.period %>. ders · <%= h.saat ? h.saat.start : satir.start %>-<%= h.saat ? h.saat.end : satir.end %></span>
                   <% if (h.entry) { %>
                   <p class="topic-head">
                     <strong><%= h.entry.subject %></strong>

@@ -604,11 +604,67 @@ dönüyor ve Cumartesi/Pazar blokları da çıkıyor.
 > sayıldığı için NULL'lu bir UNIQUE kısıtı aynı hücrenin iki kez girilmesini
 > engellemezdi.
 
-**Zil saatleri saklanmaz, hesaplanır** (`src/schedule.js`): ayardan her ders
-saatinin başlangıç-bitişi türetilir. Böylece "8. ders kaçta" sorusunun tek doğru
-cevabı olur ve saatler elle girilirken kaymaz. Sayfada günün bitiş saati
-gösterilir; kullanıcı süreleri tutturana kadar ayarlar (08:00 + 10 ders × 40 dk
-+ 10 dk teneffüs + 6. dersten sonra 40 dk öğle = 16:40).
+**Zil saatleri hesaplanır; güne özel saat elle girilebilir**
+(`src/schedule.js`). Varsayılan düzen ayardan türetilir: her ders saatinin
+başlangıç-bitişi başlangıç saati + ders/teneffüs/öğle sürelerinden gelir.
+Böylece "8. ders kaçta" sorusunun tek doğru cevabı olur ve saatler tek tek
+girilirken kaymaz. Sayfada günün bitiş saati gösterilir; kullanıcı süreleri
+tutturana kadar ayarlar (08:00 + 10 ders × 40 dk + 10 dk teneffüs + 6. dersten
+sonra 40 dk öğle = 16:40).
+
+### Gün gün zil saatleri (elle giriş)
+
+Bu düzen **bütün günler için** geçerliydi; oysa her gün aynı değil (ikili
+öğretim, DYK, kısa cuma, telafi). `/admin/schedule` → **Gün Gün Zil Saatleri**
+panelinde bir gün seçilip o günün ders saatleri **elle** yazılır.
+
+- `period_times` (`PRIMARY KEY (day_of_week, period)`): `start_time`,
+  `end_time`. Satır **yalnızca istisnadır** — tablo boşken davranış eskisiyle
+  birebir aynıdır, her gün hesaplanan çizelgeyi kullanır.
+- **Elle giriş satır bazındadır: sonraki saatleri KAYDIRMAZ.** Kaydırsaydı tek
+  bir düzeltme günün geri kalanını sessizce değiştirirdi; oysa elle giriş tam
+  da *"bu saat diğerlerine uymuyor"* demek.
+- **Boş satır = varsayılana dön** (kayıt silinir). Varsayılanla **birebir aynı**
+  saat de saklanmaz: saklansaydı süreler sonradan değiştiğinde o hücre eski
+  saatte donar ve kimse nedenini bilemezdi. *"Bu Günü Varsayılana Döndür"*
+  düğmesi günün tüm istisnalarını tek hamlede siler.
+- Bir alanı doldurup diğerini boş bırakmak **reddedilir** — girilen saatin
+  kaydedilmediğini fark etmemek en kötü sonuç olurdu. Bitiş başlangıçtan sonra
+  olmalı (veritabanı `CHECK`'i de aynı kuralı tutar).
+- Günlük ders saati sayısı küçültülürse kapsam dışı kalan `period_times`
+  satırları da silinir (`class_schedule` ile aynı kapsam).
+
+> ⚠️ **Saat artık satırın değil HÜCRENİN özelliği.** Izgarada soldaki saat
+> sütunu **varsayılan** düzeni gösterir; bir hücrenin saati elle
+> değiştirilmişse hücre **kendi saatini** yazar (`.board-cell-time.ozel-saat`).
+> Hücre içi saat masaüstünde normalde gizlidir (soldaki sütun zaten gösteriyor);
+> istisna için açılmasaydı masaüstünde **yanlış saat** okunurdu.
+
+Zil saatini kullanan her yol güne duyarlı hale geldi: haftalık takvimdeki gün
+kartları, çizelge ızgarası, defter ızgarası, **ders görevi açıklaması**
+(*"09:00-09:45 · 11-A"*) ve İşlenen Konular **Excel çıktısı**. Gün Özeti'ne
+günün gerçek penceresini veren **Saat Aralığı** sütunu eklendi — elle girilen
+saatler düzeni bozabildiği için ilk/son dersin saati değil **en erken başlangıç
+- en geç bitiş** olarak hesaplanır.
+
+> Ders görevi açıklaması aktarım anında yazılır: saatler değiştikten sonra
+> görevlerin güncellenmesi için o öğrencinin **"Güncelle"** düğmesine basmak
+> gerekir (işaretlenmemiş + günü gelmemiş görevler tazelenir).
+
+Doğrulandı (lokal, 20 Eylül): Cuma 1-2. ders 09:00-09:45 / 09:55-10:40 elle
+girildi → çizelge ızgarası, öğrenci çizelgesi, defter ızgarası ve haftalık
+takvim o saatleri gösterdi, diğer günler **değişmedi**; Gün Özeti *Cuma
+09:00 - 16:40 · 2 saat elle* yazdı. Aktarım tekrarlanınca Cuma görevinin
+açıklaması `08:00-08:40` → `09:00-09:45` oldu, Pazartesi görevleri aynı kaldı;
+aktarım yapılmayan **diğer öğrencinin** görevi de dokunulmadan kaldı. Cumartesi
+1. ders 13:00-13:45 girildi ve Excel çıktısındaki o satır 13:00 - 13:45 geldi
+(Pzt/Sal satırları 08:00 - 08:40). Tek alan dolu, ters saat ve geçersiz gün
+**reddedildi**; varsayılanla aynı saat **kayıt açmadı** (*"0 saat elle
+girildi"*); *Varsayılana Döndür* günü temizledi, ikinci basış **reddedildi** ve
+sayfa *"hiçbir gün için elle saat girilmemiş"* dedi. Öğrenci **403**, oturumsuz
+**302**, öğrenci → `/admin/schedule` **403**. 1440 / 390px'te sayfa taşması
+**0**, hücre taşması 0, konsol hatası yok; telefonda panel kart etiketleri
+(*Ders Saati / Başlangıç / Bitiş / Varsayılan*) doğru.
 
 - Dolu bir hücreye tekrar kayıt **üstüne yazar** (`ON CONFLICT DO UPDATE`);
   düzeltmek için önce silmek gerekmez.
@@ -1150,6 +1206,7 @@ yalnızca gelecek yeniden düzenlenir.*
 | Rutin tamamen kaldırılır | `wake_logs` / `sport_logs` **silinmez** | ✅ 39 satır yerinde kaldı |
 | Defter görevleri yeniden aktarılır | Yeni hafta eklenir, **işaretlenmemiş ve günü gelmemiş** görevler tazelenir/silinir | ✅ geçmiş ve işaretli hiç oynamıyor |
 | Ders çizelgesi değişir | `lesson_topics` kaydın içine ders/sınıf adını kopyaladığı için geçmiş defter okunabilir kalır | ✅ ders silinip değiştirildikten sonra defter durdu |
+| Bir günün zil saatleri elle girilir | Yalnızca o günün o ders saatleri değişir; diğer günler ve sonraki saatler yerinde kalır. Görev açıklamaları bir sonraki aktarımda tazelenir | ✅ Cuma değişti, Pazartesi aynı kaldı |
 | Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
 | Admin bir rutin kaydını elle yazar | Satır değişir ama **izi kalır** (+ `previous_time`); değerlendirme kaydın kendi hedef/aralık kopyasına göre yapılır | ✅ mühürleyici ezmedi, öğrencinin basışı reddedildi |
 | Bir hafta özelleştirilir / varsayılana döndürülür | Yalnızca o haftanın `class_schedule` satırları değişir; **işlenen konular silinmez** (ders/sınıf adı kaydın içinde) | ✅ döndürme sonrası defter satırları durdu |

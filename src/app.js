@@ -772,9 +772,10 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
   // Okul ders programi: gunun derslerini takvimde gorevlerin yaninda goster ki
   // hangi saatin bos oldugu anlasilsin. Program uygulama genelinde tektir
   // (tek ogretmen varsayimi); tanimli degilse bu kisim sessizce bos gecer.
-  const [scheduleSettings, scheduleEntries] = await Promise.all([
+  const [scheduleSettings, scheduleEntries, scheduleTimes] = await Promise.all([
     getScheduleSettings(),
-    getScheduleEntries(weekStart)
+    getScheduleEntries(weekStart),
+    getPeriodTimes()
   ]);
 
   const days = getWeekDates(weekStart).map((day) => {
@@ -791,7 +792,12 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
     // izgarada hucre yoktur; "bu hafta ders yok" demek icin o haftanin
     // cizelgesi bosaltilir.
     const haftaninGunu = schedule.dayOfWeek(day);
-    const dersler = schedule.lessonsForDay(scheduleEntries, haftaninGunu, scheduleSettings);
+    const dersler = schedule.lessonsForDay(
+      scheduleEntries,
+      haftaninGunu,
+      scheduleSettings,
+      scheduleTimes
+    );
 
     return {
       date: day,
@@ -1630,6 +1636,32 @@ async function getScheduleSettings() {
 }
 
 /**
+ * GUNE OZEL ZIL SAATLERI.
+ *
+ * Varsayilan duzen hala hesaplanir; burasi yalnizca istisnalari getirir.
+ * Tablo bos oldugunda harita bos doner ve butun cagiranlar eskisi gibi
+ * hesaplanan saatleri kullanir.
+ */
+async function getPeriodTimes() {
+  const res = await query(
+    `
+      SELECT day_of_week AS "dayOfWeek", period,
+             start_time AS "startTime", end_time AS "endTime"
+      FROM period_times
+      ORDER BY day_of_week ASC, period ASC
+    `
+  );
+  return schedule.buildPeriodTimeMap(
+    res.rows.map((r) => ({
+      dayOfWeek: r.dayOfWeek,
+      period: r.period,
+      start: normalizeEstimatedTimeForDisplay(r.startTime),
+      end: normalizeEstimatedTimeForDisplay(r.endTime)
+    }))
+  );
+}
+
+/**
  * HAFTAYA OZEL CIZELGE.
  *
  * `week_start = SABLON_HAFTA` satirlari varsayilan haftalik sablondur; baska
@@ -1731,7 +1763,7 @@ async function getLessonTopics(weekStart) {
  * dolu ders saatine konu yazilir. Tatil/bayrama denk gelen gunlerde giris
  * alani acilmaz — o gun ders islenmedi.
  */
-async function buildTopicWeekView(req, ayar) {
+async function buildTopicWeekView(req, ayar, ozelSaatler = null) {
   const today = todayDateString();
   const weekStart = normalizeWeekStart(normalizeText(req.query.hafta), today) || startOfWeek(today);
   const weekEnd = shiftDate(weekStart, 6);
@@ -1747,6 +1779,14 @@ async function buildTopicWeekView(req, ayar) {
   const haftaBilgi = await getWeekScheduleInfo(weekStart);
 
   const saatler = schedule.buildPeriods(ayar);
+  // Defter izgarasinda da saat HUCREYE aittir: ayni ders saati gunden gune
+  // farkli olabilir.
+  const gunSaatleri = new Map(
+    schedule.GUNLER.map((gun) => [
+      gun,
+      new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
+    ])
+  );
   const kayitByKey = new Map(kayitlar.map((k) => [`${k.dayOfWeek}:${k.period}`, k]));
 
   // Gun basliklari: haftanin gercek tarihleri + takvim durumu.
@@ -1776,6 +1816,10 @@ async function buildTopicWeekView(req, ayar) {
       return {
         ...g,
         entry: ders,
+        saat: (gunSaatleri.get(g.dayOfWeek) || new Map()).get(saat.period) || {
+          ...saat,
+          ozel: false
+        },
         topic: kayit ? kayit.topic : '',
         oncekiTopic: onceki && onceki.topic ? onceki.topic : ''
       };
@@ -1872,9 +1916,16 @@ function isLessonTask(sourceKey) {
  * satirlarini, digerleri sablonu kullanir. Takvim hicbir gunu elemez —
  * "bu hafta ders yok" demenin yolu o haftanin cizelgesini bosaltmaktir.
  */
-function buildLessonTaskRows(sablon, ozelHaftalar, ayar) {
+function buildLessonTaskRows(sablon, ozelHaftalar, ayar, ozelSaatler = null) {
   const { start, end } = academicCalendar.ACADEMIC_YEAR;
-  const saatler = new Map(schedule.buildPeriods(ayar).map((p) => [p.period, p]));
+  // Zil saati gune bagli: gorev aciklamasinda yazan saat, o gunun gercek
+  // saati olmali (aksi halde elle girilen saatler gorevlerde gorunmezdi).
+  const gunSaatleri = new Map(
+    schedule.GUNLER.map((gun) => [
+      gun,
+      new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
+    ])
+  );
   const satirlar = [];
 
   let weekStart = startOfWeek(start);
@@ -1884,7 +1935,7 @@ function buildLessonTaskRows(sablon, ozelHaftalar, ayar) {
       const tarih = shiftDate(weekStart, gun - 1);
       if (tarih < start || tarih > end) continue;
       for (const kayit of haftaninKayitlari.filter((e) => e.dayOfWeek === gun)) {
-        const zil = saatler.get(kayit.period) || null;
+        const zil = (gunSaatleri.get(gun) || new Map()).get(kayit.period) || null;
         satirlar.push({
           tarih,
           weekStart,
@@ -1930,12 +1981,13 @@ function lessonTaskDescription(satir) {
  * ogleden sonra "yapilmadi" muhurlenmis olurdu.
  */
 async function importLessonTasks(studentId, createdBy) {
-  const [ayar, sablon, ozelHaftalar] = await Promise.all([
+  const [ayar, sablon, ozelHaftalar, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(),
-    getCustomScheduleWeeks()
+    getCustomScheduleWeeks(),
+    getPeriodTimes()
   ]);
-  const satirlar = buildLessonTaskRows(sablon, ozelHaftalar, ayar);
+  const satirlar = buildLessonTaskRows(sablon, ozelHaftalar, ayar, ozelSaatler);
   if (!satirlar.length) {
     return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0, lessons: 0 };
   }
@@ -2124,9 +2176,10 @@ async function buildStudentScheduleView(req) {
   const haftaParam = normalizeText(req.query.hafta);
   const hafta = isDateOnly(haftaParam) ? startOfWeek(haftaParam) : startOfWeek(bugun);
 
-  const [ayar, kayitlar] = await Promise.all([
+  const [ayar, kayitlar, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
-    getScheduleEntries(hafta)
+    getScheduleEntries(hafta),
+    getPeriodTimes()
   ]);
   const haftaBilgi = await getWeekScheduleInfo(hafta);
   const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
@@ -2143,17 +2196,19 @@ async function buildStudentScheduleView(req) {
     haftaAkademik: academicCalendar.describeWeek(hafta, shiftDate(hafta, 6)),
     ayar,
     saatler: schedule.buildPeriods(ayar),
-    izgara: schedule.buildGrid(kayitlar, ayar),
+    izgara: schedule.buildGrid(kayitlar, ayar, ozelSaatler),
     bitisSaati: schedule.endOfDay(ayar),
+    ozelSaatVar: ozelSaatler.size > 0,
     toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
     varMi: kayitlar.length > 0,
     gunSayilari: schedule.GUNLER.map((gun) => ({
       dayOfWeek: gun,
       gunAdi: schedule.GUN_ADLARI[gun],
       dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
-      bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length
+      bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length,
+      aralik: schedule.dayRange(ayar, gun, ozelSaatler)
     })),
-    topicWeek: gorunum === 'konular' ? await buildTopicWeekView(req, ayar) : null
+    topicWeek: gorunum === 'konular' ? await buildTopicWeekView(req, ayar, ozelSaatler) : null
   };
 }
 
@@ -2344,15 +2399,16 @@ async function buildScheduleView(req) {
   const sablonModu = !isDateOnly(haftaParam);
   const hafta = sablonModu ? null : startOfWeek(haftaParam);
 
-  const [ayar, kayitlar] = await Promise.all([
+  const [ayar, kayitlar, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
-    getScheduleEntries(hafta)
+    getScheduleEntries(hafta),
+    getPeriodTimes()
   ]);
   const haftaBilgi = hafta ? await getWeekScheduleInfo(hafta) : { ozel: false, satirSayisi: 0 };
   const saatler = schedule.buildPeriods(ayar);
-  const izgara = schedule.buildGrid(kayitlar, ayar);
+  const izgara = schedule.buildGrid(kayitlar, ayar, ozelSaatler);
   const gorunum = normalizeText(req.query.gorunum) === 'konular' ? 'konular' : 'cizelge';
-  const topicWeek = gorunum === 'konular' ? await buildTopicWeekView(req, ayar) : null;
+  const topicWeek = gorunum === 'konular' ? await buildTopicWeekView(req, ayar, ozelSaatler) : null;
 
   // Form on dolgusu: bos hucreye basilinca gun/saat secili gelsin.
   const formDay = Number(normalizeText(req.query.gun)) || '';
@@ -2366,8 +2422,31 @@ async function buildScheduleView(req) {
     gunAdi: schedule.GUN_ADLARI[gun],
     dersSayisi: kayitlar.filter((k) => k.dayOfWeek === gun && k.kind === 'lesson').length,
     nobet: kayitlar.some((k) => k.dayOfWeek === gun && k.kind === 'duty'),
-    bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length
+    bosSaat: ayar.periodCount - kayitlar.filter((k) => k.dayOfWeek === gun).length,
+    // Gunun gercek penceresi: elle girilen saatler varsayilan duzeni
+    // bozabildigi icin en erken baslangic - en gec bitis olarak hesaplanir.
+    aralik: schedule.dayRange(ayar, gun, ozelSaatler),
+    ozelSayisi: schedule
+      .periodsForDay(ayar, gun, ozelSaatler)
+      .filter((sa) => sa.ozel).length
   }));
+
+  // ZIL SAATLERI paneli: secili gunun her ders saati icin varsayilan ve
+  // (varsa) elle girilmis saat. Gun secilmezse pazartesi acilir.
+  const saatGunu = schedule.GUNLER.includes(Number(normalizeText(req.query.saatGun)))
+    ? Number(normalizeText(req.query.saatGun))
+    : 1;
+  const saatSatirlari = schedule.periodsForDay(ayar, saatGunu, ozelSaatler).map((sa) => {
+    const varsayilanSaat = saatler.find((v) => v.period === sa.period) || sa;
+    return {
+      period: sa.period,
+      start: sa.start,
+      end: sa.end,
+      ozel: sa.ozel,
+      varsayilanStart: varsayilanSaat.start,
+      varsayilanEnd: varsayilanSaat.end
+    };
+  });
 
   // Ogretmen isareti tasiyan ogrenci defteri kendi panelinden yazabilir.
   const ogrenciler = await query(
@@ -2395,6 +2474,10 @@ async function buildScheduleView(req) {
       : null,
     ogrenciler: ogrenciler.rows,
     bitisSaati: schedule.endOfDay(ayar),
+    saatGunu,
+    saatGunAdi: schedule.GUN_ADLARI[saatGunu],
+    saatSatirlari,
+    ozelSaatSayisi: ozelSaatler.size,
     toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
     toplamNobet: kayitlar.filter((k) => k.kind === 'duty').length,
     form: duzenlenen
@@ -3446,14 +3529,21 @@ async function sendLessonTopicsExcel(req, res, redirect) {
     [shiftDate(startOfWeek(fromDate), 0), toDate]
   );
 
-  const ayar = await getScheduleSettings();
-  const saatByPeriod = new Map(schedule.buildPeriods(ayar).map((s) => [s.period, s]));
+  const [ayar, ozelSaatler] = await Promise.all([getScheduleSettings(), getPeriodTimes()]);
+  // Zil saati gune bagli oldugu icin tek bir "saat" haritasi yetmez.
+  const gunSaatleri = new Map(
+    schedule.GUNLER.map((gun) => [
+      gun,
+      new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
+    ])
+  );
 
   const satirlar = res_.rows
     .map((row) => {
       const haftaBasi = toDateOnly(row.weekStart);
       const tarih = shiftDate(haftaBasi, Number(row.dayOfWeek) - 1);
-      const saat = saatByPeriod.get(Number(row.period)) || null;
+      const saat =
+        (gunSaatleri.get(Number(row.dayOfWeek)) || new Map()).get(Number(row.period)) || null;
       const bilgi = academicCalendar.getDayInfo(tarih);
       return {
         tarih,
@@ -3902,6 +3992,8 @@ app.post(
 
     // Ders saati sayisi kisaltilirsa disarida kalan kayitlar oksuz kalmasin.
     const artan = await query(`DELETE FROM class_schedule WHERE period > $1`, [periodCount]);
+    // Gune ozel zil saatleri de ayni kapsama tabidir.
+    await query(`DELETE FROM period_times WHERE period > $1`, [periodCount]);
 
     await query(
       `
@@ -3940,6 +4032,117 @@ app.post(
     const silmeNotu = artan.rowCount ? ` ${artan.rowCount} ders kaydı kapsam dışı kaldığı için silindi.` : '';
     return adminRedirect(req, res, {
       message: `Zil çizelgesi kaydedildi. Gün ${startValidation.value} - ${bitis} arası.${silmeNotu}`
+    });
+  })
+);
+
+/**
+ * GUNE OZEL ZIL SAATLERI — bir gunun ders saatlerini elle yaz.
+ *
+ * Varsayilan duzen (baslangic + sureler) yerinde kalir; burada girilen saat
+ * yalnizca O GUNUN o dersini degistirir ve sonraki saatleri KAYDIRMAZ.
+ *
+ * Bos birakilan satir "varsayilana don" demektir ve kaydi SILER. Varsayilanla
+ * birebir ayni saat de saklanmaz: saklansaydi sonradan sureler degistiginde
+ * o hucre eski saatte donar ve kimse neden oldugunu bilemezdi.
+ */
+app.post(
+  '/admin/schedule/period-times',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const gun = Number(normalizeText(req.body.gun));
+    if (!schedule.GUNLER.includes(gun)) {
+      return adminRedirect(req, res, { error: 'Gün seçilmedi.' });
+    }
+
+    const ayar = await getScheduleSettings();
+    const varsayilan = new Map(schedule.buildPeriods(ayar).map((sa) => [sa.period, sa]));
+
+    // "Bu günü varsayilana dondur": tek hamlede gunun tum istisnalari silinir.
+    if (normalizeText(req.body.islem) === 'sifirla') {
+      const silinen = await query(`DELETE FROM period_times WHERE day_of_week = $1`, [gun]);
+      if (silinen.rowCount === 0) {
+        return adminRedirect(req, res, {
+          error: `${schedule.GUN_ADLARI[gun]} zaten varsayılan zil çizelgesini kullanıyor.`
+        });
+      }
+      return adminRedirect(req, res, {
+        message: `${schedule.GUN_ADLARI[gun]}: ${silinen.rowCount} elle girilmiş saat kaldırıldı, gün varsayılan çizelgeye döndü.`
+      });
+    }
+
+    const yazilacak = [];
+    const silinecek = [];
+    for (const [period, sa] of varsayilan) {
+      const basHam = normalizeText(req.body[`bas${period}`]);
+      const bitHam = normalizeText(req.body[`bit${period}`]);
+
+      if (basHam === '' && bitHam === '') {
+        silinecek.push(period);
+        continue;
+      }
+      // Tek alanin doldurulmasi sessizce yok sayilmaz: girilen saatin
+      // kaydedilmedigini fark etmemek en kotu sonuc olurdu.
+      if (basHam === '' || bitHam === '') {
+        return adminRedirect(req, res, {
+          error: `${period}. ders: başlangıç ve bitiş saatinin ikisi de girilmeli (ikisini de boş bırakırsan varsayılana döner).`
+        });
+      }
+
+      const bas = normalizeEstimatedTimeForStorage(basHam);
+      const bit = normalizeEstimatedTimeForStorage(bitHam);
+      if (!bas.ok || !bas.value || !bit.ok || !bit.value) {
+        return adminRedirect(req, res, { error: `${period}. ders: saat geçersiz (ör. 08:00).` });
+      }
+      if (schedule.hmToMinutes(bit.value) <= schedule.hmToMinutes(bas.value)) {
+        return adminRedirect(req, res, {
+          error: `${period}. ders: bitiş saati başlangıçtan sonra olmalı.`
+        });
+      }
+
+      if (bas.value === sa.start && bit.value === sa.end) {
+        silinecek.push(period);
+        continue;
+      }
+      yazilacak.push({ period, start: bas.value, end: bit.value });
+    }
+
+    const client = await pool.connect();
+    let eklenen = 0;
+    try {
+      await client.query('BEGIN');
+      if (silinecek.length) {
+        await client.query(
+          `DELETE FROM period_times WHERE day_of_week = $1 AND period = ANY($2::int[])`,
+          [gun, silinecek]
+        );
+      }
+      for (const satir of yazilacak) {
+        await client.query(
+          `
+            INSERT INTO period_times (day_of_week, period, start_time, end_time, updated_at)
+            VALUES ($1,$2,$3,$4,NOW())
+            ON CONFLICT (day_of_week, period) DO UPDATE SET
+              start_time = EXCLUDED.start_time,
+              end_time = EXCLUDED.end_time,
+              updated_at = NOW()
+          `,
+          [gun, satir.period, satir.start, satir.end]
+        );
+        eklenen += 1;
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const aralik = schedule.dayRange(ayar, gun, await getPeriodTimes());
+    const varsayilanNotu = eklenen === 0 ? ' Gün tamamen varsayılan çizelgede.' : '';
+    return adminRedirect(req, res, {
+      message: `${schedule.GUN_ADLARI[gun]} zil saatleri kaydedildi: ${eklenen} saat elle girildi.${varsayilanNotu} Gün ${aralik ? `${aralik.start} - ${aralik.end}` : '-'} arası.`
     });
   })
 );

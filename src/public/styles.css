@@ -2463,6 +2463,18 @@ tr.day-off td {
   display: none;
 }
 
+/* ISTISNA: gune ozel elle girilmis saat masaustunde de GORUNUR.
+   Soldaki saat sutunu varsayilan duzeni gosterir; o hucrenin saati elle
+   degistirilmisse hucre kendi saatini yazmazsa ekranda yanlis saat okunur. */
+.board-cell-time.ozel-saat {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 640px) {
   .board {
     display: block;

@@ -1033,6 +1033,9 @@
               <% } else { %>
               Haftalık ders çizelgesi · gün <%= scheduleView.ayar.startTime %> - <%= scheduleView.bitisSaati %> arası,
               <%= scheduleView.ayar.periodCount %> ders saati.
+              <% if (scheduleView.ozelSaatVar) { %>
+              <strong>Bazı günlerin saatleri farklı</strong> — her hücre kendi saatini gösterir.
+              <% } %>
               <% } %>
             </p>
           </div>
@@ -1131,7 +1134,7 @@
                 class="board-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                 style="--g: <%= g + 1 %>; --s: <%= i + 2 %>"
               >
-                <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                <span class="board-cell-time <%= h.saat && h.saat.ozel ? 'ozel-saat' : '' %>"><%= satir.period %>. ders · <%= h.saat ? h.saat.start : satir.start %>-<%= h.saat ? h.saat.end : satir.end %></span>
                 <% if (h.entry) { %>
                 <p class="cell-static">
                   <strong><%= h.entry.subject %></strong>
@@ -1206,7 +1209,7 @@
                 class="board-cell <%= h.entry ? 'filled' : 'empty' %> <%= h.entry && h.olagandisi ? 'off-day' : '' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
                 style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
               >
-                <span class="board-cell-time"><%= satir.period %>. ders · <%= satir.start %>-<%= satir.end %></span>
+                <span class="board-cell-time <%= h.saat && h.saat.ozel ? 'ozel-saat' : '' %>"><%= satir.period %>. ders · <%= h.saat ? h.saat.start : satir.start %>-<%= h.saat ? h.saat.end : satir.end %></span>
                 <% if (h.entry) { %>
                 <p class="topic-head">
                   <strong><%= h.entry.subject %></strong>
