@@ -975,7 +975,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     questionsRes,
     wakeRes,
     sportRes,
-    prayerRes
+    prayerRes,
+    aiRes
   ] = await Promise.all([
     query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
     query(`SELECT id, name FROM categories ORDER BY name ASC`),
@@ -1052,6 +1053,15 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         GROUP BY student_id, day
       `,
       [prevWeekStart, weekEnd]
+    ),
+    // Yapay zeka gunde tek kayit tutar; uyanma/spor gibi dogrudan cekilir.
+    query(
+      `
+        SELECT student_id AS "studentId", day, status, minutes
+        FROM ai_logs
+        WHERE day BETWEEN $1 AND $2
+      `,
+      [prevWeekStart, weekEnd]
     )
   ]);
 
@@ -1111,6 +1121,14 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   }));
   const prayerByStudentDay = new Map(prayerRows.map((r) => [`${r.studentId}:${r.date}`, r]));
 
+  const aiRows = aiRes.rows.map((row) => ({
+    studentId: row.studentId,
+    date: toDateOnly(row.day),
+    status: row.status,
+    minutes: Number(row.minutes || 0)
+  }));
+  const aiByStudentDay = new Map(aiRows.map((r) => [`${r.studentId}:${r.date}`, r]));
+
   const bosMetrik = () => ({
     due: 0,
     done: 0,
@@ -1139,7 +1157,14 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     prayerTracked: 0,
     prayerOnTime: 0,
     prayerQada: 0,
-    prayerMissed: 0
+    prayerMissed: 0,
+    // Yapay zeka: gun basina tek kayit. aiMinutes planlanan dakikanin
+    // gerceklesen kismi (yapilan + telafi edilen gunler).
+    aiTracked: 0,
+    aiDone: 0,
+    aiMakeup: 0,
+    aiNotDone: 0,
+    aiMinutes: 0
   });
 
   /** Bir gunun uyanma kaydini metrige ekler. */
@@ -1181,6 +1206,16 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     metrik.prayerMissed += gun.missed;
   }
 
+  /** Bir gunun yapay zeka kaydini metrige ekler. */
+  function addAi(metrik, log) {
+    if (!log) return;
+    metrik.aiTracked += 1;
+    if (log.status === 'done') metrik.aiDone += 1;
+    else if (log.status === 'makeup') metrik.aiMakeup += 1;
+    else if (log.status === 'not_done') metrik.aiNotDone += 1;
+    if (log.status === 'done' || log.status === 'makeup') metrik.aiMinutes += log.minutes;
+  }
+
   // Bir ogrencinin verilen gun araligindaki toplam metrikleri
   function metricsFor(studentId, days) {
     const metrik = bosMetrik();
@@ -1206,6 +1241,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       addWake(metrik, wakeByStudentDay.get(`${studentId}:${day}`));
       addSport(metrik, sportByStudentDay.get(`${studentId}:${day}`));
       addPrayer(metrik, prayerByStudentDay.get(`${studentId}:${day}`));
+      addAi(metrik, aiByStudentDay.get(`${studentId}:${day}`));
     }
 
     return metrik;
@@ -1234,7 +1270,10 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       // kilinan vakitleri gosterir. Tek orana indirmek kazayi ya gorunmez
       // yapardi ya da vaktinde kilmisla esitlerdi.
       prayerOnTimeRate: oran(metrik.prayerOnTime, metrik.prayerTracked),
-      prayerDoneRate: oran(metrik.prayerOnTime + metrik.prayerQada, metrik.prayerTracked)
+      prayerDoneRate: oran(metrik.prayerOnTime + metrik.prayerQada, metrik.prayerTracked),
+      // Namazdaki ikili oranin aynisi: "yapildi" asil olcu, telafi ayri.
+      aiDoneRate: oran(metrik.aiDone, metrik.aiTracked),
+      aiWithMakeupRate: oran(metrik.aiDone + metrik.aiMakeup, metrik.aiTracked)
     };
   }
 
@@ -1267,6 +1306,10 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         prayerOnTimeRate:
           current.prayerOnTimeRate !== null && previous.prayerOnTimeRate !== null
             ? Math.round((current.prayerOnTimeRate - previous.prayerOnTimeRate) * 10) / 10
+            : null,
+        aiDoneRate:
+          current.aiDoneRate !== null && previous.aiDoneRate !== null
+            ? Math.round((current.aiDoneRate - previous.aiDoneRate) * 10) / 10
             : null
       }
     };
@@ -1299,6 +1342,11 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       acc.prayerOnTime += row.current.prayerOnTime;
       acc.prayerQada += row.current.prayerQada;
       acc.prayerMissed += row.current.prayerMissed;
+      acc.aiTracked += row.current.aiTracked;
+      acc.aiDone += row.current.aiDone;
+      acc.aiMakeup += row.current.aiMakeup;
+      acc.aiNotDone += row.current.aiNotDone;
+      acc.aiMinutes += row.current.aiMinutes;
       return acc;
     }, bosMetrik())
   );
@@ -1356,6 +1404,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       addSport(gun, sportLog);
       const prayerGun = prayerByStudentDay.get(`${selected.id}:${day}`) || null;
       addPrayer(gun, prayerGun);
+      const aiLog = aiByStudentDay.get(`${selected.id}:${day}`) || null;
+      addAi(gun, aiLog);
 
       return {
         date: day,
@@ -1369,6 +1419,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
           ? { ...sportLog, statusText: sportStatusText(sportLog.status) }
           : null,
         prayer: prayerGun,
+        ai: aiLog ? { ...aiLog, statusText: aiStatusText(aiLog.status) } : null,
         ...ozetle(gun)
       };
     });
@@ -2607,7 +2658,7 @@ function adminRedirect(req, res, queryParams) {
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
   // sport ve goals bu listede yoktu: o sayfalardaki formlar next="/admin/sport"
   // gonderdigi halde kayittan sonra panoya donuyordu.
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|wake|sport|prayer|goals|schedule|tasks(?:\/(?:active|status))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|wake|sport|prayer|ai|goals|schedule|tasks(?:\/(?:active|status))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -2619,7 +2670,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport|prayer)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport|prayer|ai)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -2976,6 +3027,36 @@ async function getAdminViewModel(req, currentPage) {
   const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
 
   let sportAdmin = null;
+  let aiAdmin = null;
+  if (currentPage === 'ai') {
+    const secilenIdRaw = normalizeText(req.query.aiStudentId);
+    const secilen = students.find((st) => st.id === secilenIdRaw) || students[0] || null;
+    const detay = secilen ? await buildAiView(secilen.id, 14) : null;
+
+    const routinesRes = await query(
+      `
+        SELECT student_id AS "studentId", start_time AS "startTime", minutes,
+               is_active AS "isActive"
+        FROM ai_routines
+      `
+    );
+    const routineByStudent = new Map(
+      routinesRes.rows.map((r) => {
+        const startTime = normalizeEstimatedTimeForDisplay(r.startTime);
+        const minutes = Number(r.minutes) || 60;
+        return [r.studentId, { startTime, minutes, endTime: aiWindowEnd(startTime, minutes), isActive: r.isActive }];
+      })
+    );
+
+    aiAdmin = {
+      selected: secilen,
+      detail: detay,
+      today,
+      systemStartDate: SYSTEM_START_DATE,
+      rows: students.map((st) => ({ student: st, routine: routineByStudent.get(st.id) || null }))
+    };
+  }
+
   let prayerAdmin = null;
   if (currentPage === 'prayer') {
     const secilenIdRaw = normalizeText(req.query.prayerStudentId);
@@ -3245,6 +3326,7 @@ async function getAdminViewModel(req, currentPage) {
     wakeAdmin,
     sportAdmin,
     prayerAdmin,
+    aiAdmin,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -3413,7 +3495,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'wake', 'schedule', 'goals', 'sport', 'prayer']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -4626,6 +4708,285 @@ app.post(
 );
 
 /* --------------------------------------------------------------------------
+   Yapay zeka rutini rotalari
+   -------------------------------------------------------------------------- */
+
+// Plan: gunluk baslangic saati + dakika (varsayilan 06:30, 60 dk). Bitis
+// saati saklanmaz, hesaplanir — "kacta biter" sorusunun tek dogru cevabi
+// olsun diye (zil saatlerindeki kararin aynisi).
+app.post(
+  '/admin/ai',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const isActive = normalizeText(req.body.isActive) !== 'off';
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const start = normalizeEstimatedTimeForStorage(normalizeText(req.body.startTime));
+    if (!start.ok || !start.value) {
+      return adminRedirect(req, res, { error: 'Başlangıç saati geçersiz (ör. 06:30).' });
+    }
+
+    const dakika = Number(normalizeText(req.body.minutes));
+    if (!Number.isInteger(dakika) || dakika < 15 || dakika > 600) {
+      return adminRedirect(req, res, { error: 'Günlük süre 15 ile 600 dakika arasında olmalı.' });
+    }
+
+    await query(
+      `
+        INSERT INTO ai_routines (student_id, start_time, minutes, is_active)
+        VALUES ($1,$2,$3,$4)
+        ON CONFLICT (student_id) DO UPDATE
+        SET start_time = EXCLUDED.start_time,
+            minutes = EXCLUDED.minutes,
+            is_active = EXCLUDED.is_active,
+            updated_at = NOW()
+      `,
+      [studentId, start.value, dakika, isActive]
+    );
+
+    const bitis = aiWindowEnd(start.value, dakika);
+    return adminRedirect(req, res, {
+      message: `${studentRes.rows[0].name} için yapay zeka rutini ${start.value} - ${bitis} (${dakika} dk)${isActive ? '' : ' (pasif)'} olarak kaydedildi.`
+    });
+  })
+);
+
+// Uyanma/spor/namazdaki kararin aynisi: rutin kaldirilinca ai_logs SILINMEZ.
+app.post(
+  '/admin/ai/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const sonuc = await query(`DELETE FROM ai_routines WHERE student_id = $1`, [studentId]);
+    if (sonuc.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Bu öğrencide yapay zeka rutini yok.' });
+    }
+    return adminRedirect(req, res, {
+      message: 'Yapay zeka rutini kaldırıldı. Geçmiş kayıtlar duruyor.'
+    });
+  })
+);
+
+/**
+ * Ogrenci gunu isaretler. Namaz rotasiyla AYNI gun kurallari:
+ * - BUGUN: uc secenek de acik.
+ * - GECMIS: yalnizca TELAFI (telafinin tanimi bu).
+ * - GELECEK ve rutin oncesi: hicbiri.
+ */
+app.post(
+  '/student/ai',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const routine = await getAiRoutine(req.currentUser.id);
+    if (!routine || !routine.isActive) {
+      return studentRedirect(req, res, { error: 'Yapay zeka rutini tanımlı değil.' });
+    }
+
+    const durum = normalizeText(req.body.durum);
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const gunGirdi = normalizeText(req.body.gun);
+    const gun = isDateOnly(gunGirdi) ? gunGirdi : today;
+
+    if (!['done', 'not_done', 'makeup'].includes(durum)) {
+      return studentRedirect(req, res, { error: 'Geçersiz durum.' });
+    }
+    if (gun > today) {
+      return studentRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+    }
+    if (gun < SYSTEM_START_DATE) {
+      return studentRedirect(req, res, { error: `${SYSTEM_START_DATE} öncesine kayıt yazılamaz.` });
+    }
+    if (gun < today && durum !== 'makeup') {
+      return studentRedirect(req, res, {
+        error: 'Geçmiş bir güne yalnızca "Telafi edildi" yazılabilir.'
+      });
+    }
+    if (routine.createdDay && gun < routine.createdDay) {
+      return studentRedirect(req, res, {
+        error: `Yapay zeka rutini ${routine.createdDay} tarihinde açıldı; öncesine kayıt yazılamaz.`
+      });
+    }
+
+    const nowHm = timeStringInTimeZone();
+    const mevcutRes = await query(
+      `SELECT status FROM ai_logs WHERE student_id = $1 AND day = $2`,
+      [req.currentUser.id, gun]
+    );
+    const mevcut = mevcutRes.rowCount ? mevcutRes.rows[0].status : null;
+
+    if (!canChangeAiStatus(mevcut, durum)) {
+      // "Yapilmadi" KAPANMIS degil: telafisi hala isaretlenebilir. Mesaj
+      // bunu ayirt etmeli, yoksa kullanici gunu kapali sanip pes ederdi.
+      // Gecmis bir gunun kaydina "Bugun zaten..." demek yanlis gunu
+      // isaret ederdi; gun bugun degilse tarihi yazilir.
+      const gunAdi = gun === today ? 'Bugün' : gun;
+      let neden;
+      if (mevcut === durum) {
+        neden = `${gunAdi} zaten "${aiStatusText(durum)}" olarak kayıtlı.`;
+      } else if (mevcut === 'not_done') {
+        neden = `${gunAdi} "Yapılmadı" olarak kayıtlı; buradan yalnızca telafisi işaretlenebilir.`;
+      } else {
+        neden = `${gunAdi} kaydı "${aiStatusText(mevcut)}" olarak kapandı; değiştirilemez.`;
+      }
+      return studentRedirect(req, res, { error: neden });
+    }
+
+    if (mevcut === null) {
+      const insert = await query(
+        `
+          INSERT INTO ai_logs (
+            id, student_id, day, status, start_time, minutes, done_at, makeup_day, makeup_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (student_id, day) DO NOTHING
+        `,
+        [
+          makeId('ai'),
+          req.currentUser.id,
+          gun,
+          durum,
+          routine.startTime,
+          routine.minutes,
+          durum === 'makeup' ? null : nowHm,
+          durum === 'makeup' ? today : null,
+          durum === 'makeup' ? nowHm : null
+        ]
+      );
+      if (insert.rowCount === 0) {
+        return studentRedirect(req, res, { error: 'Bu gün için kayıt zaten girilmiş.' });
+      }
+    } else {
+      // Tek izinli gecis: yapilmadi -> telafi edildi.
+      const guncelle = await query(
+        `
+          UPDATE ai_logs
+          SET status = 'makeup', makeup_day = $3, makeup_at = $4
+          WHERE student_id = $1 AND day = $2 AND status = 'not_done'
+        `,
+        [req.currentUser.id, gun, today, nowHm]
+      );
+      if (guncelle.rowCount === 0) {
+        return studentRedirect(req, res, { error: 'Kayıt değişmedi.' });
+      }
+    }
+
+    const gunNotu = gun === today ? '' : ` (${gun})`;
+    return studentRedirect(req, res, {
+      message: `Yapay zeka çalışması${gunNotu}: ${aiStatusText(durum)}.`
+    });
+  })
+);
+
+/** Elle kayit (admin) — yapay zeka rutininin tek geri donusu. */
+app.post(
+  '/admin/ai/log',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const day = normalizeText(req.body.day);
+    const durum = normalizeText(req.body.durum);
+
+    if (!isDateOnly(day)) {
+      return adminRedirect(req, res, { error: 'Geçersiz gün.' });
+    }
+    if (!['done', 'not_done', 'makeup', 'clear'].includes(durum)) {
+      return adminRedirect(req, res, { error: 'Geçersiz işlem.' });
+    }
+
+    const notDogrulama = validateTaskDescription(req.body.note);
+    if (!notDogrulama.ok) {
+      return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    if (day > today) {
+      return adminRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+    }
+    if (day < SYSTEM_START_DATE) {
+      return adminRedirect(req, res, {
+        error: `${SYSTEM_START_DATE} öncesine yazılamaz (açılışta silinir).`
+      });
+    }
+
+    const routine = await getAiRoutine(studentId);
+    if (!routine) {
+      return adminRedirect(req, res, { error: 'Bu öğrencide yapay zeka rutini tanımlı değil.' });
+    }
+
+    const mevcutRes = await query(
+      `SELECT status FROM ai_logs WHERE student_id = $1 AND day = $2`,
+      [studentId, day]
+    );
+    const mevcut = mevcutRes.rowCount ? mevcutRes.rows[0].status : null;
+    const ad = studentRes.rows[0].name;
+
+    if (durum === 'clear') {
+      if (mevcut === null) {
+        return adminRedirect(req, res, { error: 'Silinecek kayıt yok.' });
+      }
+      if (wouldAiSealerRewrite(routine, day, today)) {
+        return adminRedirect(req, res, {
+          error: 'Bu gün otomatik mühürleme penceresinde; silmek kalıcı olmaz. Bunun yerine bir durum yazın.'
+        });
+      }
+      await query(`DELETE FROM ai_logs WHERE student_id = $1 AND day = $2`, [studentId, day]);
+      return adminRedirect(req, res, { message: `${ad} · ${day} kaydı silindi.` });
+    }
+
+    if (mevcut === durum) {
+      return adminRedirect(req, res, { error: `Gün zaten "${aiStatusText(durum)}" durumunda.` });
+    }
+
+    await query(
+      `
+        INSERT INTO ai_logs (
+          id, student_id, day, status, start_time, minutes, makeup_day,
+          corrected_by, corrected_at, previous_status, correction_note
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NULL,$9)
+        ON CONFLICT (student_id, day) DO UPDATE
+        SET status = EXCLUDED.status,
+            makeup_day = EXCLUDED.makeup_day,
+            corrected_by = EXCLUDED.corrected_by,
+            corrected_at = NOW(),
+            previous_status = ai_logs.status,
+            correction_note = EXCLUDED.correction_note
+      `,
+      [
+        makeId('ai'),
+        studentId,
+        day,
+        durum,
+        routine.startTime,
+        routine.minutes,
+        durum === 'makeup' ? today : null,
+        req.currentUser.id,
+        notDogrulama.value || ''
+      ]
+    );
+
+    const oncekiNotu = mevcut ? ` (${aiStatusText(mevcut)} → ${aiStatusText(durum)})` : '';
+    return adminRedirect(req, res, {
+      message: `${ad} · ${day}: ${aiStatusText(durum)}${oncekiNotu}.`
+    });
+  })
+);
+
+/* --------------------------------------------------------------------------
    Namaz rutini rotalari
    -------------------------------------------------------------------------- */
 
@@ -5054,21 +5415,44 @@ function prayerStatusText(status) {
   return PRAYER_STATUS_TEXT[status] || '-';
 }
 
+/* --------------------------------------------------------------------------
+   UC DURUMLU BEYAN RUTINLERININ ORTAK CEKIRDEGI
+
+   Namaz ve yapay zeka rutinleri ayni sekli paylasir:
+
+   - durum saatten HESAPLANMAZ, kullanici BEYAN eder;
+   - uc durum vardir: yapildi / yapilmadi / sonradan telafi edildi
+     (namazda: vaktinde kilindi / kilinmadi / kazasi kilindi);
+   - "yapilmadi" kapanmis bir son DEGILDIR: tek bir ileri gecise izin verilir.
+
+   Uyanma/spordaki "ilk basis kalicidir" kurali bu sekilde tek bir gecisle
+   esnetilir. Yasaklar ve sebepleri:
+
+   - `yapilmadi -> yapildi`: gecmise donuk "aslinda yapmistim" beyani. Kaydin
+     degeri durustlugunden geliyor; duzeltmesi adminde.
+   - `yapildi -> *` ve `telafi -> *`: is bitti, kayit kapandi.
+
+   Ortak olan YALNIZCA bu kural ve kelime dagarcigidir. Tablolar ve gorunum
+   kurucular ayri durur: namaz gunde BES kayit tutar, yapay zeka BIR; namazin
+   ayari yok, yapay zekanin gunluk penceresi var. Ikisini tek bir motora
+   sokmak o farklari bayrak enflasyonuna cevirirdi.
+   -------------------------------------------------------------------------- */
+
 /**
- * Bir vaktin durumu DEGISEBILIR MI?
- *
- * Uyanma/spordaki "ilk basis kalicidir" kurali burada TEK bir gecise izin
- * verir: kilinmayan bir vaktin sonradan kazasi kilinabilir. Kazanin anlami
- * zaten budur; yasaklansaydi ucuncu durum sussuz kalirdi.
- *
- * Yasak olanlar ve sebepleri:
- * - `missed -> on_time`: gecmise donuk "aslinda vaktinde kilmistim" beyani.
- *   Kaydin degeri durustlugunden geliyor; duzeltmesi adminde.
- * - `on_time -> *` ve `qada -> *`: is bitti, kayit kapandi.
+ * @param {string|null} mevcut  kayitli durum (yoksa null)
+ * @param {string} yeni         yazilmak istenen durum
+ * @param {{yapilmadi: string, telafi: string}} sozluk  o rutinin anahtarlari
  */
-function canChangePrayerStatus(mevcut, yeni) {
+function canAdvanceDeclaredStatus(mevcut, yeni, sozluk) {
   if (!mevcut) return true;
-  return mevcut === 'missed' && yeni === 'qada';
+  return mevcut === sozluk.yapilmadi && yeni === sozluk.telafi;
+}
+
+/** Namazin sozlugu: "kilinmadi" -> "kazasi kilindi". */
+const PRAYER_VOCAB = { yapilmadi: 'missed', telafi: 'qada' };
+
+function canChangePrayerStatus(mevcut, yeni) {
+  return canAdvanceDeclaredStatus(mevcut, yeni, PRAYER_VOCAB);
 }
 
 async function getPrayerRoutine(studentId) {
@@ -5287,6 +5671,246 @@ async function buildPrayerView(studentId, gunSayisi = 14) {
       kilinanRate: toplam ? Math.round(((onTime + qada) / toplam) * 100) : null
     }
   };
+}
+
+/* --------------------------------------------------------------------------
+   Gunluk yapay zeka calisma rutini (gunde 1 saat)
+
+   Namaz rutiniyle ayni sekil (beyan edilen durum, uc durum, tek ileri gecis);
+   farki gunde BIR kayit tutmasi ve bir PLANI olmasi: gunluk pencere + dakika.
+   Plan degerlendirmeyi belirlemez — saat gecti diye "yapilmadi" yazilmaz,
+   cunku ucuncu durum (telafi) tam da bunun icin var.
+   -------------------------------------------------------------------------- */
+
+const AI_LOOKBACK_DAYS = 30;
+const AI_VOCAB = { yapilmadi: 'not_done', telafi: 'makeup' };
+
+const AI_STATUS_TEXT = {
+  done: 'Yapıldı',
+  makeup: 'Telafi edildi',
+  not_done: 'Yapılmadı',
+  pending: 'Bekliyor'
+};
+
+function aiStatusText(status) {
+  return AI_STATUS_TEXT[status] || '-';
+}
+
+function canChangeAiStatus(mevcut, yeni) {
+  return canAdvanceDeclaredStatus(mevcut, yeni, AI_VOCAB);
+}
+
+/** Planin bitis saati: baslangic + dakika (saklanmaz, hesaplanir). */
+function aiWindowEnd(startTime, minutes) {
+  const bas = hmToMinutes(startTime);
+  if (bas === null) return null;
+  return minutesToHm(bas + (Number(minutes) || 0));
+}
+
+async function getAiRoutine(studentId) {
+  const res = await query(
+    `
+      SELECT student_id AS "studentId", start_time AS "startTime", minutes,
+             is_active AS "isActive", created_at AS "createdAt"
+      FROM ai_routines
+      WHERE student_id = $1
+    `,
+    [studentId]
+  );
+  if (res.rowCount === 0) return null;
+  const row = res.rows[0];
+  const startTime = normalizeEstimatedTimeForDisplay(row.startTime);
+  const minutes = Number(row.minutes) || 60;
+  return {
+    studentId: row.studentId,
+    startTime,
+    minutes,
+    endTime: aiWindowEnd(startTime, minutes),
+    isActive: row.isActive,
+    createdDay: toDateOnly(row.createdAt)
+  };
+}
+
+/**
+ * Yalnizca GECMIS gunler muhurlenir — bugun gun boyu acik kalir.
+ *
+ * Planli saat gecti diye gun icinde muhurlemek yanlis olurdu: saat 22:00'de
+ * yapilan calisma da o gunun calismasidir. Gunun kapanmasi yeter.
+ */
+async function sealMissedAiLogs() {
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const routines = await query(
+    `
+      SELECT student_id AS "studentId", start_time AS "startTime", minutes,
+             created_at AS "createdAt"
+      FROM ai_routines
+      WHERE is_active = TRUE
+    `
+  );
+
+  let sealed = 0;
+  for (const routine of routines.rows) {
+    const kuruldu = toDateOnly(routine.createdAt) || today;
+    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    for (let i = 1; i <= AI_LOOKBACK_DAYS; i += 1) {
+      const gun = shiftDate(today, -i);
+      if (gun < basladi) break;
+      const res = await query(
+        `
+          INSERT INTO ai_logs (id, student_id, day, status, start_time, minutes)
+          VALUES ($1,$2,$3,'not_done',$4,$5)
+          ON CONFLICT (student_id, day) DO NOTHING
+        `,
+        [
+          makeId('ai'),
+          routine.studentId,
+          gun,
+          normalizeEstimatedTimeForDisplay(routine.startTime),
+          Number(routine.minutes) || 60
+        ]
+      );
+      sealed += res.rowCount || 0;
+    }
+  }
+  return { sealed };
+}
+
+function mapAiLog(row) {
+  const startTime = normalizeEstimatedTimeForDisplay(row.startTime);
+  const minutes = Number(row.minutes) || 0;
+  return {
+    day: toDateOnly(row.day),
+    status: row.status,
+    statusText: aiStatusText(row.status),
+    startTime,
+    minutes,
+    endTime: aiWindowEnd(startTime, minutes),
+    doneAt: normalizeEstimatedTimeForDisplay(row.doneAt),
+    makeupDay: toDateOnly(row.makeupDay),
+    makeupAt: normalizeEstimatedTimeForDisplay(row.makeupAt),
+    note: row.note || '',
+    correctedAt: row.correctedAt || null,
+    correctedByName: row.correctedByName || null,
+    previousStatus: row.previousStatus || null,
+    previousStatusText: row.previousStatus ? aiStatusText(row.previousStatus) : null,
+    correctionNote: row.correctionNote || ''
+  };
+}
+
+/** Namaz gorunumuyle ayni desen: bugunun karti + son N gunun listesi. */
+async function buildAiView(studentId, gunSayisi = 14) {
+  const routine = await getAiRoutine(studentId);
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const nowHm = timeStringInTimeZone();
+
+  if (!routine) {
+    return { routine: null, today, nowHm, todayLog: null, bugun: null, rows: [], summary: null, streak: 0 };
+  }
+
+  const res = await query(
+    `
+      SELECT al.day, al.status, al.start_time AS "startTime", al.minutes,
+             al.done_at AS "doneAt", al.makeup_day AS "makeupDay",
+             al.makeup_at AS "makeupAt", al.note,
+             al.corrected_at AS "correctedAt", al.previous_status AS "previousStatus",
+             al.correction_note AS "correctionNote", u.name AS "correctedByName"
+      FROM ai_logs al
+      LEFT JOIN users u ON u.id = al.corrected_by
+      WHERE al.student_id = $1 AND al.day >= $2
+      ORDER BY al.day DESC
+    `,
+    [studentId, shiftDate(today, -(gunSayisi - 1))]
+  );
+
+  const logs = res.rows.map(mapAiLog);
+  const logByDay = new Map(logs.map((l) => [l.day, l]));
+  const todayLog = logByDay.get(today) || null;
+
+  const bosSatir = (gun) => ({
+    day: gun,
+    status: 'pending',
+    statusText: aiStatusText('pending'),
+    startTime: routine.startTime,
+    minutes: routine.minutes,
+    endTime: routine.endTime,
+    doneAt: null,
+    makeupDay: null,
+    makeupAt: null,
+    note: ''
+  });
+
+  const bugunSatir = todayLog || bosSatir(today);
+  const bugun = {
+    ...bugunSatir,
+    yapildiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'done'),
+    yapilmadiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'not_done'),
+    telafiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'makeup')
+  };
+
+  // Liste rutinin kuruldugu gunde biter: oncesi hic takip edilmedi.
+  const listeTabani = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const rows = [];
+  for (let i = 0; i < gunSayisi; i += 1) {
+    const gun = shiftDate(today, -i);
+    if (gun < listeTabani) break;
+    const satir = logByDay.get(gun) || bosSatir(gun);
+    rows.push({
+      ...satir,
+      gunAdi: getDayName(gun),
+      bugunMu: gun === today,
+      // GECMIS gunde tek acik islem telafidir; bugun uc secenek de acik.
+      telafiYazilabilir: satir.status === 'not_done',
+      yapildiYazilabilir: gun === today && satir.status === 'pending',
+      yapilmadiYazilabilir: gun === today && satir.status === 'pending'
+    });
+  }
+
+  // Seri: kesintisiz "yapildi" gun sayisi. Telafi seriyi kurtarmaz —
+  // kurtarsaydi "o gun yapildi" olcusu anlamini yitirirdi.
+  let streak = 0;
+  const baslangic = todayLog && todayLog.status === 'done' ? 0 : 1;
+  for (let i = baslangic; i < AI_LOOKBACK_DAYS; i += 1) {
+    const log = logByDay.get(shiftDate(today, -i));
+    if (!log || log.status !== 'done') break;
+    streak += 1;
+  }
+
+  const done = logs.filter((l) => l.status === 'done').length;
+  const makeup = logs.filter((l) => l.status === 'makeup').length;
+  const notDone = logs.filter((l) => l.status === 'not_done').length;
+  const toplam = logs.length;
+
+  return {
+    routine,
+    today,
+    nowHm,
+    todayLog,
+    bugun,
+    rows,
+    streak,
+    summary: {
+      gunSayisi: rows.length,
+      toplam,
+      done,
+      makeup,
+      notDone,
+      // Plandaki 1 saat uzerinden: kac gun calisildi.
+      planlananDakika: routine.minutes * rows.length,
+      yapilanDakika: routine.minutes * (done + makeup),
+      // Veri yokken null doner ve ekranda "-" gosterilir.
+      doneRate: toplam ? Math.round((done / toplam) * 100) : null,
+      withMakeupRate: toplam ? Math.round(((done + makeup) / toplam) * 100) : null
+    }
+  };
+}
+
+/** Rutinlerdeki wouldRoutineSealerRewrite ile ayni karar. */
+function wouldAiSealerRewrite(routine, day, today) {
+  if (!routine || !routine.isActive) return false;
+  if (day >= today) return false;
+  const basladi = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const pencereBasi = [shiftDate(today, -AI_LOOKBACK_DAYS), basladi].sort().pop();
+  return day >= pencereBasi;
 }
 
 const ROUTINE_KINDS = {
@@ -6044,6 +6668,11 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildPrayerView(req.currentUser.id, currentPage === 'prayer' ? 14 : 1)
       : null;
 
+  const ai =
+    currentPage === 'ai' || currentPage === 'dashboard'
+      ? await buildAiView(req.currentUser.id, currentPage === 'ai' ? 14 : 1)
+      : null;
+
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
   // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
@@ -6146,6 +6775,7 @@ async function getStudentViewModel(req, currentPage) {
     wake,
     sport,
     prayer,
+    ai,
     scheduleView,
     goalsView,
     message: req.query.message || null,
@@ -6159,7 +6789,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer']);
+    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -6730,6 +7360,7 @@ async function purgeBeforeSystemStart() {
       ['uyanma', `DELETE FROM wake_logs WHERE day < $1::date`],
       ['spor', `DELETE FROM sport_logs WHERE day < $1::date`],
       ['namaz', `DELETE FROM prayer_logs WHERE day < $1::date`],
+      ['yapay zeka', `DELETE FROM ai_logs WHERE day < $1::date`],
       ['görev durumu', `DELETE FROM task_statuses WHERE day < $1::date`],
       ['görev notu', `DELETE FROM task_detail_notes WHERE day < $1::date`],
       // YDS aynasi haric: yalnizca elle girilen / baska kaynakli satirlar.
@@ -6822,6 +7453,15 @@ async function runSealSafely() {
     }
   } catch (err) {
     console.error('Spor rutini mühürleme hatası:', err);
+  }
+
+  try {
+    const { sealed } = await sealMissedAiLogs();
+    if (sealed > 0) {
+      console.log(`${sealed} gün için yapay zeka çalışması "yapılmadı" olarak mühürlendi.`);
+    }
+  } catch (err) {
+    console.error('Yapay zeka rutini mühürleme hatası:', err);
   }
 
   try {

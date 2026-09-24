@@ -496,6 +496,54 @@ async function initDb() {
     `CREATE INDEX IF NOT EXISTS prayer_logs_student_day_idx ON prayer_logs (student_id, day DESC)`
   );
 
+  // GUNLUK YAPAY ZEKA CALISMA RUTINI (gunde 1 saat).
+  //
+  // Namaz rutiniyle AYNI SEKIL: durum saatten hesaplanmaz, kullanici beyan
+  // eder; uc durum var (yapildi / yapilmadi / telafi edildi) ve "yapilmadi"
+  // kapanmis bir son degildir (bkz. canAdvanceDeclaredStatus).
+  //
+  // Namazdan iki farki: gunde BES degil BIR kayit tutar ve bir PLANI vardir
+  // (gunluk pencere + dakika). Plan degerlendirmeyi belirlemez, yalnizca
+  // "bugun ne yapacagim"i soyler — bu yuzden kayda kopyalanir ki plan
+  // sonradan degisse de gecmis okunabilir kalsin (uyanma/spordaki desen).
+  await query(`
+    CREATE TABLE IF NOT EXISTS ai_routines (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      start_time TIME NOT NULL DEFAULT '06:30',
+      minutes INTEGER NOT NULL DEFAULT 60 CHECK (minutes BETWEEN 15 AND 600),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ai_logs (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('done', 'not_done', 'makeup')),
+      -- Planin o gune KOPYASI: plan sonradan degisse de gecmis bozulmaz.
+      start_time TIME NOT NULL,
+      minutes INTEGER NOT NULL,
+      done_at TIME NULL,
+      -- Telafi BASKA BIR GUN yapilir: hangi gun ve saatte yapildigi ayri
+      -- tutulur, yoksa "dunun saatini bugun telafi ettim" kaydi kaybolurdu.
+      makeup_day DATE NULL,
+      makeup_at TIME NULL,
+      note TEXT NOT NULL DEFAULT '',
+      corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      corrected_at TIMESTAMPTZ,
+      previous_status TEXT,
+      correction_note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, day)
+    )
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS ai_logs_student_day_idx ON ai_logs (student_id, day DESC)`
+  );
+
   // --- YZ / YDS programlari kaldirildi -----------------------------------
   //
   // Gorevler artik yalnizca UYANMA RUTINI, SPOR RUTINI ve DERS DEFTERI'nden

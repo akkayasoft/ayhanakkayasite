@@ -808,6 +808,16 @@
             <p class="kpi-label">Namaz (kaza dahil)</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.prayerDoneRate === null ? '-' : weeklyAnalysis.totals.prayerDoneRate + '%' %></p>
           </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.ai %></span>
+            <p class="kpi-label">Yapay Zeka (yapıldı)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.aiDoneRate === null ? '-' : weeklyAnalysis.totals.aiDoneRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
+            <p class="kpi-label">YZ Çalışma Süresi</p>
+            <p class="kpi-value"><%= Math.round(weeklyAnalysis.totals.aiMinutes / 60 * 10) / 10 %> saat</p>
+          </article>
         </section>
 
         <% if (currentSection === 'karsilastirma') { %>
@@ -833,6 +843,7 @@
                   <th>Spor</th>
                   <th>Ort. Spor</th>
                   <th>Namaz</th>
+                  <th>Yapay Zeka</th>
                   <th>Detay</th>
                 </tr>
               </thead>
@@ -910,6 +921,23 @@
                     <% if (r.current.prayerQada) { %>
                     <br /><small class="muted"><%= r.current.prayerQada %> kaza · kılınan %<%= r.current.prayerDoneRate %></small>
                     <% } %>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (r.current.aiTracked === 0) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="status-pill <%= r.current.aiDoneRate >= 80 ? 'ok' : r.current.aiDoneRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= r.current.aiDone %>/<%= r.current.aiTracked %> · <%= r.current.aiDoneRate %>%
+                    </span>
+                    <% if (r.delta.aiDoneRate !== null && r.delta.aiDoneRate !== 0) { %>
+                    <span class="trend <%= r.delta.aiDoneRate > 0 ? 'up' : 'down' %>">
+                      <%= r.delta.aiDoneRate > 0 ? '▲' : '▼' %> <%= Math.abs(r.delta.aiDoneRate) %>
+                    </span>
+                    <% } %>
+                    <br /><small class="muted">
+                      <%= Math.round(r.current.aiMinutes / 60 * 10) / 10 %> saat<% if (r.current.aiMakeup) { %> · <%= r.current.aiMakeup %> telafi<% } %>
+                    </small>
                     <% } %>
                   </td>
                   <td>
@@ -993,6 +1021,7 @@
                   <th>Spor Saati</th>
                   <th>Spor</th>
                   <th>Namaz</th>
+                  <th>Yapay Zeka</th>
                 </tr>
               </thead>
               <tbody>
@@ -1053,6 +1082,16 @@
                     </span>
                     <% if (d.prayer.qada) { %><br /><small class="muted"><%= d.prayer.qada %> kaza</small><% } %>
                     <% if (d.prayer.missed) { %><br /><small class="muted"><%= d.prayer.missed %> kılınmadı</small><% } %>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (!d.ai) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="state-pill <%= d.ai.status %>"><%= d.ai.statusText %></span>
+                    <% if (d.ai.status === 'done' || d.ai.status === 'makeup') { %>
+                    <br /><small class="muted"><%= d.ai.minutes %> dk</small>
+                    <% } %>
                     <% } %>
                   </td>
                 </tr>
@@ -1624,6 +1663,173 @@
         <% } %>
         <% } %>
 
+        <%# YAPAY ZEKA RUTINI (admin). Namazla ayni sekil; farki gunde tek
+            kayit ve bir PLANIN olmasi (gunluk pencere + dakika). %>
+        <% if (currentPage === 'ai' && aiAdmin) { %>
+        <% const aa = aiAdmin; %>
+        <header class="content-header">
+          <h2>Yapay Zeka Rutini</h2>
+          <p class="muted">
+            Günlük çalışma planı (varsayılan <strong>1 saat</strong>). Durum saatten
+            <strong>hesaplanmaz</strong>: öğrenci <strong>yapıldı</strong>,
+            <strong>yapılmadı</strong> ya da <strong>telafi edildi</strong> olarak kendisi
+            işaretler. Planlı saat geçince gün kapanmaz — işaretlenmeyen
+            <strong>geçmiş</strong> günler "yapılmadı" mühürlenir.
+          </p>
+        </header>
+
+        <% if (currentSection === 'ayar') { %>
+        <section class="panel narrow">
+          <h3>Rutin Ayarla</h3>
+          <p class="muted">
+            Plan başlangıç saati ve günlük dakikadan oluşur; bitiş saati bunlardan
+            <strong>hesaplanır</strong>. Plan değerlendirmeyi belirlemez, yalnızca
+            "bugün ne yapacağım"ı söyler — ve o günün kaydına kopyalanır ki plan
+            sonradan değişse de geçmiş okunabilir kalsın.
+          </p>
+          <form method="post" action="/admin/ai" class="stack">
+            <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+            <label>Öğrenci</label>
+            <select name="studentId" required>
+              <% aa.rows.forEach((r) => { %>
+              <option value="<%= r.student.id %>" <%= aa.selected && aa.selected.id === r.student.id ? 'selected' : '' %>><%= r.student.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Günlük Başlangıç</label>
+            <input type="time" name="startTime" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.startTime : '06:30' %>" />
+
+            <label>Günlük Süre (dk)</label>
+            <input type="number" name="minutes" min="15" max="600" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.minutes : 60 %>" />
+
+            <label>Durum</label>
+            <select name="isActive">
+              <option value="on">Açık</option>
+              <option value="off">Pasif</option>
+            </select>
+
+            <button type="submit">Rutini Kaydet</button>
+          </form>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'rutinler') { %>
+        <section class="panel">
+          <h3>Öğrenci Rutinleri</h3>
+          <p class="muted">Bir öğrencinin adına tıklayınca günlük kayıtları açılır.</p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr><th>Öğrenci</th><th>Plan</th><th>Rutin</th><th>İşlem</th></tr>
+              </thead>
+              <tbody>
+                <% aa.rows.forEach((r) => { %>
+                <tr>
+                  <td><a href="/admin/ai?bolum=kayitlar&aiStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
+                  <td class="single-line-cell">
+                    <% if (r.routine) { %><%= r.routine.startTime %> - <%= r.routine.endTime %> · <%= r.routine.minutes %> dk<% } else { %>-<% } %>
+                  </td>
+                  <td>
+                    <% if (!r.routine) { %>-
+                    <% } else if (r.routine.isActive) { %><span class="day-badge ok">Açık</span>
+                    <% } else { %><span class="day-badge off">Pasif</span><% } %>
+                  </td>
+                  <td>
+                    <% if (r.routine) { %>
+                    <form method="post" action="/admin/ai/delete" onsubmit="return confirm('<%= r.student.name %> için yapay zeka rutini kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
+                      <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+                      <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                      <button type="submit" class="danger">Kaldır</button>
+                    </form>
+                    <% } else { %>
+                    <form method="post" action="/admin/ai">
+                      <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+                      <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                      <input type="hidden" name="startTime" value="06:30" />
+                      <input type="hidden" name="minutes" value="60" />
+                      <input type="hidden" name="isActive" value="on" />
+                      <button type="submit">1 Saatlik Rutini Aç</button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'kayitlar') { %>
+        <% if (aa.detail && aa.detail.routine) { %>
+        <section class="panel">
+          <h3><%= aa.selected.name %> · Son <%= aa.detail.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Yapıldı <%= aa.detail.summary.done %> · Telafi edildi <%= aa.detail.summary.makeup %> ·
+            Yapılmadı <%= aa.detail.summary.notDone %> — planlanan
+            <%= Math.round(aa.detail.summary.planlananDakika / 60) %> saatin
+            <strong><%= Math.round(aa.detail.summary.yapilanDakika / 60) %> saati</strong> çalışıldı.
+            <br />Öğrenci tarafında yanlış basılan bir düğme geri alınamaz; düzeltmesi buradadır.
+            Her düzeltme <strong>kim, ne zaman ve neyin üzerine</strong> yazdığıyla saklanır.
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Elle Yaz</th></tr>
+              </thead>
+              <tbody>
+                <% aa.detail.rows.forEach((g) => { %>
+                <tr>
+                  <td class="single-line-cell"><%= g.gunAdi %><br /><span class="muted"><%= g.day %></span></td>
+                  <td class="single-line-cell"><%= g.startTime %> - <%= g.endTime %><br /><span class="muted"><%= g.minutes %> dk</span></td>
+                  <td>
+                    <span class="state-pill <%= g.status %>"><%= g.statusText %></span>
+                    <% if (g.makeupDay && g.makeupDay !== g.day) { %>
+                    <br /><small class="muted"><%= g.makeupDay %> günü telafi edildi</small>
+                    <% } %>
+                    <% if (g.correctedAt) { %>
+                    <br /><small class="muted">
+                      Elle yazıldı<% if (g.correctedByName) { %> · <%= g.correctedByName %><% } %><%
+                      if (g.previousStatusText) { %> (<%= g.previousStatusText %> → <%= g.statusText %>)<% } %><%
+                      if (g.correctionNote) { %> · <%= g.correctionNote %><% } %>
+                    </small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="post" action="/admin/ai/log" class="state-fix">
+                      <input type="hidden" name="next" value="/admin/ai?bolum=kayitlar&aiStudentId=<%= aa.selected.id %>" />
+                      <input type="hidden" name="studentId" value="<%= aa.selected.id %>" />
+                      <input type="hidden" name="day" value="<%= g.day %>" />
+                      <select name="durum" aria-label="<%= g.day %> durumu">
+                        <option value="done">Yapıldı</option>
+                        <option value="makeup">Telafi edildi</option>
+                        <option value="not_done">Yapılmadı</option>
+                        <option value="clear">Kaydı sil</option>
+                      </select>
+                      <input type="text" name="note" placeholder="gerekçe (opsiyonel)" maxlength="500" />
+                      <button type="submit" class="ghost">Yaz</button>
+                    </form>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } else { %>
+        <section class="panel narrow">
+          <h3>Kayıt yok</h3>
+          <p class="muted">
+            <%= aa.selected ? aa.selected.name : 'Bu öğrenci' %> için yapay zeka rutini tanımlı
+            değil. Önce <a href="/admin/ai?bolum=ayar">Rutin Ayarla</a> alanından planı gir;
+            günlük kayıtlar bundan sonra burada listelenir. Başka bir öğrencinin kayıtlarına
+            <a href="/admin/ai?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
+          </p>
+        </section>
+        <% } %>
+        <% } %>
+        <% } %>
+
         <%# NAMAZ RUTINI (admin). Uyanma/spordan farki: rutinin ayari yok
             (vakit saatleri gune ve konuma gore kayar, uygulama bilmiyor),
             gun basina bes kayit var ve ucuncu bir durum (kaza) mevcut. %>
@@ -1736,7 +1942,7 @@
                   </td>
                   <% g.vakitler.forEach((v) => { %>
                   <td>
-                    <span class="prayer-pill <%= v.status %>"><%= v.statusText %></span>
+                    <span class="state-pill <%= v.status %>"><%= v.statusText %></span>
                     <% if (v.correctedAt) { %>
                     <br /><small class="muted">
                       Elle yazıldı<% if (v.correctedByName) { %> · <%= v.correctedByName %><% } %><%
@@ -1744,7 +1950,7 @@
                       if (v.correctionNote) { %> · <%= v.correctionNote %><% } %>
                     </small>
                     <% } %>
-                    <form method="post" action="/admin/prayer/log" class="prayer-fix">
+                    <form method="post" action="/admin/prayer/log" class="state-fix">
                       <input type="hidden" name="next" value="/admin/prayer?bolum=kayitlar&prayerStudentId=<%= pa.selected.id %>" />
                       <input type="hidden" name="studentId" value="<%= pa.selected.id %>" />
                       <input type="hidden" name="day" value="<%= v.day %>" />

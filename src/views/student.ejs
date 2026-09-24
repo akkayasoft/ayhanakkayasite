@@ -122,6 +122,32 @@
         </section>
         <% } %>
 
+        <%# Yapay zeka seridi: tek gunluk kayit oldugu icin isaretleme
+            dogrudan seritte yapilabilir (namazdan farki bu). %>
+        <% if (ai && ai.routine && ai.routine.isActive) { %>
+        <section class="wake-strip <%= ai.bugun.status === 'pending' ? '' : 'done' %>">
+          <div class="wake-strip-info">
+            <p class="wake-strip-label">Yapay Zeka Rutini · <%= ai.routine.startTime %> - <%= ai.routine.endTime %> (<%= ai.routine.minutes %> dk)</p>
+            <p class="wake-strip-value"><%= ai.bugun.statusText %><% if (ai.bugun.doneAt) { %> · <%= ai.bugun.doneAt %><% } %></p>
+          </div>
+          <% if (ai.bugun.yapildiYazilabilir) { %>
+          <form method="post" action="/student/ai">
+            <input type="hidden" name="next" value="/student/dashboard" />
+            <input type="hidden" name="durum" value="done" />
+            <button type="submit" class="wake-button">Yaptım</button>
+          </form>
+          <% } else if (ai.bugun.telafiYazilabilir) { %>
+          <form method="post" action="/student/ai">
+            <input type="hidden" name="next" value="/student/dashboard" />
+            <input type="hidden" name="durum" value="makeup" />
+            <button type="submit" class="wake-button">Telafi Ettim</button>
+          </form>
+          <% } else { %>
+          <a class="button-link" href="/student/ai?bolum=durum">Rutini Gör</a>
+          <% } %>
+        </section>
+        <% } %>
+
         <%# Namaz seridi: bes vakit x uc durum = 15 dugme, serite sigmaz.
             Bu yuzden serit OZET gosterir, isaretleme kendi sayfasinda. %>
         <% if (prayer && prayer.routine && prayer.routine.isActive && prayer.rows.length) { %>
@@ -717,6 +743,156 @@
         <%# GUNLUK 5 VAKIT NAMAZ. Durum saatten hesaplanmaz, ogrenci beyan
             eder: vaktinde / kilinmadi / kazasi kilindi. Gecmis gunlerde tek
             acik islem KAZA'dir — kazanin tanimi zaten budur. %>
+        <%# GUNLUK YAPAY ZEKA CALISMASI (plan: gunde 1 saat). Namazla ayni
+            sekil: durum beyan edilir, gecmiste tek acik islem TELAFI. %>
+        <% if (currentPage === 'ai' && ai) { %>
+        <header class="content-header">
+          <h2>Yapay Zeka Rutini</h2>
+          <p class="muted"><%= today %> · şu an <%= ai.nowHm %></p>
+        </header>
+
+        <% if (!ai.routine || !ai.routine.isActive) { %>
+        <section class="panel narrow">
+          <h3>Rutin tanımlı değil</h3>
+          <p class="muted">
+            Yapay zeka çalışma rutini yönetici tarafından açılır. Açıldığında günlük
+            planını burada <strong>yapıldı</strong>, <strong>yapılmadı</strong> ya da
+            <strong>telafi edildi</strong> olarak işaretlersin.
+          </p>
+        </section>
+        <% } else { %>
+
+        <% if (currentSection === 'durum') { %>
+        <section class="wake-hero <%= ai.bugun.status %>">
+          <p class="wake-hero-target">
+            Günlük plan <strong><%= ai.routine.startTime %> - <%= ai.routine.endTime %></strong>
+            · <%= ai.routine.minutes %> dakika
+          </p>
+          <p class="wake-hero-value"><%= ai.bugun.statusText %></p>
+          <% if (ai.bugun.doneAt) { %>
+          <p class="wake-hero-status">İşaret <%= ai.bugun.doneAt %></p>
+          <% } %>
+          <% if (ai.bugun.makeupAt) { %>
+          <p class="wake-hero-status">Telafi <%= ai.bugun.makeupAt %></p>
+          <% } %>
+
+          <% if (ai.bugun.yapildiYazilabilir || ai.bugun.yapilmadiYazilabilir || ai.bugun.telafiYazilabilir) { %>
+          <div class="state-actions">
+            <% if (ai.bugun.yapildiYazilabilir) { %>
+            <form method="post" action="/student/ai">
+              <input type="hidden" name="next" value="/student/ai?bolum=durum" />
+              <input type="hidden" name="durum" value="done" />
+              <button type="submit" class="state-button ok">Yapıldı</button>
+            </form>
+            <% } %>
+            <% if (ai.bugun.telafiYazilabilir) { %>
+            <form method="post" action="/student/ai">
+              <input type="hidden" name="next" value="/student/ai?bolum=durum" />
+              <input type="hidden" name="durum" value="makeup" />
+              <button type="submit" class="state-button makeup">Telafi Ettim</button>
+            </form>
+            <% } %>
+            <% if (ai.bugun.yapilmadiYazilabilir) { %>
+            <form method="post" action="/student/ai">
+              <input type="hidden" name="next" value="/student/ai?bolum=durum" />
+              <input type="hidden" name="durum" value="not_done" />
+              <button type="submit" class="state-button miss">Yapmadım</button>
+            </form>
+            <% } %>
+          </div>
+          <% } else { %>
+          <p class="muted">Kayıt kapandı, değiştirilemez.</p>
+          <% } %>
+        </section>
+
+        <p class="muted">
+          <strong>Yapıldı</strong> ve <strong>telafi edildi</strong> kapanır, geri alınamaz.
+          <strong>Yapmadım</strong> kapanmaz: o günün telafisini sonradan — bugün ya da
+          ilerideki bir gün — işaretleyebilirsin. Planlı saat geçince gün otomatik
+          kapanmaz; <strong>günün sonuna kadar</strong> açık kalır.
+        </p>
+
+        <p class="section-label">Son <%= ai.summary.gunSayisi %> Gün</p>
+        <section class="kpi-grid">
+          <article class="kpi <%= ai.streak > 0 ? 'ok' : '' %>">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.streak %></span>
+            <p class="kpi-label">Kesintisiz Seri</p>
+            <p class="kpi-value"><%= ai.streak %> gün</p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
+            <p class="kpi-label">Yapıldı Oranı</p>
+            <p class="kpi-value"><%= ai.summary.doneRate === null ? '-' : ai.summary.doneRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span>
+            <p class="kpi-label">Telafi ile Birlikte</p>
+            <p class="kpi-value"><%= ai.summary.withMakeupRate === null ? '-' : ai.summary.withMakeupRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
+            <p class="kpi-label">Çalışılan Süre</p>
+            <p class="kpi-value"><%= Math.round(ai.summary.yapilanDakika / 60) %> saat</p>
+          </article>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'gecmis') { %>
+        <section class="panel">
+          <h3>Son <%= ai.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Yapıldı <%= ai.summary.done %> · Telafi edildi <%= ai.summary.makeup %> ·
+            Yapılmadı <%= ai.summary.notDone %> — planlanan
+            <%= Math.round(ai.summary.planlananDakika / 60) %> saatin
+            <strong><%= Math.round(ai.summary.yapilanDakika / 60) %> saati</strong> çalışıldı.
+            <br />Yapılmayan bir günün <strong>telafisini buradan işaretleyebilirsin</strong>;
+            geçmiş günlerde açık olan tek işlem budur.
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>İşlem</th></tr>
+              </thead>
+              <tbody>
+                <% ai.rows.forEach((g) => { %>
+                <tr>
+                  <td class="single-line-cell">
+                    <%= g.gunAdi %><br /><span class="muted"><%= g.day %></span>
+                    <% if (g.bugunMu) { %><br /><span class="day-badge">Bugün</span><% } %>
+                  </td>
+                  <td class="single-line-cell"><%= g.startTime %> - <%= g.endTime %><br /><span class="muted"><%= g.minutes %> dk</span></td>
+                  <td>
+                    <span class="state-pill <%= g.status %>"><%= g.statusText %></span>
+                    <% if (g.makeupDay && g.makeupDay !== g.day) { %>
+                    <br /><small class="muted"><%= g.makeupDay %> günü telafi edildi</small>
+                    <% } %>
+                    <% if (g.correctedAt) { %>
+                    <br /><small class="muted">Yönetici düzeltmesi<% if (g.previousStatusText) { %> (<%= g.previousStatusText %> → <%= g.statusText %>)<% } %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (g.telafiYazilabilir) { %>
+                    <form method="post" action="/student/ai">
+                      <input type="hidden" name="next" value="/student/ai?bolum=gecmis" />
+                      <input type="hidden" name="gun" value="<%= g.day %>" />
+                      <input type="hidden" name="durum" value="makeup" />
+                      <button type="submit" class="state-button makeup small">Telafi Ettim</button>
+                    </form>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+
+        <% } %>
+        <% } %>
+
         <% if (currentPage === 'prayer' && prayer) { %>
         <header class="content-header">
           <h2>Namaz Rutini</h2>
@@ -745,13 +921,13 @@
             <% if (v.qadaAt) { %><p class="muted prayer-time">Kaza <%= v.qadaAt %></p><% } %>
 
             <% if (v.vaktindeYazilabilir || v.kilinmadiYazilabilir || v.kazaYazilabilir) { %>
-            <div class="prayer-actions">
+            <div class="state-actions">
               <% if (v.vaktindeYazilabilir) { %>
               <form method="post" action="/student/prayer">
                 <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
                 <input type="hidden" name="vakit" value="<%= v.prayer %>" />
                 <input type="hidden" name="durum" value="on_time" />
-                <button type="submit" class="prayer-button ok">Vaktinde Kıldım</button>
+                <button type="submit" class="state-button ok">Vaktinde Kıldım</button>
               </form>
               <% } %>
               <% if (v.kazaYazilabilir) { %>
@@ -759,7 +935,7 @@
                 <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
                 <input type="hidden" name="vakit" value="<%= v.prayer %>" />
                 <input type="hidden" name="durum" value="qada" />
-                <button type="submit" class="prayer-button qada">Kazasını Kıldım</button>
+                <button type="submit" class="state-button qada">Kazasını Kıldım</button>
               </form>
               <% } %>
               <% if (v.kilinmadiYazilabilir) { %>
@@ -767,7 +943,7 @@
                 <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
                 <input type="hidden" name="vakit" value="<%= v.prayer %>" />
                 <input type="hidden" name="durum" value="missed" />
-                <button type="submit" class="prayer-button miss">Kılmadım</button>
+                <button type="submit" class="state-button miss">Kılmadım</button>
               </form>
               <% } %>
             </div>
@@ -838,7 +1014,7 @@
                   </td>
                   <% g.vakitler.forEach((v) => { %>
                   <td>
-                    <span class="prayer-pill <%= v.status %>"><%= v.statusText %></span>
+                    <span class="state-pill <%= v.status %>"><%= v.statusText %></span>
                     <% if (v.qadaDay && v.qadaDay !== v.day) { %>
                     <br /><small class="muted"><%= v.qadaDay %> günü kılındı</small>
                     <% } %>
@@ -848,7 +1024,7 @@
                       <input type="hidden" name="gun" value="<%= v.day %>" />
                       <input type="hidden" name="vakit" value="<%= v.prayer %>" />
                       <input type="hidden" name="durum" value="qada" />
-                      <button type="submit" class="prayer-button qada small">Kazasını Kıldım</button>
+                      <button type="submit" class="state-button qada small">Kazasını Kıldım</button>
                     </form>
                     <% } %>
                   </td>

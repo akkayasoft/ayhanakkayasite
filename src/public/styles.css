@@ -1936,9 +1936,12 @@ tr.day-off td {
   border-radius: var(--radius-lg);
 }
 
-.wake-hero.on_time { border-top-color: var(--success); }
-.wake-hero.late { border-top-color: var(--warning); }
-.wake-hero.missed { border-top-color: var(--danger); }
+.wake-hero.on_time,
+.wake-hero.done { border-top-color: var(--success); }
+.wake-hero.late,
+.wake-hero.makeup { border-top-color: var(--warning); }
+.wake-hero.missed,
+.wake-hero.not_done { border-top-color: var(--danger); }
 
 .wake-hero-target {
   margin: 0;
@@ -1962,8 +1965,10 @@ tr.day-off td {
   color: var(--text);
 }
 
-.wake-hero.on_time .wake-hero-status { color: var(--success); }
-.wake-hero.late .wake-hero-status { color: var(--warning); }
+.wake-hero.on_time .wake-hero-status,
+.wake-hero.done .wake-hero-status { color: var(--success); }
+.wake-hero.late .wake-hero-status,
+.wake-hero.makeup .wake-hero-status { color: var(--warning); }
 
 @media (max-width: 560px) {
   .wake-strip {
@@ -2383,11 +2388,11 @@ tr.day-off td {
 /* Namaz sutunu eklenince ikisi de bir sutun genisledi (13 -> 14 ve
    14 -> 15). Kapsayici icinde yatay kaydirma zaten kabul edilen desen. */
 .analysis-table {
-  min-width: 1300px;
+  min-width: 1420px;
 }
 
 .analysis-day-table {
-  min-width: 1400px;
+  min-width: 1520px;
 }
 
 /* Rutin gun tablosu (uyanma / spor): 6 bilgi sutununun yanina bir de elle
@@ -2724,7 +2729,11 @@ tr.day-off td {
 }
 
 /* --------------------------------------------------------------------------
-   Namaz rutini
+   Uc durumlu beyan rutinleri (namaz · yapay zeka)
+
+   Durum dugmeleri ve rozetleri ORTAK (.state-*): ikisi de "yapildi /
+   yapilmadi / sonradan telafi" seklini paylasiyor. Bes vakitlik kart
+   izgarasi (.prayer-*) yalnizca namaza aittir.
 
    Bes vakit x uc durum. Durum saatten hesaplanmadigi (bkz. CLAUDE.md) ve
    ucuncu bir durum (kaza) oldugu icin uyanma/spordaki tek dugmeli "hero"
@@ -2784,19 +2793,33 @@ tr.day-off td {
   font-variant-numeric: tabular-nums;
 }
 
-.prayer-actions {
+.state-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 4px;
   margin-top: var(--sp-2);
 }
 
-.prayer-actions form {
+/* Namaz kartinda dugmeler alt alta (kart dar); yapay zekanin tek genis
+   kartinda yan yana sigiyorlar. */
+.prayer-card .state-actions {
+  flex-direction: column;
+}
+
+.prayer-card .state-button {
+  width: 100%;
+}
+
+.wake-hero .state-button {
+  width: auto;
+  min-width: 132px;
+}
+
+.state-actions form {
   margin: 0;
 }
 
-.prayer-button {
-  width: 100%;
+.state-button {
   padding: 7px 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
@@ -2807,17 +2830,19 @@ tr.day-off td {
   cursor: pointer;
 }
 
-.prayer-button:hover { background: var(--surface-hover); color: var(--text); }
-.prayer-button.ok { border-color: var(--success-border); color: var(--success); }
-.prayer-button.ok:hover { background: var(--success-soft); }
-.prayer-button.qada { border-color: var(--primary); color: var(--primary); }
-.prayer-button.qada:hover { background: var(--surface-hover); }
-.prayer-button.miss { border-color: var(--danger-border); color: var(--danger); }
-.prayer-button.miss:hover { background: var(--danger-soft); }
-.prayer-button.small { width: auto; margin-top: 4px; padding: 4px 8px; font-size: 0.75rem; }
+.state-button:hover { background: var(--surface-hover); color: var(--text); }
+.state-button.ok { border-color: var(--success-border); color: var(--success); }
+.state-button.ok:hover { background: var(--success-soft); }
+.state-button.qada,
+.state-button.makeup { border-color: var(--primary); color: var(--primary); }
+.state-button.qada:hover,
+.state-button.makeup:hover { background: var(--surface-hover); }
+.state-button.miss { border-color: var(--danger-border); color: var(--danger); }
+.state-button.miss:hover { background: var(--danger-soft); }
+.state-button.small { width: auto; margin-top: 4px; padding: 4px 8px; font-size: 0.75rem; }
 
 /* Tablodaki durum rozeti */
-.prayer-pill {
+.state-pill {
   display: inline-block;
   padding: 2px 8px;
   border: 1px solid var(--border-strong);
@@ -2827,10 +2852,15 @@ tr.day-off td {
   white-space: nowrap;
 }
 
-.prayer-pill.on_time { border-color: var(--success-border); background: var(--success-soft); color: var(--success); }
-.prayer-pill.qada { border-color: var(--border-strong); background: var(--surface-hover); color: var(--primary); }
-.prayer-pill.missed { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
-.prayer-pill.pending { color: var(--muted); }
+/* Iki sozluk, ayni anlamlar: yapildi / telafi / yapilmadi.
+   Namaz: on_time · qada · missed — Yapay zeka: done · makeup · not_done. */
+.state-pill.on_time,
+.state-pill.done { border-color: var(--success-border); background: var(--success-soft); color: var(--success); }
+.state-pill.qada,
+.state-pill.makeup { border-color: var(--border-strong); background: var(--surface-hover); color: var(--primary); }
+.state-pill.missed,
+.state-pill.not_done { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
+.state-pill.pending { color: var(--muted); }
 
 /* 6 sutun (gun + 5 vakit) ve hucrelerde form var: analiz tablolarindaki
    kabul edilen desen — kapsayici icinde yatay kaydirir, telefonda karta
@@ -2845,21 +2875,21 @@ tr.day-off td {
   white-space: nowrap;
 }
 
-.prayer-fix {
+.state-fix {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin: 6px 0 0;
 }
 
-.prayer-fix select,
-.prayer-fix input[type='text'] {
+.state-fix select,
+.state-fix input[type='text'] {
   padding: 4px 6px;
   font-size: 0.75rem;
 }
 
-.prayer-fix input[type='text'] { min-width: 0; flex: 1 1 90px; }
-.prayer-fix button { padding: 4px 10px; font-size: 0.75rem; }
+.state-fix input[type='text'] { min-width: 0; flex: 1 1 90px; }
+.state-fix button { padding: 4px 10px; font-size: 0.75rem; }
 
 @media (max-width: 640px) {
   .prayer-log-table { min-width: 0; }

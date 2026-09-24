@@ -104,6 +104,17 @@ const ADMIN_MENU = [
     ]
   },
   {
+    key: 'ai',
+    label: 'Yapay Zeka Rutini',
+    icon: 'ai',
+    href: '/admin/ai',
+    sections: [
+      { key: 'rutinler', label: 'Öğrenci Rutinleri' },
+      { key: 'kayitlar', label: 'Günlük Kayıtlar' },
+      { key: 'ayar', label: 'Rutin Ayarla' }
+    ]
+  },
+  {
     key: 'prayer',
     label: 'Namaz Rutini',
     icon: 'prayer',
@@ -186,6 +197,16 @@ const STUDENT_MENU = [
     label: 'Spor Rutini',
     icon: 'sport',
     href: '/student/sport',
+    sections: [
+      { key: 'durum', label: 'Bugün' },
+      { key: 'gecmis', label: 'Son Günler' }
+    ]
+  },
+  {
+    key: 'ai',
+    label: 'Yapay Zeka Rutini',
+    icon: 'ai',
+    href: '/student/ai',
     sections: [
       { key: 'durum', label: 'Bugün' },
       { key: 'gecmis', label: 'Son Günler' }
