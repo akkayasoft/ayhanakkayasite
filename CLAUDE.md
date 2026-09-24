@@ -1219,14 +1219,55 @@ namazdan farklı olarak **doğrudan işaretler** — günde tek kayıt olduğu i
 tek düğme yeter.
 
 **Haftalık analizde:** karşılaştırmada *Yapay Zeka* sütunu
-(`yapıldı/kayıtlı gün` + oran + trend, altında çalışılan saat ve telafi
-sayısı), gün kırılımında durum rozeti + dakika, özet kartlarında *Yapay Zeka
-(yapıldı)* ve *YZ Çalışma Süresi*. Çalışılan süre = planın gerçekleşen kısmı
-(yapıldı + telafi günleri × plan dakikası).
+(`yapıldı/kayıtlı gün` + oran + trend, altında çalışılan saat, telafi sayısı
+ve kaç günde gerçek süre girildiği), gün kırılımında durum rozeti + dakika,
+özet kartlarında *Yapay Zeka (yapıldı)* ve *YZ Çalışma Süresi*. Çalışılan
+süre gerçek girdilerden toplanır, girilmemiş günlerde plana düşer (bkz.
+*Gerçek çalışılan dakika*).
 
-> Gerçekte kaç dakika çalışıldığı **tutulmuyor**; süre plandan türetiliyor.
-> Gerçek süre istenirse `ai_logs`'a bir `actual_minutes` sütunu ve işaretleme
-> formuna bir alan gerekir.
+### Gerçek çalışılan dakika
+
+`ai_logs.actual_minutes` (**NULL olabilir**) gerçekte kaç dakika çalışıldığını
+tutar. Plandan ayrı durur: plan *"bugün ne yapacağım"*, bu sütun *"gerçekte ne
+kadar yaptım"*.
+
+- **Girmek opsiyoneldir ve boş bırakmak geçerli bir cevaptır** (NULL — sıfır
+  değil). Öğrenci *"Yapıldı"*ya bastığında uygulamanın bildiği tek şey işin
+  yapıldığıdır, kaç dakika sürdüğü değil. Bu yüzden alan **varsayılan olarak
+  boştur**; plan değerini otomatik yazmak, girilmemiş bir sayıyı ölçülmüş gibi
+  gösterirdi.
+- **Raporlar plana düşer ve bunu söyler.** `aiEffectiveMinutes(log)` gerçek
+  girildiyse onu, girilmediyse planı sayar; her yerde ayrıca **kaç günde
+  gerçek süre girildiği** yazar (öğrenci özeti, admin özeti, karşılaştırma
+  sütunu, özet kartı). Gün kırılımında plandan sayılan değerin yanında
+  *(plan)* etiketi durur. Sayının nereden geldiği görünür kalmalı.
+- **Süre DURUM gibi kilitlenmez.** İş sabah işaretlenir, kaç dakika sürdüğü
+  çoğu zaman sonra yazılır — uyanma/spor notundaki kararın aynısı. Rota
+  `POST /student/ai/minutes`; yalnızca `done` / `makeup` günlerine yazılır
+  (*"yapılmadı"* günde yazılacak süre yoktur), boş göndermek temizler.
+  İşaretleme formunda da opsiyonel bir alan olarak duruyor.
+- Admin `/admin/ai/log` formundan da süre yazabilir. Durum aynı kalıp yalnızca
+  süre değiştirilmek istenirse bu **geçerli bir istektir** — yoksa *"gün zaten
+  o durumda"* deyip süreyi yutardık. Bir gün `not_done`'a çevrilirse süre
+  **temizlenir** (yazılacak süre kalmadı).
+- Sınır **1-1440 dakika** (veritabanı `CHECK`'i de aynı kuralı tutar).
+
+> ⚠️ **Bu iş sırasında bulunan tutarsızlık: bayat düzeltme izi.** Düzeltme
+> alanları (`corrected_by` / `previous_status` / …) *"bu satır şu anki
+> durumunu nasıl aldı"*yı anlatır ve **yalnızca admin** yazar. Admin bir günü
+> *"Yapılmadı"* yapıp öğrenci sonradan telafi işaretleyince iz yerinde
+> kalıyor ve ekranda *"Telafi edildi → Telafi edildi"* gibi kendisiyle çelişen
+> bir satır çıkıyordu. Öğrencinin izinli geçişi artık izi **temizler**; aynı
+> düzeltme namazdaki `missed → qada` geçişine de uygulandı.
+
+Doğrulandı: süre yazma / değiştirme / temizleme çalışıyor; yapılmamış güne
+süre, 0, 2000, metin ve gelecek gün **reddedildi**; işaretlerken girilen süre
+kaydediliyor (*"Telafi edildi · 50 dk"*); admin süresi yazıyor ve `not_done`'a
+çevirince süre temizleniyor; analiz 260 dk'yı **4.3 saat** ve *"3 gün gerçek
+süre"* olarak gösteriyor. Admin → `/student/ai/minutes` **403**, oturumsuz
+**302**; yazma `student_id`'ye kapalı (başka öğrencinin satırı değişmiyor).
+19 adres **200**; 1440 / 390px'te taşma **0**, telefonda kart etiketleri
+(*Gün / Plan / Durum / Çalışılan Süre / İşlem*) doğru.
 
 Doğrulandı (lokal, 24 Eylül): rutin 06:30-07:30 / 60 dk açıldı. Geçişler:
 `not_done → done` **reddedildi** (*"yalnızca telafisi işaretlenebilir"*),

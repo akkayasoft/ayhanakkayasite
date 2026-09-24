@@ -1057,7 +1057,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     // Yapay zeka gunde tek kayit tutar; uyanma/spor gibi dogrudan cekilir.
     query(
       `
-        SELECT student_id AS "studentId", day, status, minutes
+        SELECT student_id AS "studentId", day, status, minutes,
+               actual_minutes AS "actualMinutes"
         FROM ai_logs
         WHERE day BETWEEN $1 AND $2
       `,
@@ -1125,7 +1126,11 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     studentId: row.studentId,
     date: toDateOnly(row.day),
     status: row.status,
-    minutes: Number(row.minutes || 0)
+    minutes: Number(row.minutes || 0),
+    actualMinutes:
+      row.actualMinutes === null || row.actualMinutes === undefined
+        ? null
+        : Number(row.actualMinutes)
   }));
   const aiByStudentDay = new Map(aiRows.map((r) => [`${r.studentId}:${r.date}`, r]));
 
@@ -1164,7 +1169,11 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     aiDone: 0,
     aiMakeup: 0,
     aiNotDone: 0,
-    aiMinutes: 0
+    // Sayilan dakika: gercek girildiyse o, girilmediyse plan. Kac gunun
+    // gercek girdisi oldugu ayrica tutulur — sayinin nereden geldigi
+    // gorunur kalsin diye.
+    aiMinutes: 0,
+    aiActualDays: 0
   });
 
   /** Bir gunun uyanma kaydini metrige ekler. */
@@ -1213,7 +1222,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     if (log.status === 'done') metrik.aiDone += 1;
     else if (log.status === 'makeup') metrik.aiMakeup += 1;
     else if (log.status === 'not_done') metrik.aiNotDone += 1;
-    if (log.status === 'done' || log.status === 'makeup') metrik.aiMinutes += log.minutes;
+    metrik.aiMinutes += aiEffectiveMinutes(log);
+    if (log.actualMinutes !== null) metrik.aiActualDays += 1;
   }
 
   // Bir ogrencinin verilen gun araligindaki toplam metrikleri
@@ -1347,6 +1357,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       acc.aiMakeup += row.current.aiMakeup;
       acc.aiNotDone += row.current.aiNotDone;
       acc.aiMinutes += row.current.aiMinutes;
+      acc.aiActualDays += row.current.aiActualDays;
       return acc;
     }, bosMetrik())
   );
@@ -4814,6 +4825,18 @@ app.post(
       });
     }
 
+    // Isaretlerken dakika girmek OPSIYONEL; bos birakilirsa NULL kalir ve
+    // raporlar o gun icin plana duser.
+    const dakika = parseActualMinutes(req.body.dakika);
+    if (!dakika.ok) {
+      return studentRedirect(req, res, { error: dakika.error });
+    }
+    if (dakika.value !== null && durum === 'not_done') {
+      return studentRedirect(req, res, {
+        error: 'Yapılmamış bir güne çalışma süresi yazılamaz.'
+      });
+    }
+
     const nowHm = timeStringInTimeZone();
     const mevcutRes = await query(
       `SELECT status FROM ai_logs WHERE student_id = $1 AND day = $2`,
@@ -4842,9 +4865,10 @@ app.post(
       const insert = await query(
         `
           INSERT INTO ai_logs (
-            id, student_id, day, status, start_time, minutes, done_at, makeup_day, makeup_at
+            id, student_id, day, status, start_time, minutes, actual_minutes,
+            done_at, makeup_day, makeup_at
           )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
           ON CONFLICT (student_id, day) DO NOTHING
         `,
         [
@@ -4854,6 +4878,7 @@ app.post(
           durum,
           routine.startTime,
           routine.minutes,
+          dakika.value,
           durum === 'makeup' ? null : nowHm,
           durum === 'makeup' ? today : null,
           durum === 'makeup' ? nowHm : null
@@ -4867,10 +4892,13 @@ app.post(
       const guncelle = await query(
         `
           UPDATE ai_logs
-          SET status = 'makeup', makeup_day = $3, makeup_at = $4
+          SET status = 'makeup', makeup_day = $3, makeup_at = $4,
+              actual_minutes = COALESCE($5, actual_minutes),
+              corrected_by = NULL, corrected_at = NULL,
+              previous_status = NULL, correction_note = ''
           WHERE student_id = $1 AND day = $2 AND status = 'not_done'
         `,
-        [req.currentUser.id, gun, today, nowHm]
+        [req.currentUser.id, gun, today, nowHm, dakika.value]
       );
       if (guncelle.rowCount === 0) {
         return studentRedirect(req, res, { error: 'Kayıt değişmedi.' });
@@ -4878,8 +4906,62 @@ app.post(
     }
 
     const gunNotu = gun === today ? '' : ` (${gun})`;
+    const sureNotu = dakika.value === null ? '' : ` · ${dakika.value} dk`;
     return studentRedirect(req, res, {
-      message: `Yapay zeka çalışması${gunNotu}: ${aiStatusText(durum)}.`
+      message: `Yapay zeka çalışması${gunNotu}: ${aiStatusText(durum)}${sureNotu}.`
+    });
+  })
+);
+
+/**
+ * Gercek calisilan dakikayi sonradan yaz / degistir / temizle.
+ *
+ * DURUM kilitlidir ama dakika DEGILDIR — uyanma/spor notundaki kararin
+ * aynisi: is sabah isaretlenir, suresi cogu zaman sonra yazilir.
+ * Isaretlenmeden yazilamaz (yazilacak kayit henuz yok) ve yapilmamis bir
+ * gunde yazilacak sure yoktur.
+ */
+app.post(
+  '/student/ai/minutes',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const routine = await getAiRoutine(req.currentUser.id);
+    if (!routine || !routine.isActive) {
+      return studentRedirect(req, res, { error: 'Yapay zeka rutini tanımlı değil.' });
+    }
+
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const gunGirdi = normalizeText(req.body.gun);
+    const gun = isDateOnly(gunGirdi) ? gunGirdi : today;
+    if (gun > today) {
+      return studentRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+    }
+
+    const dakika = parseActualMinutes(req.body.dakika);
+    if (!dakika.ok) {
+      return studentRedirect(req, res, { error: dakika.error });
+    }
+
+    const guncelle = await query(
+      `
+        UPDATE ai_logs
+        SET actual_minutes = $3
+        WHERE student_id = $1 AND day = $2 AND status IN ('done', 'makeup')
+      `,
+      [req.currentUser.id, gun, dakika.value]
+    );
+
+    if (guncelle.rowCount === 0) {
+      return studentRedirect(req, res, {
+        error: 'Süre yazmak için gün önce "Yapıldı" ya da "Telafi edildi" işaretlenmeli.'
+      });
+    }
+
+    return studentRedirect(req, res, {
+      message:
+        dakika.value === null
+          ? `${gun} için çalışma süresi temizlendi; rapor plana düşer.`
+          : `${gun} için çalışma süresi ${dakika.value} dk olarak kaydedildi.`
     });
   })
 );
@@ -4903,6 +4985,16 @@ app.post(
     const notDogrulama = validateTaskDescription(req.body.note);
     if (!notDogrulama.ok) {
       return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const dakika = parseActualMinutes(req.body.dakika);
+    if (!dakika.ok) {
+      return adminRedirect(req, res, { error: dakika.error });
+    }
+    if (dakika.value !== null && (durum === 'not_done' || durum === 'clear')) {
+      return adminRedirect(req, res, {
+        error: 'Yapılmamış (ya da silinen) bir güne çalışma süresi yazılamaz.'
+      });
     }
 
     const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
@@ -4948,19 +5040,36 @@ app.post(
     }
 
     if (mevcut === durum) {
-      return adminRedirect(req, res, { error: `Gün zaten "${aiStatusText(durum)}" durumunda.` });
+      // Durum ayni ama dakika yazilmak isteniyorsa bu gecerli bir istektir;
+      // yoksa "zaten o durumda" diyip sureyi yutardik.
+      if (dakika.value === null) {
+        return adminRedirect(req, res, { error: `Gün zaten "${aiStatusText(durum)}" durumunda.` });
+      }
+      await query(
+        `UPDATE ai_logs SET actual_minutes = $3 WHERE student_id = $1 AND day = $2`,
+        [studentId, day, dakika.value]
+      );
+      return adminRedirect(req, res, {
+        message: `${ad} · ${day}: çalışma süresi ${dakika.value} dk olarak yazıldı.`
+      });
     }
 
     await query(
       `
         INSERT INTO ai_logs (
-          id, student_id, day, status, start_time, minutes, makeup_day,
+          id, student_id, day, status, start_time, minutes, actual_minutes, makeup_day,
           corrected_by, corrected_at, previous_status, correction_note
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NULL,$9)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NULL,$10)
         ON CONFLICT (student_id, day) DO UPDATE
         SET status = EXCLUDED.status,
             makeup_day = EXCLUDED.makeup_day,
+            -- Dakika girilmediyse mevcut deger korunur; "yapilmadi"ya
+            -- cevrilen gunde ise temizlenir (yazilacak sure kalmadi).
+            actual_minutes = CASE
+              WHEN EXCLUDED.status = 'not_done' THEN NULL
+              ELSE COALESCE(EXCLUDED.actual_minutes, ai_logs.actual_minutes)
+            END,
             corrected_by = EXCLUDED.corrected_by,
             corrected_at = NOW(),
             previous_status = ai_logs.status,
@@ -4973,6 +5082,7 @@ app.post(
         durum,
         routine.startTime,
         routine.minutes,
+        dakika.value,
         durum === 'makeup' ? today : null,
         req.currentUser.id,
         notDogrulama.value || ''
@@ -4980,8 +5090,9 @@ app.post(
     );
 
     const oncekiNotu = mevcut ? ` (${aiStatusText(mevcut)} → ${aiStatusText(durum)})` : '';
+    const sureNotu = dakika.value === null ? '' : ` · ${dakika.value} dk`;
     return adminRedirect(req, res, {
-      message: `${ad} · ${day}: ${aiStatusText(durum)}${oncekiNotu}.`
+      message: `${ad} · ${day}: ${aiStatusText(durum)}${sureNotu}${oncekiNotu}.`
     });
   })
 );
@@ -5144,7 +5255,9 @@ app.post(
       const guncelle = await query(
         `
           UPDATE prayer_logs
-          SET status = 'qada', qada_day = $4, qada_at = $5
+          SET status = 'qada', qada_day = $4, qada_at = $5,
+              corrected_by = NULL, corrected_at = NULL,
+              previous_status = NULL, correction_note = ''
           WHERE student_id = $1 AND day = $2 AND prayer = $3 AND status = 'missed'
         `,
         [req.currentUser.id, gun, vakit, today, nowHm]
@@ -5775,15 +5888,34 @@ async function sealMissedAiLogs() {
   return { sealed };
 }
 
+/**
+ * Bir gunun SAYILAN dakikasi: gercek girildiyse o, girilmediyse plan.
+ *
+ * "Yapildi" isaretlenmis ama dakika girilmemis bir gunu 0 saymak yanlis
+ * olurdu (is yapildi); plan degerini "gercek" diye sunmak da yanlis olurdu.
+ * Bu yuzden rapor plana DUSER ve kac gunde gercek girdi oldugunu ayrica
+ * soyler — sayinin nereden geldigi gorunur kalsin diye.
+ */
+function aiEffectiveMinutes(log) {
+  if (!log) return 0;
+  if (log.status !== 'done' && log.status !== 'makeup') return 0;
+  return log.actualMinutes === null ? log.minutes : log.actualMinutes;
+}
+
 function mapAiLog(row) {
   const startTime = normalizeEstimatedTimeForDisplay(row.startTime);
   const minutes = Number(row.minutes) || 0;
+  const actualMinutes =
+    row.actualMinutes === null || row.actualMinutes === undefined
+      ? null
+      : Number(row.actualMinutes);
   return {
     day: toDateOnly(row.day),
     status: row.status,
     statusText: aiStatusText(row.status),
     startTime,
     minutes,
+    actualMinutes,
     endTime: aiWindowEnd(startTime, minutes),
     doneAt: normalizeEstimatedTimeForDisplay(row.doneAt),
     makeupDay: toDateOnly(row.makeupDay),
@@ -5810,6 +5942,7 @@ async function buildAiView(studentId, gunSayisi = 14) {
   const res = await query(
     `
       SELECT al.day, al.status, al.start_time AS "startTime", al.minutes,
+             al.actual_minutes AS "actualMinutes",
              al.done_at AS "doneAt", al.makeup_day AS "makeupDay",
              al.makeup_at AS "makeupAt", al.note,
              al.corrected_at AS "correctedAt", al.previous_status AS "previousStatus",
@@ -5832,6 +5965,7 @@ async function buildAiView(studentId, gunSayisi = 14) {
     statusText: aiStatusText('pending'),
     startTime: routine.startTime,
     minutes: routine.minutes,
+    actualMinutes: null,
     endTime: routine.endTime,
     doneAt: null,
     makeupDay: null,
@@ -5844,7 +5978,8 @@ async function buildAiView(studentId, gunSayisi = 14) {
     ...bugunSatir,
     yapildiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'done'),
     yapilmadiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'not_done'),
-    telafiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'makeup')
+    telafiYazilabilir: canChangeAiStatus(todayLog ? todayLog.status : null, 'makeup'),
+    dakikaYazilabilir: bugunSatir.status === 'done' || bugunSatir.status === 'makeup'
   };
 
   // Liste rutinin kuruldugu gunde biter: oncesi hic takip edilmedi.
@@ -5861,7 +5996,11 @@ async function buildAiView(studentId, gunSayisi = 14) {
       // GECMIS gunde tek acik islem telafidir; bugun uc secenek de acik.
       telafiYazilabilir: satir.status === 'not_done',
       yapildiYazilabilir: gun === today && satir.status === 'pending',
-      yapilmadiYazilabilir: gun === today && satir.status === 'pending'
+      yapilmadiYazilabilir: gun === today && satir.status === 'pending',
+      // Dakika DURUM gibi kilitlenmez: uyanma/spor notundaki kararin aynisi
+      // — is sabah isaretlenir, suresi cogu zaman sonra yazilir. Yapilmamis
+      // bir gunde yazilacak dakika yoktur.
+      dakikaYazilabilir: satir.status === 'done' || satir.status === 'makeup'
     });
   }
 
@@ -5894,14 +6033,31 @@ async function buildAiView(studentId, gunSayisi = 14) {
       done,
       makeup,
       notDone,
-      // Plandaki 1 saat uzerinden: kac gun calisildi.
       planlananDakika: routine.minutes * rows.length,
-      yapilanDakika: routine.minutes * (done + makeup),
+      // Gercek girildiyse o, girilmediyse plan (bkz. aiEffectiveMinutes).
+      yapilanDakika: logs.reduce((t, l) => t + aiEffectiveMinutes(l), 0),
+      // Sayinin ne kadarinin olculdugu gorunur kalsin.
+      gercekGirilenGun: logs.filter((l) => l.actualMinutes !== null).length,
+      gercekDakika: logs.reduce((t, l) => t + (l.actualMinutes || 0), 0),
       // Veri yokken null doner ve ekranda "-" gosterilir.
       doneRate: toplam ? Math.round((done / toplam) * 100) : null,
       withMakeupRate: toplam ? Math.round(((done + makeup) / toplam) * 100) : null
     }
   };
+}
+
+/**
+ * Gercek calisilan dakika girdisi. Bos birakmak GECERLIDIR ve "girilmedi"
+ * demektir (NULL) — sifir degil.
+ */
+function parseActualMinutes(deger) {
+  const ham = normalizeText(deger);
+  if (ham === '') return { ok: true, value: null };
+  const n = Number(ham);
+  if (!Number.isInteger(n) || n < 1 || n > 1440) {
+    return { ok: false, error: 'Çalışılan süre 1 ile 1440 dakika arasında olmalı.' };
+  }
+  return { ok: true, value: n };
 }
 
 /** Rutinlerdeki wouldRoutineSealerRewrite ile ayni karar. */

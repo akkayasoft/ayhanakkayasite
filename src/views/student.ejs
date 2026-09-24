@@ -776,19 +776,27 @@
           <p class="wake-hero-status">Telafi <%= ai.bugun.makeupAt %></p>
           <% } %>
 
+          <% if (ai.bugun.actualMinutes !== null) { %>
+          <p class="wake-hero-status"><%= ai.bugun.actualMinutes %> dakika çalışıldı</p>
+          <% } %>
+
+          <%# Isaretlerken sure girmek OPSIYONEL: bos birakilirsa "girilmedi"
+              kalir ve rapor o gun icin plana duser. %>
           <% if (ai.bugun.yapildiYazilabilir || ai.bugun.yapilmadiYazilabilir || ai.bugun.telafiYazilabilir) { %>
           <div class="state-actions">
             <% if (ai.bugun.yapildiYazilabilir) { %>
-            <form method="post" action="/student/ai">
+            <form method="post" action="/student/ai" class="minute-form">
               <input type="hidden" name="next" value="/student/ai?bolum=durum" />
               <input type="hidden" name="durum" value="done" />
+              <input type="number" name="dakika" min="1" max="1440" placeholder="<%= ai.routine.minutes %> dk" aria-label="Çalışılan dakika" />
               <button type="submit" class="state-button ok">Yapıldı</button>
             </form>
             <% } %>
             <% if (ai.bugun.telafiYazilabilir) { %>
-            <form method="post" action="/student/ai">
+            <form method="post" action="/student/ai" class="minute-form">
               <input type="hidden" name="next" value="/student/ai?bolum=durum" />
               <input type="hidden" name="durum" value="makeup" />
+              <input type="number" name="dakika" min="1" max="1440" placeholder="<%= ai.routine.minutes %> dk" aria-label="Çalışılan dakika" />
               <button type="submit" class="state-button makeup">Telafi Ettim</button>
             </form>
             <% } %>
@@ -801,7 +809,19 @@
             <% } %>
           </div>
           <% } else { %>
-          <p class="muted">Kayıt kapandı, değiştirilemez.</p>
+          <p class="muted">Durum kapandı, değiştirilemez.</p>
+          <% } %>
+
+          <%# DURUM kilitli ama SURE degil: is sabah isaretlenir, kac dakika
+              surdugu cogu zaman sonra yazilir (uyanma/spor notundaki karar). %>
+          <% if (ai.bugun.dakikaYazilabilir) { %>
+          <form method="post" action="/student/ai/minutes" class="minute-form">
+            <input type="hidden" name="next" value="/student/ai?bolum=durum" />
+            <input type="hidden" name="gun" value="<%= ai.bugun.day %>" />
+            <input type="number" name="dakika" min="1" max="1440" value="<%= ai.bugun.actualMinutes === null ? '' : ai.bugun.actualMinutes %>" placeholder="<%= ai.routine.minutes %> dk" aria-label="Çalışılan dakika" />
+            <button type="submit" class="ghost"><%= ai.bugun.actualMinutes === null ? 'Süreyi Yaz' : 'Süreyi Güncelle' %></button>
+          </form>
+          <p class="muted">Süreyi boş bırakırsan rapor bu gün için plandaki <%= ai.routine.minutes %> dakikayı sayar.</p>
           <% } %>
         </section>
 
@@ -832,7 +852,7 @@
           <article class="kpi">
             <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
             <p class="kpi-label">Çalışılan Süre</p>
-            <p class="kpi-value"><%= Math.round(ai.summary.yapilanDakika / 60) %> saat</p>
+            <p class="kpi-value"><%= Math.round(ai.summary.yapilanDakika / 60 * 10) / 10 %> saat</p>
           </article>
         </section>
         <% } %>
@@ -843,15 +863,17 @@
           <p class="muted">
             Yapıldı <%= ai.summary.done %> · Telafi edildi <%= ai.summary.makeup %> ·
             Yapılmadı <%= ai.summary.notDone %> — planlanan
-            <%= Math.round(ai.summary.planlananDakika / 60) %> saatin
-            <strong><%= Math.round(ai.summary.yapilanDakika / 60) %> saati</strong> çalışıldı.
-            <br />Yapılmayan bir günün <strong>telafisini buradan işaretleyebilirsin</strong>;
+            <%= Math.round(ai.summary.planlananDakika / 60 * 10) / 10 %> saatin
+            <strong><%= Math.round(ai.summary.yapilanDakika / 60 * 10) / 10 %> saati</strong> çalışıldı
+            (<%= ai.summary.gercekGirilenGun %> günde gerçek süre girildi, kalanlar plandan sayıldı).
+            <br />Süreyi <strong>sonradan da yazabilirsin</strong>; durum kilitlenir ama süre kilitlenmez.
+            Yapılmayan bir günün <strong>telafisini buradan işaretleyebilirsin</strong>;
             geçmiş günlerde açık olan tek işlem budur.
           </p>
           <div class="table-wrap">
             <table class="stack-mobile">
               <thead>
-                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>İşlem</th></tr>
+                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Çalışılan Süre</th><th>İşlem</th></tr>
               </thead>
               <tbody>
                 <% ai.rows.forEach((g) => { %>
@@ -868,6 +890,21 @@
                     <% } %>
                     <% if (g.correctedAt) { %>
                     <br /><small class="muted">Yönetici düzeltmesi<% if (g.previousStatusText) { %> (<%= g.previousStatusText %> → <%= g.statusText %>)<% } %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (g.dakikaYazilabilir) { %>
+                    <form method="post" action="/student/ai/minutes" class="minute-form">
+                      <input type="hidden" name="next" value="/student/ai?bolum=gecmis" />
+                      <input type="hidden" name="gun" value="<%= g.day %>" />
+                      <input type="number" name="dakika" min="1" max="1440" value="<%= g.actualMinutes === null ? '' : g.actualMinutes %>" placeholder="<%= g.minutes %> dk" aria-label="<%= g.day %> çalışılan dakika" />
+                      <button type="submit" class="ghost">Yaz</button>
+                    </form>
+                    <% if (g.actualMinutes === null) { %>
+                    <small class="muted">girilmedi · plandan <%= g.minutes %> dk sayılıyor</small>
+                    <% } %>
+                    <% } else { %>
+                    <span class="muted">-</span>
                     <% } %>
                   </td>
                   <td>

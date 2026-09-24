@@ -817,6 +817,7 @@
             <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
             <p class="kpi-label">YZ Çalışma Süresi</p>
             <p class="kpi-value"><%= Math.round(weeklyAnalysis.totals.aiMinutes / 60 * 10) / 10 %> saat</p>
+            <p class="muted" style="margin: 0; font-size: 0.7rem"><%= weeklyAnalysis.totals.aiActualDays %> gün gerçek süre</p>
           </article>
         </section>
 
@@ -937,6 +938,7 @@
                     <% } %>
                     <br /><small class="muted">
                       <%= Math.round(r.current.aiMinutes / 60 * 10) / 10 %> saat<% if (r.current.aiMakeup) { %> · <%= r.current.aiMakeup %> telafi<% } %>
+                      <br /><%= r.current.aiActualDays %> gün gerçek süre
                     </small>
                     <% } %>
                   </td>
@@ -1090,7 +1092,10 @@
                     <% } else { %>
                     <span class="state-pill <%= d.ai.status %>"><%= d.ai.statusText %></span>
                     <% if (d.ai.status === 'done' || d.ai.status === 'makeup') { %>
-                    <br /><small class="muted"><%= d.ai.minutes %> dk</small>
+                    <br /><small class="muted">
+                      <%= d.ai.actualMinutes === null ? d.ai.minutes : d.ai.actualMinutes %> dk<%
+                      if (d.ai.actualMinutes === null) { %> <span title="Gerçek süre girilmedi, plan sayılıyor">(plan)</span><% } %>
+                    </small>
                     <% } %>
                     <% } %>
                   </td>
@@ -1767,15 +1772,16 @@
           <p class="muted">
             Yapıldı <%= aa.detail.summary.done %> · Telafi edildi <%= aa.detail.summary.makeup %> ·
             Yapılmadı <%= aa.detail.summary.notDone %> — planlanan
-            <%= Math.round(aa.detail.summary.planlananDakika / 60) %> saatin
-            <strong><%= Math.round(aa.detail.summary.yapilanDakika / 60) %> saati</strong> çalışıldı.
+            <%= Math.round(aa.detail.summary.planlananDakika / 60 * 10) / 10 %> saatin
+            <strong><%= Math.round(aa.detail.summary.yapilanDakika / 60 * 10) / 10 %> saati</strong> çalışıldı
+            (<%= aa.detail.summary.gercekGirilenGun %> günde gerçek süre girildi, kalanlar plandan sayıldı).
             <br />Öğrenci tarafında yanlış basılan bir düğme geri alınamaz; düzeltmesi buradadır.
             Her düzeltme <strong>kim, ne zaman ve neyin üzerine</strong> yazdığıyla saklanır.
           </p>
           <div class="table-wrap">
             <table class="stack-mobile">
               <thead>
-                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Elle Yaz</th></tr>
+                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Çalışılan Süre</th><th>Elle Yaz</th></tr>
               </thead>
               <tbody>
                 <% aa.detail.rows.forEach((g) => { %>
@@ -1795,6 +1801,15 @@
                     </small>
                     <% } %>
                   </td>
+                  <td class="single-line-cell">
+                    <% if (g.actualMinutes !== null) { %>
+                    <strong><%= g.actualMinutes %> dk</strong>
+                    <% } else if (g.status === 'done' || g.status === 'makeup') { %>
+                    <span class="muted">girilmedi</span><br /><small class="muted">plandan <%= g.minutes %> dk</small>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
                   <td>
                     <form method="post" action="/admin/ai/log" class="state-fix">
                       <input type="hidden" name="next" value="/admin/ai?bolum=kayitlar&aiStudentId=<%= aa.selected.id %>" />
@@ -1806,6 +1821,7 @@
                         <option value="not_done">Yapılmadı</option>
                         <option value="clear">Kaydı sil</option>
                       </select>
+                      <input type="number" name="dakika" min="1" max="1440" placeholder="dk" aria-label="<%= g.day %> çalışılan dakika" />
                       <input type="text" name="note" placeholder="gerekçe (opsiyonel)" maxlength="500" />
                       <button type="submit" class="ghost">Yaz</button>
                     </form>

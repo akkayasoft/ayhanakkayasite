@@ -2901,3 +2901,31 @@ tr.day-off td {
     white-space: normal;
   }
 }
+
+/* Calisilan dakika girdisi: sayi alani + dugme yan yana. Isaretleme
+   formlarinda dugmenin soluna, tablolarda tek satira siger. */
+.minute-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.minute-form input[type='number'] {
+  width: 74px;
+  padding: 6px 8px;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.state-fix input[type='number'] {
+  width: 62px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+}
+
+/* Hero kartinda girdi ve dugme ortalanir (kartin geri kalani gibi). */
+.wake-hero .minute-form {
+  justify-content: center;
+}

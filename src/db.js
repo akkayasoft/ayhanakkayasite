@@ -544,6 +544,23 @@ async function initDb() {
     `CREATE INDEX IF NOT EXISTS ai_logs_student_day_idx ON ai_logs (student_id, day DESC)`
   );
 
+  // GERCEK CALISILAN DAKIKA — plandan AYRI ve NULL olabilir.
+  //
+  // Plan "bugun ne yapacagim"i soyler; bu sutun "gercekte ne kadar yaptim"i.
+  // Ikisi ayri durmali: ogrenci "Yapildi"ya bastiginda uygulamanin bildigi
+  // tek sey isin yapildigidir, kac dakika surdugu degil. Bu yuzden alan
+  // OPSIYONEL ve bos birakilinca NULL kalir; raporlar o gun icin plana
+  // duser ve kac gunun gercek girdisi oldugunu ayrica soyler. Varsayilan
+  // olarak plan degerini yazmak, girilmemis bir sayiyi olculmus gibi
+  // gosterirdi.
+  await query(`ALTER TABLE ai_logs ADD COLUMN IF NOT EXISTS actual_minutes INTEGER`);
+  await query(`ALTER TABLE ai_logs DROP CONSTRAINT IF EXISTS ai_logs_actual_minutes_check`);
+  await query(`
+    ALTER TABLE ai_logs
+    ADD CONSTRAINT ai_logs_actual_minutes_check
+    CHECK (actual_minutes IS NULL OR actual_minutes BETWEEN 1 AND 1440)
+  `);
+
   // --- YZ / YDS programlari kaldirildi -----------------------------------
   //
   // Gorevler artik yalnizca UYANMA RUTINI, SPOR RUTINI ve DERS DEFTERI'nden
