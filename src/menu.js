@@ -104,6 +104,17 @@ const ADMIN_MENU = [
     ]
   },
   {
+    key: 'prayer',
+    label: 'Namaz Rutini',
+    icon: 'prayer',
+    href: '/admin/prayer',
+    sections: [
+      { key: 'rutinler', label: 'Öğrenci Rutinleri' },
+      { key: 'kayitlar', label: 'Günlük Kayıtlar' },
+      { key: 'ayar', label: 'Rutin Ayarla' }
+    ]
+  },
+  {
     key: 'schedule',
     label: 'Ders Programı',
     icon: 'schedule',
@@ -175,6 +186,16 @@ const STUDENT_MENU = [
     label: 'Spor Rutini',
     icon: 'sport',
     href: '/student/sport',
+    sections: [
+      { key: 'durum', label: 'Bugün' },
+      { key: 'gecmis', label: 'Son Günler' }
+    ]
+  },
+  {
+    key: 'prayer',
+    label: 'Namaz Rutini',
+    icon: 'prayer',
+    href: '/student/prayer',
     sections: [
       { key: 'durum', label: 'Bugün' },
       { key: 'gecmis', label: 'Son Günler' }

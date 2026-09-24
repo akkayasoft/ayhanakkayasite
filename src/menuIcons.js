@@ -41,6 +41,8 @@ const menuIcons = {
   wake: svg('<path d="M3 18h18"/><path d="M7.5 18a4.5 4.5 0 0 1 9 0"/><path d="M12 3v3M5.2 6.2l2 2M18.8 6.2l-2 2"/><path d="M5 21.5h14"/>'),
   // Spor rutini
   sport: svg('<path d="M3 12h3l2.5-6 4 13 3-9 2 2h3.5"/>'),
+  // Namaz rutini: kubbe + iki minare (cizgi, dolgu yok)
+  prayer: svg('<path d="M5.5 20v-6.5a6.5 6.5 0 0 1 13 0V20"/><path d="M3 20h18"/><path d="M12 7V4.5"/><path d="M3.5 20v-8.5M3.5 11.5l-.8-1.5.8-1.5.8 1.5z"/><path d="M20.5 20v-8.5M20.5 11.5l-.8-1.5.8-1.5.8 1.5z"/>'),
   // YDS takibi
   yds: svg('<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11a2 2 0 0 1 2 2v14a1.6 1.6 0 0 0-1.6-1.6H5.5A1.5 1.5 0 0 1 4 17z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16a1.6 1.6 0 0 1 1.6-1.6h3.9A1.5 1.5 0 0 0 20 17z"/>'),
   // Ders programi

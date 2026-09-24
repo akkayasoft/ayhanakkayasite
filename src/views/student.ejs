@@ -122,6 +122,21 @@
         </section>
         <% } %>
 
+        <%# Namaz seridi: bes vakit x uc durum = 15 dugme, serite sigmaz.
+            Bu yuzden serit OZET gosterir, isaretleme kendi sayfasinda. %>
+        <% if (prayer && prayer.routine && prayer.routine.isActive && prayer.rows.length) { %>
+        <% const pg = prayer.rows[0]; %>
+        <section class="wake-strip <%= pg.pending === 0 ? 'done' : '' %>">
+          <div class="wake-strip-info">
+            <p class="wake-strip-label">Namaz Rutini · 5 vakit</p>
+            <p class="wake-strip-value">
+              Vaktinde <%= pg.onTime %> · Kaza <%= pg.qada %> · Kılınmadı <%= pg.missed %><% if (pg.pending) { %> · Bekleyen <%= pg.pending %><% } %>
+            </p>
+          </div>
+          <a class="button-link" href="/student/prayer?bolum=durum"><%= pg.pending ? 'İşaretle' : 'Rutini Gör' %></a>
+        </section>
+        <% } %>
+
         <p class="section-label">Bugünün Özeti</p>
         <section class="kpi-grid">
           <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
@@ -696,6 +711,156 @@
           </div>
         </section>
         <% } %>
+        <% } %>
+        <% } %>
+
+        <%# GUNLUK 5 VAKIT NAMAZ. Durum saatten hesaplanmaz, ogrenci beyan
+            eder: vaktinde / kilinmadi / kazasi kilindi. Gecmis gunlerde tek
+            acik islem KAZA'dir — kazanin tanimi zaten budur. %>
+        <% if (currentPage === 'prayer' && prayer) { %>
+        <header class="content-header">
+          <h2>Namaz Rutini</h2>
+          <p class="muted"><%= today %> · şu an <%= prayer.nowHm %></p>
+        </header>
+
+        <% if (!prayer.routine || !prayer.routine.isActive) { %>
+        <section class="panel narrow">
+          <h3>Rutin tanımlı değil</h3>
+          <p class="muted">
+            Namaz rutini yönetici tarafından açılır. Açıldığında beş vaktin her birini
+            burada <strong>vaktinde kıldım</strong>, <strong>kılmadım</strong> ya da
+            <strong>kazasını kıldım</strong> olarak işaretlersin.
+          </p>
+        </section>
+        <% } else { %>
+
+        <% if (currentSection === 'durum') { %>
+        <p class="section-label">Bugünün Vakitleri</p>
+        <section class="prayer-grid">
+          <% prayer.bugun.forEach((v) => { %>
+          <article class="prayer-card <%= v.status %>">
+            <p class="prayer-name"><%= v.prayerLabel %></p>
+            <p class="prayer-status"><%= v.statusText %></p>
+            <% if (v.markedAt) { %><p class="muted prayer-time">İşaret <%= v.markedAt %></p><% } %>
+            <% if (v.qadaAt) { %><p class="muted prayer-time">Kaza <%= v.qadaAt %></p><% } %>
+
+            <% if (v.vaktindeYazilabilir || v.kilinmadiYazilabilir || v.kazaYazilabilir) { %>
+            <div class="prayer-actions">
+              <% if (v.vaktindeYazilabilir) { %>
+              <form method="post" action="/student/prayer">
+                <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
+                <input type="hidden" name="vakit" value="<%= v.prayer %>" />
+                <input type="hidden" name="durum" value="on_time" />
+                <button type="submit" class="prayer-button ok">Vaktinde Kıldım</button>
+              </form>
+              <% } %>
+              <% if (v.kazaYazilabilir) { %>
+              <form method="post" action="/student/prayer">
+                <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
+                <input type="hidden" name="vakit" value="<%= v.prayer %>" />
+                <input type="hidden" name="durum" value="qada" />
+                <button type="submit" class="prayer-button qada">Kazasını Kıldım</button>
+              </form>
+              <% } %>
+              <% if (v.kilinmadiYazilabilir) { %>
+              <form method="post" action="/student/prayer">
+                <input type="hidden" name="next" value="/student/prayer?bolum=durum" />
+                <input type="hidden" name="vakit" value="<%= v.prayer %>" />
+                <input type="hidden" name="durum" value="missed" />
+                <button type="submit" class="prayer-button miss">Kılmadım</button>
+              </form>
+              <% } %>
+            </div>
+            <% } else { %>
+            <p class="muted prayer-time">Kayıt kapandı, değiştirilemez.</p>
+            <% } %>
+          </article>
+          <% }) %>
+        </section>
+
+        <p class="muted">
+          <strong>Vaktinde</strong> ve <strong>kazası kılındı</strong> kapanır, geri alınamaz.
+          <strong>Kılmadım</strong> kapanmaz: o vaktin kazasını sonradan — bugün ya da
+          ilerideki bir gün — işaretleyebilirsin. Yanlış bastığın bir düğmeyi yalnızca
+          yönetici düzeltebilir.
+        </p>
+
+        <p class="section-label">Son <%= prayer.summary.gunSayisi %> Gün</p>
+        <section class="kpi-grid">
+          <article class="kpi <%= prayer.streak > 0 ? 'ok' : '' %>">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.streak %></span>
+            <p class="kpi-label">Tam Gün Serisi</p>
+            <p class="kpi-value"><%= prayer.streak %> gün</p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.percent %></span>
+            <p class="kpi-label">Vaktinde Oranı</p>
+            <p class="kpi-value"><%= prayer.summary.onTimeRate === null ? '-' : prayer.summary.onTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span>
+            <p class="kpi-label">Kaza ile Birlikte</p>
+            <p class="kpi-value"><%= prayer.summary.kilinanRate === null ? '-' : prayer.summary.kilinanRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.prayer %></span>
+            <p class="kpi-label">Kazası Kılınan</p>
+            <p class="kpi-value"><%= prayer.summary.qada %></p>
+          </article>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'gecmis') { %>
+        <section class="panel">
+          <h3>Son <%= prayer.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Vaktinde <%= prayer.summary.onTime %> · Kazası kılındı <%= prayer.summary.qada %> ·
+            Kılınmadı <%= prayer.summary.missed %> — toplam <%= prayer.summary.toplam %> vakit.
+            <br />Kılınmayan bir vaktin <strong>kazasını buradan işaretleyebilirsin</strong>;
+            geçmiş günlerde açık olan tek işlem budur.
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile prayer-log-table">
+              <thead>
+                <tr>
+                  <th>Gün</th>
+                  <% prayer.rows.length && prayer.rows[0].vakitler.forEach((v) => { %>
+                  <th><%= v.prayerLabel %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% prayer.rows.forEach((g) => { %>
+                <tr>
+                  <td class="single-line-cell">
+                    <%= g.gunAdi %><br /><span class="muted"><%= g.day %></span>
+                    <% if (g.bugunMu) { %><br /><span class="day-badge">Bugün</span><% } %>
+                  </td>
+                  <% g.vakitler.forEach((v) => { %>
+                  <td>
+                    <span class="prayer-pill <%= v.status %>"><%= v.statusText %></span>
+                    <% if (v.qadaDay && v.qadaDay !== v.day) { %>
+                    <br /><small class="muted"><%= v.qadaDay %> günü kılındı</small>
+                    <% } %>
+                    <% if (v.kazaYazilabilir) { %>
+                    <form method="post" action="/student/prayer">
+                      <input type="hidden" name="next" value="/student/prayer?bolum=gecmis" />
+                      <input type="hidden" name="gun" value="<%= v.day %>" />
+                      <input type="hidden" name="vakit" value="<%= v.prayer %>" />
+                      <input type="hidden" name="durum" value="qada" />
+                      <button type="submit" class="prayer-button qada small">Kazasını Kıldım</button>
+                    </form>
+                    <% } %>
+                  </td>
+                  <% }) %>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+
         <% } %>
         <% } %>
 

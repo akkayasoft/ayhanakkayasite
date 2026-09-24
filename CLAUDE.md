@@ -16,6 +16,12 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
 | **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
 
+> **Namaz rutini bu tabloda yok — bilinçli.** Günde beş vakit, görev listesine
+> beş satır daha eklemek demekti ve ders görevlerini boğardı. Rutin kendi
+> sayfasında ve panonun tepesindeki şeritte **özet** olarak durur
+> (*"Vaktinde 3 · Kaza 1 · Bekleyen 1"*); işaretleme kendi sayfasında yapılır.
+> Aynı sebeple "Tamamlanan" sayacına da girmez.
+
 Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
 
 - **Yapay Zeka programı** (149 derslik müfredat aktarımı) — modül, veri, script,
@@ -999,8 +1005,16 @@ kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
 
 > Yapı olarak uyanma rutinine paralel yazıldı (ayrı tablolar, ayrı
 > fonksiyonlar) — ortak bir "rutin" soyutlamasına çıkarmak canlı `wake_*`
-> verisini taşımayı gerektirirdi. Bir üçüncü rutin gerekirse önce o soyutlama
-> yapılmalı; iki kopya sınırdır.
+> verisini taşımayı gerektirirdi. İkisinin **ortak tek parçası** rota
+> gövdesidir (`ROUTINE_KINDS`, elle kayıt); gerisi ayrı durur.
+>
+> ⚠️ Eski not "bir üçüncü rutin gerekirse önce soyutlama yapılmalı" diyordu.
+> Gelen üçüncü istek (namaz) **aynı şeklin üçüncüsü değil**, başka bir şekil
+> çıktı: günde beş kayıt, saatten hesaplanmayan durum, üç durum. Soyutlamaya
+> zorlamak `ROUTINE_KINDS`'ı ("gün başına tek satır + saat sütunu + ayardan
+> hesaplanan durum") tanınmaz hale getirirdi. Bu yüzden namaz kendi modelini
+> kullanıyor. Kural şöyle okunmalı: **aynı şeklin üçüncüsü gelirse** önce
+> soyutlama.
 
 ### Elle kayıt (admin) — rutinlerin tek geri dönüşü
 
@@ -1125,6 +1139,114 @@ kaydediliyor. İşaretlemeden not 409; admin → rota **403**; oturumsuz 302;
 geçersiz tür 404; rutini olmayan başka öğrenci kendi kaydı olmadığı için
 yazamıyor ve mevcut not değişmiyor.
 
+
+## Günlük 5 vakit namaz rutini
+
+Uyanma/spor rutinlerinin **üçüncüsü değil, başka bir şekli**. Üç temel fark:
+
+| | Uyanma / Spor | Namaz |
+|---|---|---|
+| Gün başına kayıt | 1 | **5** (her vakit ayrı) |
+| Durum nereden gelir | saatten **hesaplanır** | kullanıcı **beyan eder** |
+| Durumlar | zamanında / geç / kaçırıldı | **vaktinde kılındı / kılınmadı / kazası kılındı** |
+
+- `prayer_routines` (öğrenci başına tek satır): yalnızca `is_active`.
+  **Hedef saat yok** — vakit saatleri güne ve konuma göre kayar; uygulama
+  onları bilmiyor ve uydurmamalı. Uydurulmuş bir hedefe göre "geç kaldın"
+  demek kaydı bozardı. Bu yüzden kayda kopyalanacak bir ayar da yok.
+- `prayer_logs`: `UNIQUE (student_id, day, prayer)`; `prayer` ∈ *sabah, öğle,
+  ikindi, akşam, yatsı*. `marked_at` basılan saat (yalnızca bilgi),
+  `qada_day` / `qada_at` **kazanın hangi gün ve saatte kılındığı** — kaza
+  başka bir gün kılındığı için ayrı tutulur, yoksa *"dünün ikindisini bugün
+  kıldım"* kaydı kaybolurdu.
+
+### Tek izinli geçiş: kılınmadı → kazası kılındı
+
+Uyanma/spordaki *"ilk basış kalıcıdır"* kuralı burada **tek** bir geçişe izin
+verir. Kazanın anlamı zaten budur; yasaklansaydı üçüncü durum sussuz kalırdı.
+
+| Mevcut | İzin verilen |
+|---|---|
+| kayıt yok | vaktinde · kılınmadı · kaza |
+| kılınmadı | **kaza** |
+| vaktinde | — (kapandı) |
+| kazası kılındı | — (kapandı) |
+
+- `missed → on_time` **yasak**: geçmişe dönük *"aslında vaktinde kılmıştım"*
+  beyanı. Kaydın değeri dürüstlüğünden geliyor; düzeltmesi adminde.
+- Arayüz bunu ayırt eder: "kılınmadı" için *"yalnızca kazası işaretlenebilir"*
+  der, kapanmış vakit için *"değiştirilemez"*. Aynı mesajı vermek kullanıcıya
+  vakti kapalı sandırırdı.
+
+### Gün kuralı
+
+- **Bugün:** üç seçenek de açık.
+- **Geçmiş:** yalnızca **kaza**. Geçmişe "vaktinde kıldım" yazmak yukarıdaki
+  yasağın aynısı.
+- **Gelecek:** hiçbiri.
+- **Rutin kurulmadan öncesi:** hiçbiri. O günler hiç takip edilmedi;
+  mühürleyici de oraya inmiyor. Tek başına bir kaza satırı, diğer dört vaktin
+  hiç kaydı olmadığı bir günde yanıltıcı olurdu. Geçmiş listesi de aynı yerde
+  biter — yoksa takip edilmemiş günler *"Bekliyor"* görünüp olmayan bir borç
+  gibi okunuyordu (ölçüldü: rutin 4 günlükken liste 11 gün gösteriyordu).
+
+### Mühürleme
+
+`sealMissedPrayerLogs` (`runSealSafely` içinde, açılışta + 5 dakikada bir,
+idempotent) geçmiş günlerin işaretlenmemiş vakitlerine **kılınmadı** yazar —
+gün başına 5 satır. Yalnızca **geçmiş** günlere ve **rutin kurulduktan
+sonrasına** dokunur; taban tarihten (`SYSTEM_START_DATE`) öncesine inmez.
+
+> Mühürlenen kayıt **kapanmış değildir**: kazası sonradan işaretlenebilir.
+> Uyanma/spordaki mühürden farkı bu.
+
+### Elle kayıt (admin) — namaz rutininin tek geri dönüşü
+
+`/admin/prayer` → **Günlük Kayıtlar**: her (gün, vakit) hücresinde durum
+seçici + gerekçe alanı. `POST /admin/prayer/log`; öğrenci **403**, oturumsuz
+**302**.
+
+- Her yazma satırın içine işlenir: `corrected_by` / `corrected_at` /
+  `previous_status` / `correction_note`. Hücrede *"Elle yazıldı · Sistem
+  Yöneticisi (Kılınmadı → Vaktinde kılındı) · gerekçe"* görünür.
+- **Gelecek güne** ve **taban tarihten öncesine** yazılamaz.
+- *"Kaydı sil"* yalnızca kalıcı olduğunda açıktır: mühürleyici penceresine
+  düşen geçmiş bir günün kaydı silinse 5 dakika içinde yeniden yazılırdı
+  (rutinlerdeki `wouldRoutineSealerRewrite` ile aynı karar).
+- Mühürleyici `ON CONFLICT DO NOTHING` kullandığı için adminin yazdığı durum
+  **ezilmez**.
+
+### Arayüz
+
+- **Öğrenci** `/student/prayer`: *Bugün* alanında beş vakit beş kart, her kart
+  kendi düğmelerini taşır (`.prayer-grid` / `.prayer-card`); *Son Günler*
+  alanında gün × vakit tablosu ve kılınmayan her vakitte **Kazasını Kıldım**
+  düğmesi.
+- **Seri** = beş vaktin de **vaktinde** kılındığı kesintisiz gün sayısı. Kaza
+  seriyi kurtarmaz; kurtarsaydı "vaktinde" ölçüsü anlamını yitirirdi.
+- Panodaki şerit **özet** gösterir, işaretleme yapmaz: 5 vakit × 3 durum = 15
+  düğme şeride sığmazdı.
+- Durum rengi kartın **sol kenarında**; arka planı boyamak içindeki
+  düğmelerin kontrastını bozuyordu. Gün sütununda `.single-line-cell`
+  yetmedi (bu tabloda gün adı *"Perşe mbe"* diye kırılıyordu), sütuna açık
+  genişlik + `nowrap` verildi.
+
+Doğrulandı (lokal, 24 Eylül): rutin açıldı; bugünün vakitleri vaktinde /
+kılınmadı / kaza olarak işaretlendi. Geçiş kuralları: `on_time` ve `qada`
+üzerine her yazma **reddedildi**, `missed → on_time` **reddedildi**,
+`missed → qada` **kabul edildi**, ikinci kaza basışı reddedildi. Gün
+kuralları: gelecek gün, geçmişe "vaktinde", taban öncesi ve rutin öncesi gün
+**reddedildi**; geçmiş güne kaza **kabul edildi** ve `qada_day` bugünü yazdı.
+Mühürleyici rutin başlangıcından bugüne 4 gün × 5 vakit = **20 satır**
+"kılınmadı" yazdı, bugüne dokunmadı; ikinci açılışta **0** satır yazdı.
+Adminin `missed → on_time` düzeltmesi izini bıraktı (`previous_status`,
+düzelten, gerekçe) ve **yeniden açılışta mühürleyici ezmedi**; aynı durumu
+tekrar yazmak, mühürleme penceresindeki günü silmek, gelecek gün, taban
+öncesi, geçersiz vakit ve geçersiz işlem **reddedildi**. Öğrenci → admin
+rotaları **403**, admin → `/student/prayer` **403**, oturumsuz **302**.
+Rutini olmayan öğrencide *"Kayıt yok"* kartı çıkıyor. 43 adres **200**;
+1440 / 390px'te sayfa taşması **0**, tablo kaydırması 0, telefonda kart
+etiketleri (*Gün / Sabah / Öğle / İkindi / Akşam / Yatsı*) doğru.
 
 ## Aylık hedefler
 

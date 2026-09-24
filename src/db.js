@@ -447,6 +447,55 @@ async function initDb() {
     `ALTER TABLE sport_logs ADD COLUMN IF NOT EXISTS correction_note TEXT NOT NULL DEFAULT ''`
   );
 
+  // GUNLUK 5 VAKIT NAMAZ RUTINI.
+  //
+  // Uyanma/spor rutinlerinin UCUNCUSU degil, BASKA BIR SEKLI:
+  //
+  // 1. Gunde TEK degil BES kayit var (her vakit ayri degerlendirilir).
+  // 2. Durum saatten HESAPLANMAZ. Vakit saatleri gune ve konuma gore kayar;
+  //    uygulama onlari bilmiyor ve uydurmamali. Durumu kullanici beyan eder.
+  //    Bu yuzden tabloda hedef/aralik sutunu yok — kopyalanacak bir ayar da
+  //    yok, rutin yalnizca acik/kapali.
+  // 3. Ucuncu bir durum var: KAZA. "Kilinmadi" kalici bir son degil; sonradan
+  //    kazasi kilinabilir. Yani wake/sport'taki "ilk basis kalicidir" kurali
+  //    burada tek bir gecise izin verir: missed -> qada.
+  //
+  // Bu farklar yuzunden ROUTINE_KINDS soyutlamasina sokulmadi (o soyutlama
+  // "gun basina tek satir + saat sutunu + ayardan hesaplanan durum" varsayar).
+  await query(`
+    CREATE TABLE IF NOT EXISTS prayer_routines (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS prayer_logs (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      prayer TEXT NOT NULL CHECK (prayer IN ('sabah', 'ogle', 'ikindi', 'aksam', 'yatsi')),
+      status TEXT NOT NULL CHECK (status IN ('on_time', 'missed', 'qada')),
+      marked_at TIME NULL,
+      -- Kaza BASKA BIR GUN kilinir: hangi gun ve saatte kilindigi ayri
+      -- tutulur, yoksa "dunun ikindisini bugun kildim" kaydi kaybolurdu.
+      qada_day DATE NULL,
+      qada_at TIME NULL,
+      note TEXT NOT NULL DEFAULT '',
+      corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      corrected_at TIMESTAMPTZ,
+      previous_status TEXT,
+      correction_note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, day, prayer)
+    )
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS prayer_logs_student_day_idx ON prayer_logs (student_id, day DESC)`
+  );
+
   // --- YZ / YDS programlari kaldirildi -----------------------------------
   //
   // Gorevler artik yalnizca UYANMA RUTINI, SPOR RUTINI ve DERS DEFTERI'nden

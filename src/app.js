@@ -2532,7 +2532,7 @@ function adminRedirect(req, res, queryParams) {
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
   // sport ve goals bu listede yoktu: o sayfalardaki formlar next="/admin/sport"
   // gonderdigi halde kayittan sonra panoya donuyordu.
-  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|wake|sport|goals|schedule|tasks(?:\/(?:active|status))?)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/admin\/(dashboard|students|users|categories|reports|analysis|wake|sport|prayer|goals|schedule|tasks(?:\/(?:active|status))?)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/admin/dashboard';
   const queryString = params.toString();
@@ -2544,7 +2544,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport|prayer)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -2901,6 +2901,33 @@ async function getAdminViewModel(req, currentPage) {
   const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
 
   let sportAdmin = null;
+  let prayerAdmin = null;
+  if (currentPage === 'prayer') {
+    const secilenIdRaw = normalizeText(req.query.prayerStudentId);
+    const secilen = students.find((st) => st.id === secilenIdRaw) || students[0] || null;
+    const detay = secilen ? await buildPrayerView(secilen.id, 14) : null;
+
+    // Tum ogrencilerin rutinlerini tek sorguda cek (liste tablosu icin).
+    const routinesRes = await query(
+      `SELECT student_id AS "studentId", is_active AS "isActive" FROM prayer_routines`
+    );
+    const routineByStudent = new Map(
+      routinesRes.rows.map((r) => [r.studentId, { isActive: r.isActive }])
+    );
+
+    prayerAdmin = {
+      selected: secilen,
+      detail: detay,
+      today,
+      systemStartDate: SYSTEM_START_DATE,
+      prayers: PRAYERS,
+      rows: students.map((st) => ({
+        student: st,
+        routine: routineByStudent.get(st.id) || null
+      }))
+    };
+  }
+
   if (currentPage === 'sport') {
     const secilenIdRaw = normalizeText(req.query.sportStudentId);
     const secilen = students.find((s) => s.id === secilenIdRaw) || students[0] || null;
@@ -3142,6 +3169,7 @@ async function getAdminViewModel(req, currentPage) {
     scheduleView,
     wakeAdmin,
     sportAdmin,
+    prayerAdmin,
     dailyBoard,
     report,
     reportError: currentPage === 'reports' ? reportRange.error : null,
@@ -3310,7 +3338,7 @@ app.get(
   '/admin/:page',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'wake', 'schedule', 'goals', 'sport']);
+    const allowedPages = new Set(['dashboard', 'students', 'users', 'categories', 'reports', 'analysis', 'wake', 'schedule', 'goals', 'sport', 'prayer']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getAdminViewModel(req, currentPage);
     return res.render('admin', viewModel);
@@ -4522,6 +4550,301 @@ app.post(
   })
 );
 
+/* --------------------------------------------------------------------------
+   Namaz rutini rotalari
+   -------------------------------------------------------------------------- */
+
+// Rutinin tek ayari var: acik/kapali. Hedef saat YOK — vakit saatleri gune ve
+// konuma gore kayar, uygulama onlari bilmiyor ve uydurmamali.
+app.post(
+  '/admin/prayer',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const isActive = normalizeText(req.body.isActive) !== 'off';
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    await query(
+      `
+        INSERT INTO prayer_routines (student_id, is_active)
+        VALUES ($1,$2)
+        ON CONFLICT (student_id) DO UPDATE
+        SET is_active = EXCLUDED.is_active, updated_at = NOW()
+      `,
+      [studentId, isActive]
+    );
+
+    return adminRedirect(req, res, {
+      message: `${studentRes.rows[0].name} için namaz rutini ${isActive ? 'açıldı' : 'pasife alındı'}.`
+    });
+  })
+);
+
+// Uyanma/spordaki kararin aynisi: rutin kaldirilinca prayer_logs SILINMEZ.
+app.post(
+  '/admin/prayer/delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const sonuc = await query(`DELETE FROM prayer_routines WHERE student_id = $1`, [studentId]);
+    if (sonuc.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Bu öğrencide namaz rutini yok.' });
+    }
+    return adminRedirect(req, res, {
+      message: 'Namaz rutini kaldırıldı. Geçmiş kayıtlar duruyor.'
+    });
+  })
+);
+
+/**
+ * Ogrenci bir vakti isaretler.
+ *
+ * Uc durum da ogrencinin BEYANIDIR; uygulama saatten hesaplamaz. Tek
+ * hesapladigi sey basilan saattir ve o yalnizca bilgi olarak saklanir.
+ *
+ * Gun kurali:
+ * - BUGUN: uc secenek de acik (vaktinde / kilinmadi / kaza).
+ * - GECMIS: yalnizca KAZA. Kazanin tanimi bu; gecmise "vaktinde kildim"
+ *   yazmak ise kaydin degerini bitirirdi.
+ * - GELECEK: hicbiri.
+ */
+app.post(
+  '/student/prayer',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const routine = await getPrayerRoutine(req.currentUser.id);
+    if (!routine || !routine.isActive) {
+      return studentRedirect(req, res, { error: 'Namaz rutini tanımlı değil.' });
+    }
+
+    const vakit = normalizeText(req.body.vakit);
+    const durum = normalizeText(req.body.durum);
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    const gunGirdi = normalizeText(req.body.gun);
+    const gun = isDateOnly(gunGirdi) ? gunGirdi : today;
+
+    if (!PRAYER_KEYS.has(vakit)) {
+      return studentRedirect(req, res, { error: 'Vakit seçilmedi.' });
+    }
+    if (!['on_time', 'missed', 'qada'].includes(durum)) {
+      return studentRedirect(req, res, { error: 'Geçersiz durum.' });
+    }
+    if (gun > today) {
+      return studentRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+    }
+    // Taban tarihten oncesi acilistaki temizlikte zaten siliniyor.
+    if (gun < SYSTEM_START_DATE) {
+      return studentRedirect(req, res, { error: `${SYSTEM_START_DATE} öncesine kayıt yazılamaz.` });
+    }
+    if (gun < today && durum !== 'qada') {
+      return studentRedirect(req, res, {
+        error: 'Geçmiş bir vakte yalnızca "Kazası kılındı" yazılabilir.'
+      });
+    }
+    // Rutin kurulmadan onceki gunler hic takip edilmedi; muhurleyici de
+    // oraya inmiyor. Oraya tek basina bir kaza satiri yazmak, diger dort
+    // vaktin hic kaydi olmadigi bir gunde yanilticiydi.
+    if (routine.createdDay && gun < routine.createdDay) {
+      return studentRedirect(req, res, {
+        error: `Namaz rutini ${routine.createdDay} tarihinde açıldı; öncesine kayıt yazılamaz.`
+      });
+    }
+
+    const nowHm = timeStringInTimeZone();
+    const etiket = PRAYER_LABELS.get(vakit);
+
+    const mevcutRes = await query(
+      `SELECT status FROM prayer_logs WHERE student_id = $1 AND day = $2 AND prayer = $3`,
+      [req.currentUser.id, gun, vakit]
+    );
+    const mevcut = mevcutRes.rowCount ? mevcutRes.rows[0].status : null;
+
+    if (!canChangePrayerStatus(mevcut, durum)) {
+      // "Kilinmadi" KAPANMIS degil: kazasi hala isaretlenebilir. Mesaj bunu
+      // ayirt etmeli, yoksa kullanici vakti kapali sanip pes ederdi.
+      let neden;
+      if (mevcut === durum) {
+        neden = `${etiket} zaten "${prayerStatusText(durum)}" olarak kayıtlı.`;
+      } else if (mevcut === 'missed') {
+        neden = `${etiket} "Kılınmadı" olarak kayıtlı; buradan yalnızca kazası işaretlenebilir.`;
+      } else {
+        neden = `${etiket} "${prayerStatusText(mevcut)}" olarak kapandı; değiştirilemez.`;
+      }
+      return studentRedirect(req, res, { error: neden });
+    }
+
+    if (mevcut === null) {
+      // Yarista ikinci istek DO NOTHING'e duser ve ilk kayit korunur
+      // (uyanma/spordaki "ilk basis gecerli" kuralinin karsiligi).
+      const insert = await query(
+        `
+          INSERT INTO prayer_logs (id, student_id, day, prayer, status, marked_at, qada_day, qada_at)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          ON CONFLICT (student_id, day, prayer) DO NOTHING
+        `,
+        [
+          makeId('pray'),
+          req.currentUser.id,
+          gun,
+          vakit,
+          durum,
+          durum === 'qada' ? null : nowHm,
+          durum === 'qada' ? today : null,
+          durum === 'qada' ? nowHm : null
+        ]
+      );
+      if (insert.rowCount === 0) {
+        return studentRedirect(req, res, { error: `${etiket} için kayıt zaten girilmiş.` });
+      }
+    } else {
+      // Tek izinli gecis: kilinmadi -> kazasi kilindi. WHERE kosulu yarista
+      // da kurali korur.
+      const guncelle = await query(
+        `
+          UPDATE prayer_logs
+          SET status = 'qada', qada_day = $4, qada_at = $5
+          WHERE student_id = $1 AND day = $2 AND prayer = $3 AND status = 'missed'
+        `,
+        [req.currentUser.id, gun, vakit, today, nowHm]
+      );
+      if (guncelle.rowCount === 0) {
+        return studentRedirect(req, res, { error: `${etiket} kaydı değişmedi.` });
+      }
+    }
+
+    const gunNotu = gun === today ? '' : ` (${gun})`;
+    return studentRedirect(req, res, {
+      message: `${etiket}${gunNotu}: ${prayerStatusText(durum)}.`
+    });
+  })
+);
+
+/**
+ * Elle kayit (admin) — namaz rutininin tek geri donusu.
+ *
+ * Gorevlerdeki "Durum Duzelt" ve rutinlerdeki elle kaydin karsiligi: ogrenci
+ * tarafi kapali (yanlis basilan dugme geri alinamaz), admin duzeltir ve her
+ * duzeltme satirin icine yazilir.
+ */
+app.post(
+  '/admin/prayer/log',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const studentId = normalizeText(req.body.studentId);
+    const day = normalizeText(req.body.day);
+    const vakit = normalizeText(req.body.vakit);
+    const durum = normalizeText(req.body.durum);
+
+    if (!isDateOnly(day)) {
+      return adminRedirect(req, res, { error: 'Geçersiz gün.' });
+    }
+    if (!PRAYER_KEYS.has(vakit)) {
+      return adminRedirect(req, res, { error: 'Geçersiz vakit.' });
+    }
+    if (!['on_time', 'missed', 'qada', 'clear'].includes(durum)) {
+      return adminRedirect(req, res, { error: 'Geçersiz işlem.' });
+    }
+
+    const notDogrulama = validateTaskDescription(req.body.note);
+    if (!notDogrulama.ok) {
+      return adminRedirect(req, res, { error: notDogrulama.error });
+    }
+
+    const studentRes = await query(`SELECT id, name FROM users WHERE id = $1 AND role = 'student'`, [
+      studentId
+    ]);
+    if (studentRes.rowCount === 0) {
+      return adminRedirect(req, res, { error: 'Öğrenci bulunamadı.' });
+    }
+
+    const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+    if (day > today) {
+      return adminRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+    }
+    if (day < SYSTEM_START_DATE) {
+      return adminRedirect(req, res, {
+        error: `${SYSTEM_START_DATE} öncesine yazılamaz (açılışta silinir).`
+      });
+    }
+
+    const routine = await getPrayerRoutine(studentId);
+    if (!routine) {
+      return adminRedirect(req, res, { error: 'Bu öğrencide namaz rutini tanımlı değil.' });
+    }
+
+    const mevcutRes = await query(
+      `SELECT status FROM prayer_logs WHERE student_id = $1 AND day = $2 AND prayer = $3`,
+      [studentId, day, vakit]
+    );
+    const mevcut = mevcutRes.rowCount ? mevcutRes.rows[0].status : null;
+    const etiket = PRAYER_LABELS.get(vakit);
+    const ad = studentRes.rows[0].name;
+
+    if (durum === 'clear') {
+      if (mevcut === null) {
+        return adminRedirect(req, res, { error: `${etiket} için silinecek kayıt yok.` });
+      }
+      // Muhurleyici penceresindeki gecmis bir gunu SILMEK kalici degildir:
+      // 5 dakika icinde yeniden "kilinmadi" yazilir. "Temizlendi" demek
+      // yalan olurdu (rutinlerdeki wouldRoutineSealerRewrite ile ayni karar).
+      if (wouldPrayerSealerRewrite(routine, day, today)) {
+        return adminRedirect(req, res, {
+          error: 'Bu gün otomatik mühürleme penceresinde; silmek kalıcı olmaz. Bunun yerine bir durum yazın.'
+        });
+      }
+      await query(
+        `DELETE FROM prayer_logs WHERE student_id = $1 AND day = $2 AND prayer = $3`,
+        [studentId, day, vakit]
+      );
+      return adminRedirect(req, res, { message: `${ad} · ${day} ${etiket} kaydı silindi.` });
+    }
+
+    if (mevcut === durum) {
+      return adminRedirect(req, res, {
+        error: `${etiket} zaten "${prayerStatusText(durum)}" durumunda.`
+      });
+    }
+
+    await query(
+      `
+        INSERT INTO prayer_logs (
+          id, student_id, day, prayer, status, qada_day,
+          corrected_by, corrected_at, previous_status, correction_note
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NULL,$8)
+        ON CONFLICT (student_id, day, prayer) DO UPDATE
+        SET status = EXCLUDED.status,
+            qada_day = EXCLUDED.qada_day,
+            corrected_by = EXCLUDED.corrected_by,
+            corrected_at = NOW(),
+            previous_status = prayer_logs.status,
+            correction_note = EXCLUDED.correction_note
+      `,
+      [
+        makeId('pray'),
+        studentId,
+        day,
+        vakit,
+        durum,
+        durum === 'qada' ? today : null,
+        req.currentUser.id,
+        notDogrulama.value || ''
+      ]
+    );
+
+    const oncekiNotu = mevcut ? ` (${prayerStatusText(mevcut)} → ${prayerStatusText(durum)})` : '';
+    return adminRedirect(req, res, {
+      message: `${ad} · ${day} ${etiket}: ${prayerStatusText(durum)}${oncekiNotu}.`
+    });
+  })
+);
+
 // Rutin kaldirilinca sport_logs SILINMEZ - gecmis denetim verisi durur
 // (uyanma rutinindeki kararin aynisi).
 app.post(
@@ -4617,6 +4940,280 @@ const ROUTINE_LOG_ACTIONS = new Set(['set', 'missed', 'clear']);
 
 // Uyanma ve spor tablolari bilerek ayri duruyor (bkz. CLAUDE.md); burada
 // yalnizca ikisinin FARKLARI tarif edilir, govde ortaktir.
+/* --------------------------------------------------------------------------
+   Gunluk 5 vakit namaz rutini
+
+   Uyanma/spor rutinlerinin ucuncusu DEGIL, baska bir seklidir:
+
+   - Gunde TEK degil BES kayit var; her vakit ayri degerlendirilir.
+   - Durum saatten HESAPLANMAZ. Vakit saatleri gune ve konuma gore kayar;
+     uygulama onlari bilmiyor ve uydurmamali. Durumu kullanici beyan eder,
+     uygulama yalnizca basilan saati bilgi olarak saklar.
+   - Ucuncu bir durum var: KAZA. "Kilinmadi" kalici bir son degil.
+
+   Bu yuzden ROUTINE_KINDS soyutlamasina sokulmadi: o soyutlama "gun basina
+   tek satir + saat sutunu + ayardan hesaplanan durum" varsayiyor.
+   -------------------------------------------------------------------------- */
+
+const PRAYER_LOOKBACK_DAYS = 30;
+
+// Sira EKRANDAKI siradir; gun icindeki gercek sira.
+const PRAYERS = [
+  { key: 'sabah', label: 'Sabah' },
+  { key: 'ogle', label: 'Öğle' },
+  { key: 'ikindi', label: 'İkindi' },
+  { key: 'aksam', label: 'Akşam' },
+  { key: 'yatsi', label: 'Yatsı' }
+];
+const PRAYER_KEYS = new Set(PRAYERS.map((v) => v.key));
+const PRAYER_LABELS = new Map(PRAYERS.map((v) => [v.key, v.label]));
+
+const PRAYER_STATUS_TEXT = {
+  on_time: 'Vaktinde kılındı',
+  qada: 'Kazası kılındı',
+  missed: 'Kılınmadı',
+  pending: 'Bekliyor'
+};
+
+function prayerStatusText(status) {
+  return PRAYER_STATUS_TEXT[status] || '-';
+}
+
+/**
+ * Bir vaktin durumu DEGISEBILIR MI?
+ *
+ * Uyanma/spordaki "ilk basis kalicidir" kurali burada TEK bir gecise izin
+ * verir: kilinmayan bir vaktin sonradan kazasi kilinabilir. Kazanin anlami
+ * zaten budur; yasaklansaydi ucuncu durum sussuz kalirdi.
+ *
+ * Yasak olanlar ve sebepleri:
+ * - `missed -> on_time`: gecmise donuk "aslinda vaktinde kilmistim" beyani.
+ *   Kaydin degeri durustlugunden geliyor; duzeltmesi adminde.
+ * - `on_time -> *` ve `qada -> *`: is bitti, kayit kapandi.
+ */
+function canChangePrayerStatus(mevcut, yeni) {
+  if (!mevcut) return true;
+  return mevcut === 'missed' && yeni === 'qada';
+}
+
+async function getPrayerRoutine(studentId) {
+  const res = await query(
+    `
+      SELECT student_id AS "studentId", is_active AS "isActive", created_at AS "createdAt"
+      FROM prayer_routines
+      WHERE student_id = $1
+    `,
+    [studentId]
+  );
+  if (res.rowCount === 0) return null;
+  const row = res.rows[0];
+  return {
+    studentId: row.studentId,
+    isActive: row.isActive,
+    // Muhurleyici rutin kurulmadan onceki gunlere inmez.
+    createdDay: toDateOnly(row.createdAt)
+  };
+}
+
+/**
+ * Uyanma/spordaki kuralin aynisi: yalnizca GECMIS gunler muhurlenir.
+ * Fark, gun basina BES satir yazilmasi — her vakit ayri bir kayittir.
+ *
+ * Muhurlenen kayit "kilinmadi"dir ve KAPANMIS degildir: sonradan kazasi
+ * isaretlenebilir (canChangePrayerStatus).
+ */
+async function sealMissedPrayerLogs() {
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const routines = await query(
+    `
+      SELECT student_id AS "studentId", created_at AS "createdAt"
+      FROM prayer_routines
+      WHERE is_active = TRUE
+    `
+  );
+
+  let sealed = 0;
+  for (const routine of routines.rows) {
+    const kuruldu = toDateOnly(routine.createdAt) || today;
+    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    for (let i = 1; i <= PRAYER_LOOKBACK_DAYS; i += 1) {
+      const gun = shiftDate(today, -i);
+      if (gun < basladi) break;
+      for (const vakit of PRAYERS) {
+        const res = await query(
+          `
+            INSERT INTO prayer_logs (id, student_id, day, prayer, status)
+            VALUES ($1,$2,$3,$4,'missed')
+            ON CONFLICT (student_id, day, prayer) DO NOTHING
+          `,
+          [makeId('pray'), routine.studentId, gun, vakit.key]
+        );
+        sealed += res.rowCount || 0;
+      }
+    }
+  }
+  return { sealed };
+}
+
+/**
+ * Bu gunun kaydini SILMEK kalici mi? (rutinlerdeki
+ * wouldRoutineSealerRewrite ile ayni karar, namaz penceresine uyarlanmis.)
+ */
+function wouldPrayerSealerRewrite(routine, day, today) {
+  if (!routine || !routine.isActive) return false;
+  if (day >= today) return false; // muhurleyici bugune dokunmaz
+  const basladi = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const pencereBasi = [shiftDate(today, -PRAYER_LOOKBACK_DAYS), basladi].sort().pop();
+  return day >= pencereBasi;
+}
+
+function mapPrayerLog(row) {
+  return {
+    day: toDateOnly(row.day),
+    prayer: row.prayer,
+    prayerLabel: PRAYER_LABELS.get(row.prayer) || row.prayer,
+    status: row.status,
+    statusText: prayerStatusText(row.status),
+    markedAt: normalizeEstimatedTimeForDisplay(row.markedAt),
+    qadaDay: toDateOnly(row.qadaDay),
+    qadaAt: normalizeEstimatedTimeForDisplay(row.qadaAt),
+    note: row.note || '',
+    correctedAt: row.correctedAt || null,
+    correctedByName: row.correctedByName || null,
+    previousStatus: row.previousStatus || null,
+    previousStatusText: row.previousStatus ? prayerStatusText(row.previousStatus) : null,
+    correctionNote: row.correctionNote || ''
+  };
+}
+
+/**
+ * Namaz gorunumu: bugunun bes vakti + son N gunun gun gun ozeti.
+ *
+ * Gecmis gunler salt okunur DEGILDIR: kilinmamis bir vaktin kazasi her zaman
+ * isaretlenebilir. Satirlar bu yuzden `kazaYazilabilir` bayragini tasir.
+ */
+async function buildPrayerView(studentId, gunSayisi = 14) {
+  const routine = await getPrayerRoutine(studentId);
+  const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+  const nowHm = timeStringInTimeZone();
+
+  if (!routine) {
+    return { routine: null, today, nowHm, bugun: [], rows: [], summary: null, streak: 0 };
+  }
+
+  const res = await query(
+    `
+      SELECT pl.day, pl.prayer, pl.status, pl.marked_at AS "markedAt",
+             pl.qada_day AS "qadaDay", pl.qada_at AS "qadaAt", pl.note,
+             pl.corrected_at AS "correctedAt", pl.previous_status AS "previousStatus",
+             pl.correction_note AS "correctionNote", u.name AS "correctedByName"
+      FROM prayer_logs pl
+      LEFT JOIN users u ON u.id = pl.corrected_by
+      WHERE pl.student_id = $1 AND pl.day >= $2
+      ORDER BY pl.day DESC
+    `,
+    [studentId, shiftDate(today, -(gunSayisi - 1))]
+  );
+
+  const logs = res.rows.map(mapPrayerLog);
+  const logByKey = new Map(logs.map((l) => [`${l.day}:${l.prayer}`, l]));
+
+  const vakitSatiri = (gun, vakit) =>
+    logByKey.get(`${gun}:${vakit.key}`) || {
+      day: gun,
+      prayer: vakit.key,
+      prayerLabel: vakit.label,
+      status: 'pending',
+      statusText: prayerStatusText('pending'),
+      markedAt: null,
+      qadaDay: null,
+      qadaAt: null,
+      note: ''
+    };
+
+  // Bugunun bes vakti: isaretsizler "bekliyor", her biri kendi dugmelerini
+  // tasir.
+  const bugun = PRAYERS.map((vakit) => {
+    const satir = vakitSatiri(today, vakit);
+    // Kayit yoksa "mevcut durum" YOK demektir (satirdaki 'pending' yalnizca
+    // ekran etiketi); uc secenek de acik olmali.
+    const mevcut = logByKey.has(`${today}:${vakit.key}`) ? satir.status : null;
+    return {
+      ...satir,
+      vaktindeYazilabilir: canChangePrayerStatus(mevcut, 'on_time'),
+      kilinmadiYazilabilir: canChangePrayerStatus(mevcut, 'missed'),
+      kazaYazilabilir: canChangePrayerStatus(mevcut, 'qada')
+    };
+  });
+
+  // Liste RUTININ KURULDUGU gunde biter (ve taban tarihte). Oncesi hic takip
+  // edilmedi: muhurleyici oraya inmiyor, yazma da reddediliyor; "Bekliyor"
+  // gostermek olmayan bir borcu varmis gibi okunurdu.
+  const listeTabani = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const rows = [];
+  for (let i = 0; i < gunSayisi; i += 1) {
+    const gun = shiftDate(today, -i);
+    if (gun < listeTabani) break;
+    const vakitler = PRAYERS.map((vakit) => {
+      const satir = vakitSatiri(gun, vakit);
+      return {
+        ...satir,
+        // GECMIS gunde tek acik islem kazadir; bugun uc secenek de acik.
+        kazaYazilabilir: satir.status === 'missed',
+        vaktindeYazilabilir: gun === today && satir.status === 'pending',
+        kilinmadiYazilabilir: gun === today && satir.status === 'pending'
+      };
+    });
+    rows.push({
+      day: gun,
+      gunAdi: getDayName(gun),
+      bugunMu: gun === today,
+      vakitler,
+      onTime: vakitler.filter((v) => v.status === 'on_time').length,
+      qada: vakitler.filter((v) => v.status === 'qada').length,
+      missed: vakitler.filter((v) => v.status === 'missed').length,
+      pending: vakitler.filter((v) => v.status === 'pending').length
+    });
+  }
+
+  // Seri: bes vaktin de VAKTINDE kilindigi kesintisiz gun sayisi. Kaza
+  // seriyi kurtarmaz — kurtarsaydi "vaktinde" olcusu anlamini yitirirdi.
+  const tamGun = (gun) =>
+    PRAYERS.every((v) => (logByKey.get(`${gun}:${v.key}`) || {}).status === 'on_time');
+  let streak = 0;
+  const baslangic = tamGun(today) ? 0 : 1;
+  for (let i = baslangic; i < PRAYER_LOOKBACK_DAYS; i += 1) {
+    if (!tamGun(shiftDate(today, -i))) break;
+    streak += 1;
+  }
+
+  const degerlendirilen = logs.filter((l) => l.status !== 'pending');
+  const onTime = degerlendirilen.filter((l) => l.status === 'on_time').length;
+  const qada = degerlendirilen.filter((l) => l.status === 'qada').length;
+  const missed = degerlendirilen.filter((l) => l.status === 'missed').length;
+  const toplam = degerlendirilen.length;
+
+  return {
+    routine,
+    today,
+    nowHm,
+    bugun,
+    rows,
+    streak,
+    summary: {
+      gunSayisi: rows.length,
+      toplam,
+      onTime,
+      qada,
+      missed,
+      // Veri yokken oran null doner ve ekranda "-" gosterilir; %0 ile
+      // karistirilmamali (uygulama genelindeki kural).
+      onTimeRate: toplam ? Math.round((onTime / toplam) * 100) : null,
+      kilinanRate: toplam ? Math.round(((onTime + qada) / toplam) * 100) : null
+    }
+  };
+}
+
 const ROUTINE_KINDS = {
   wake: {
     ad: 'Uyanma',
@@ -5365,6 +5962,13 @@ async function getStudentViewModel(req, currentPage) {
     });
   }
 
+  // Namaz gorunumu panoda da gerekiyor (ust serit), o yuzden dashboard'da da
+  // hesaplanir — uyanma/spor ile ayni desen.
+  const prayer =
+    currentPage === 'prayer' || currentPage === 'dashboard'
+      ? await buildPrayerView(req.currentUser.id, currentPage === 'prayer' ? 14 : 1)
+      : null;
+
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
   // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
@@ -5466,6 +6070,7 @@ async function getStudentViewModel(req, currentPage) {
     program,
     wake,
     sport,
+    prayer,
     scheduleView,
     goalsView,
     message: req.query.message || null,
@@ -5479,7 +6084,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport']);
+    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -6049,6 +6654,7 @@ async function purgeBeforeSystemStart() {
     const isler = [
       ['uyanma', `DELETE FROM wake_logs WHERE day < $1::date`],
       ['spor', `DELETE FROM sport_logs WHERE day < $1::date`],
+      ['namaz', `DELETE FROM prayer_logs WHERE day < $1::date`],
       ['görev durumu', `DELETE FROM task_statuses WHERE day < $1::date`],
       ['görev notu', `DELETE FROM task_detail_notes WHERE day < $1::date`],
       // YDS aynasi haric: yalnizca elle girilen / baska kaynakli satirlar.
@@ -6141,6 +6747,15 @@ async function runSealSafely() {
     }
   } catch (err) {
     console.error('Spor rutini mühürleme hatası:', err);
+  }
+
+  try {
+    const { sealed } = await sealMissedPrayerLogs();
+    if (sealed > 0) {
+      console.log(`${sealed} namaz vakti "kılınmadı" olarak mühürlendi.`);
+    }
+  } catch (err) {
+    console.error('Namaz rutini mühürleme hatası:', err);
   }
 }
 

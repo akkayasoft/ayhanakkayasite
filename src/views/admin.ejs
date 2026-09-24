@@ -1576,6 +1576,162 @@
         <% } %>
         <% } %>
 
+        <%# NAMAZ RUTINI (admin). Uyanma/spordan farki: rutinin ayari yok
+            (vakit saatleri gune ve konuma gore kayar, uygulama bilmiyor),
+            gun basina bes kayit var ve ucuncu bir durum (kaza) mevcut. %>
+        <% if (currentPage === 'prayer' && prayerAdmin) { %>
+        <% const pa = prayerAdmin; %>
+        <header class="content-header">
+          <h2>Namaz Rutini</h2>
+          <p class="muted">
+            Günlük beş vakit. Durum saatten <strong>hesaplanmaz</strong> — vakit saatleri güne
+            ve konuma göre kaydığı için uygulama onları bilmiyor; öğrenci
+            <strong>vaktinde kıldım</strong>, <strong>kılmadım</strong> ya da
+            <strong>kazasını kıldım</strong> olarak kendisi işaretler.
+            İşaretlenmeyen geçmiş vakitler <strong>kılınmadı</strong> mühürlenir.
+          </p>
+        </header>
+
+        <% if (currentSection === 'ayar') { %>
+        <section class="panel narrow">
+          <h3>Rutin Ayarla</h3>
+          <p class="muted">
+            Namaz rutininin tek ayarı var: açık ya da kapalı. Hedef saat girilmez —
+            vakit saatlerini uygulama bilemez, uydurulmuş bir hedefe göre
+            değerlendirme yapmak kaydı bozardı.
+          </p>
+          <form method="post" action="/admin/prayer" class="stack">
+            <input type="hidden" name="next" value="/admin/prayer?bolum=rutinler" />
+            <label>Öğrenci</label>
+            <select name="studentId" required>
+              <% pa.rows.forEach((r) => { %>
+              <option value="<%= r.student.id %>" <%= pa.selected && pa.selected.id === r.student.id ? 'selected' : '' %>><%= r.student.name %></option>
+              <% }) %>
+            </select>
+
+            <label>Durum</label>
+            <select name="isActive">
+              <option value="on">Açık</option>
+              <option value="off">Pasif</option>
+            </select>
+
+            <button type="submit">Rutini Kaydet</button>
+          </form>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'rutinler') { %>
+        <section class="panel">
+          <h3>Öğrenci Rutinleri</h3>
+          <p class="muted">Bir öğrencinin adına tıklayınca günlük kayıtları açılır.</p>
+          <div class="table-wrap">
+            <table class="stack-mobile">
+              <thead>
+                <tr><th>Öğrenci</th><th>Rutin</th><th>İşlem</th></tr>
+              </thead>
+              <tbody>
+                <% pa.rows.forEach((r) => { %>
+                <tr>
+                  <td><a href="/admin/prayer?bolum=kayitlar&prayerStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
+                  <td>
+                    <% if (!r.routine) { %>-
+                    <% } else if (r.routine.isActive) { %><span class="day-badge ok">Açık</span>
+                    <% } else { %><span class="day-badge off">Pasif</span><% } %>
+                  </td>
+                  <td>
+                    <% if (r.routine) { %>
+                    <form method="post" action="/admin/prayer/delete" onsubmit="return confirm('<%= r.student.name %> için namaz rutini kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
+                      <input type="hidden" name="next" value="/admin/prayer?bolum=rutinler" />
+                      <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                      <button type="submit" class="danger">Kaldır</button>
+                    </form>
+                    <% } else { %>
+                    <form method="post" action="/admin/prayer">
+                      <input type="hidden" name="next" value="/admin/prayer?bolum=rutinler" />
+                      <input type="hidden" name="studentId" value="<%= r.student.id %>" />
+                      <input type="hidden" name="isActive" value="on" />
+                      <button type="submit">Rutini Aç</button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } %>
+
+        <% if (currentSection === 'kayitlar') { %>
+        <% if (pa.detail && pa.detail.routine) { %>
+        <section class="panel">
+          <h3><%= pa.selected.name %> · Son <%= pa.detail.summary.gunSayisi %> Gün</h3>
+          <p class="muted">
+            Vaktinde <%= pa.detail.summary.onTime %> · Kazası kılındı <%= pa.detail.summary.qada %> ·
+            Kılınmadı <%= pa.detail.summary.missed %>.
+            <br />Öğrenci tarafında yanlış basılan bir düğme geri alınamaz; düzeltmesi buradadır.
+            Her düzeltme <strong>kim, ne zaman ve neyin üzerine</strong> yazdığıyla saklanır.
+          </p>
+          <div class="table-wrap">
+            <table class="stack-mobile prayer-log-table">
+              <thead>
+                <tr>
+                  <th>Gün</th>
+                  <% pa.prayers.forEach((v) => { %><th><%= v.label %></th><% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% pa.detail.rows.forEach((g) => { %>
+                <tr>
+                  <td class="single-line-cell">
+                    <%= g.gunAdi %><br /><span class="muted"><%= g.day %></span>
+                  </td>
+                  <% g.vakitler.forEach((v) => { %>
+                  <td>
+                    <span class="prayer-pill <%= v.status %>"><%= v.statusText %></span>
+                    <% if (v.correctedAt) { %>
+                    <br /><small class="muted">
+                      Elle yazıldı<% if (v.correctedByName) { %> · <%= v.correctedByName %><% } %><%
+                      if (v.previousStatusText) { %> (<%= v.previousStatusText %> → <%= v.statusText %>)<% } %><%
+                      if (v.correctionNote) { %> · <%= v.correctionNote %><% } %>
+                    </small>
+                    <% } %>
+                    <form method="post" action="/admin/prayer/log" class="prayer-fix">
+                      <input type="hidden" name="next" value="/admin/prayer?bolum=kayitlar&prayerStudentId=<%= pa.selected.id %>" />
+                      <input type="hidden" name="studentId" value="<%= pa.selected.id %>" />
+                      <input type="hidden" name="day" value="<%= v.day %>" />
+                      <input type="hidden" name="vakit" value="<%= v.prayer %>" />
+                      <select name="durum" aria-label="<%= g.day %> <%= v.prayerLabel %> durumu">
+                        <option value="on_time">Vaktinde</option>
+                        <option value="qada">Kaza</option>
+                        <option value="missed">Kılınmadı</option>
+                        <option value="clear">Kaydı sil</option>
+                      </select>
+                      <input type="text" name="note" placeholder="gerekçe (opsiyonel)" maxlength="500" />
+                      <button type="submit" class="ghost">Yaz</button>
+                    </form>
+                  </td>
+                  <% }) %>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <% } else { %>
+        <section class="panel narrow">
+          <h3>Kayıt yok</h3>
+          <p class="muted">
+            <%= pa.selected ? pa.selected.name : 'Bu öğrenci' %> için namaz rutini tanımlı değil.
+            Önce <a href="/admin/prayer?bolum=ayar">Rutin Ayarla</a> alanından rutini aç; günlük
+            kayıtlar bundan sonra burada listelenir. Başka bir öğrencinin kayıtlarına
+            <a href="/admin/prayer?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
+          </p>
+        </section>
+        <% } %>
+        <% } %>
+        <% } %>
+
         <% if (currentPage === 'schedule' && scheduleView) { %>
         <header class="content-header row space-between center">
           <div>

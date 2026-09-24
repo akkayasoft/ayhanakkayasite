@@ -2720,3 +2720,152 @@ tr.day-off td {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* --------------------------------------------------------------------------
+   Namaz rutini
+
+   Bes vakit x uc durum. Durum saatten hesaplanmadigi (bkz. CLAUDE.md) ve
+   ucuncu bir durum (kaza) oldugu icin uyanma/spordaki tek dugmeli "hero"
+   duzeni yetmiyor: her vakit kendi kartinda kendi dugmelerini tasiyor.
+   -------------------------------------------------------------------------- */
+
+.prayer-grid {
+  display: grid;
+  /* 5 kart; dar ekranda kendiliginden alt alta yigilir. auto-fit + minmax,
+     sabit 5 sutuna gore daha guvenli: 1180px'te 3+2 olarak sariyor. */
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.prayer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+/* Durum rengi kartin SOL KENARINDA: arka plani boyamak, icindeki dugmelerin
+   kontrastini bozuyordu. */
+.prayer-card.on_time { border-left: 3px solid var(--success); }
+.prayer-card.qada { border-left: 3px solid var(--primary); }
+.prayer-card.missed { border-left: 3px solid var(--danger); }
+.prayer-card.pending { border-left: 3px solid var(--border-strong); }
+
+.prayer-name {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.prayer-status {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prayer-card.on_time .prayer-status { color: var(--success); }
+.prayer-card.qada .prayer-status { color: var(--primary); }
+.prayer-card.missed .prayer-status { color: var(--danger); }
+
+.prayer-time {
+  margin: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.prayer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--sp-2);
+}
+
+.prayer-actions form {
+  margin: 0;
+}
+
+.prayer-button {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prayer-button:hover { background: var(--surface-hover); color: var(--text); }
+.prayer-button.ok { border-color: var(--success-border); color: var(--success); }
+.prayer-button.ok:hover { background: var(--success-soft); }
+.prayer-button.qada { border-color: var(--primary); color: var(--primary); }
+.prayer-button.qada:hover { background: var(--surface-hover); }
+.prayer-button.miss { border-color: var(--danger-border); color: var(--danger); }
+.prayer-button.miss:hover { background: var(--danger-soft); }
+.prayer-button.small { width: auto; margin-top: 4px; padding: 4px 8px; font-size: 0.75rem; }
+
+/* Tablodaki durum rozeti */
+.prayer-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.prayer-pill.on_time { border-color: var(--success-border); background: var(--success-soft); color: var(--success); }
+.prayer-pill.qada { border-color: var(--border-strong); background: var(--surface-hover); color: var(--primary); }
+.prayer-pill.missed { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
+.prayer-pill.pending { color: var(--muted); }
+
+/* 6 sutun (gun + 5 vakit) ve hucrelerde form var: analiz tablolarindaki
+   kabul edilen desen — kapsayici icinde yatay kaydirir, telefonda karta
+   doner. */
+.prayer-log-table { min-width: 1080px; }
+
+/* Gun sutunu daralinca gun adi ortasindan kiriliyordu ("Perşe mbe"): bu
+   tabloda .single-line-cell yetmiyor, sutuna acik genislik + nowrap gerek. */
+.prayer-log-table th:first-child,
+.prayer-log-table td:first-child {
+  width: 118px;
+  white-space: nowrap;
+}
+
+.prayer-fix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.prayer-fix select,
+.prayer-fix input[type='text'] {
+  padding: 4px 6px;
+  font-size: 0.75rem;
+}
+
+.prayer-fix input[type='text'] { min-width: 0; flex: 1 1 90px; }
+.prayer-fix button { padding: 4px 10px; font-size: 0.75rem; }
+
+@media (max-width: 640px) {
+  .prayer-log-table { min-width: 0; }
+
+  /* Telefonda tablo karta donuyor; sabit sutun genisligi orada anlamsiz. */
+  .prayer-log-table th:first-child,
+  .prayer-log-table td:first-child {
+    width: auto;
+    white-space: normal;
+  }
+}
