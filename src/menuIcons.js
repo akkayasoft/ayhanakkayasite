@@ -46,11 +46,17 @@ const menuIcons = {
   // YDS takibi
   yds: svg('<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11a2 2 0 0 1 2 2v14a1.6 1.6 0 0 0-1.6-1.6H5.5A1.5 1.5 0 0 1 4 17z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16a1.6 1.6 0 0 1 1.6-1.6h3.9A1.5 1.5 0 0 0 20 17z"/>'),
   // Ders programi
+  // Ders cizelgesi: takvim DEGIL izgara (gun x ders saati).
+  //
+  // Ilk deneme "yuvarlatilmis dikdortgen + baslik cizgisi" idi ve 16px'te
+  // schedule (Haftalik Takvim) ile program (Yillik Plan) ikonlarindan
+  // ayirt edilemiyordu — ucu de ayni kutuya benziyordu. Cerceve ve baslik
+  // atildi: cizgilerden orulmus sade bir izgara kaldi.
+  timetable: svg('<path d="M3.5 9.5h17M3.5 15h17"/><path d="M9.5 4v16M15.5 4v16"/>'),
   schedule: svg('<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><path d="M8 14h3M8 17.5h3M14 14h2.5"/>'),
   // Raporlar
   reports: svg('<path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M8.5 13h7M8.5 16.5h5"/>'),
   // Gorev ekle
-  newTask: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M12 8.5v7M8.5 12h7"/>'),
   // Yillik plan
   program: svg('<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><circle cx="8" cy="17.5" r="1"/><circle cx="12" cy="17.5" r="1"/>'),
   // --- Ozet karti (KPI) kose ikonlari -------------------------------------
@@ -61,7 +67,6 @@ const menuIcons = {
   percent: svg('<path d="M6 18L18 6"/><circle cx="7.8" cy="7.8" r="2.3"/><circle cx="16.2" cy="16.2" r="2.3"/>'),
   streak: svg('<path d="M12 3.5s4.5 3.6 4.5 8a4.5 4.5 0 1 1-9 0c0-1.6.6-2.9 1.3-3.9.3 1.2 1 2 1.9 2.2-.3-2.5.4-4.7 1.3-6.3z"/>'),
   duration: svg('<path d="M8 3h8M8 21h8"/><path d="M9 3v3.2c0 1.6 3 2.6 3 5.8s-3 4.2-3 5.8V21"/><path d="M15 3v3.2c0 1.6-3 2.6-3 5.8s3 4.2 3 5.8V21"/>'),
-  money: svg('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/>'),
 
   // Soru takibi
   questions: svg('<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4.5v1H9z"/><path d="M10.2 11.2a1.9 1.9 0 1 1 2.4 1.8c-.5.2-.8.6-.8 1.1v.3"/><circle cx="11.9" cy="17" r="0.7" fill="currentColor" stroke="none"/>')

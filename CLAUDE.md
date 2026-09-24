@@ -228,6 +228,21 @@ yapıya getirildi:
   bağımlılık eklememek için SVG'ler tek dosyada duruyor ve `stroke:
   currentColor` ile metinle aynı rengi alıyor. Görünüm modeline `menuIcons`
   olarak geçilir, şablonda `<%- menuIcons.ad %>` ile basılır.
+
+  > ⚠️ **Bir menüde iki satır aynı ikonu taşımamalı** — menünün okunurluğunun
+  > büyük kısmı ikonlardan geliyor. YDS Rutini eklenince öğrenci menüsünde
+  > *Ders Programı* ile *YDS Rutini* ikisi de `yds`'yi (açık kitap)
+  > kullanıyordu. Ders Programı iki panelde de yeni `timetable` ikonuna
+  > geçti; YDS'de açık kitap kaldı.
+  >
+  > `timetable` ilk denemede "yuvarlatılmış dikdörtgen + başlık çizgisi" idi
+  > ve 16px'te `schedule` (Haftalık Takvim) ile `program` (Yıllık Plan)
+  > ikonlarından **ayırt edilemiyordu** — üçü de aynı kutuya benziyordu.
+  > Çerçeve ve başlık atıldı, çizgilerden örülmüş sade bir ızgara kaldı.
+  >
+  > Ölü ikonlar da silindi: `newTask` (kaldırılan "Görev Ekle" sayfası) ve
+  > `money` (kaldırılan puan sistemi). Kontrol: her ikon ya bir menü
+  > satırında ya da `menuIcons.<ad>` olarak şablonda geçmeli.
 - **Aktif satır** dolgulu (`--sidebar-hover` + açık mavi metin); referansta sol
   şerit yok, o yüzden bizdeki şerit de kaldırıldı. Mobilde şerit alt çizgi
   olarak kalır (yatay menüde dolgu yeterince ayırt edici değil).

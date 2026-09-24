@@ -139,7 +139,7 @@ const ADMIN_MENU = [
   {
     key: 'schedule',
     label: 'Ders Programı',
-    icon: 'schedule',
+    icon: 'timetable',
     href: '/admin/schedule',
     sections: [
       { key: 'cizelge', label: 'Haftalık Çizelge' },
@@ -174,7 +174,7 @@ const STUDENT_MENU = [
   {
     key: 'schedule',
     label: 'Ders Programı',
-    icon: 'yds',
+    icon: 'timetable',
     href: '/student/schedule',
     sections: [
       { key: 'cizelge', label: 'Haftalık Çizelge' },
