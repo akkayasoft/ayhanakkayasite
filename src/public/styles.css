@@ -2380,12 +2380,14 @@ tr.day-off td {
    Daraltmak okunmaz kiliyor - "Ayhan Akkaya" ve "2026-09-07" dikey dilimlere
    bolunuyordu. Bu iki tablo kapsayici icinde yatay kaydirilir; telefonda zaten
    .stack-mobile ile karta doner, orada kaydirma yok. */
+/* Namaz sutunu eklenince ikisi de bir sutun genisledi (13 -> 14 ve
+   14 -> 15). Kapsayici icinde yatay kaydirma zaten kabul edilen desen. */
 .analysis-table {
-  min-width: 1180px;
+  min-width: 1300px;
 }
 
 .analysis-day-table {
-  min-width: 1280px;
+  min-width: 1400px;
 }
 
 /* Rutin gun tablosu (uyanma / spor): 6 bilgi sutununun yanina bir de elle

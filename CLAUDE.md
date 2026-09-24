@@ -1216,6 +1216,47 @@ seçici + gerekçe alanı. `POST /admin/prayer/log`; öğrenci **403**, oturumsu
 - Mühürleyici `ON CONFLICT DO NOTHING` kullandığı için adminin yazdığı durum
   **ezilmez**.
 
+### Haftalık analizde
+
+Uyanma ve spor gibi namaz da haftalık analize girer, ama **paydası gün değil
+VAKİT sayısıdır** (günde beş).
+
+- **Öğrenci karşılaştırması** → *Namaz* sütunu: `vaktinde/kayıtlı vakit` +
+  oran ve önceki haftaya göre puan farkı; kaza varsa altında
+  *"N kaza · kılınan %M"*.
+- **Gün kırılımı** → *Namaz* sütunu: o günün `N/5 vaktinde` rozeti, altında
+  kaza ve kılınmadı sayısı. Tek rozet yetmezdi — gün beş vakitten oluşuyor.
+- **Özet kartları**: *Namaz (vaktinde)* ve *Namaz (kaza dahil)*.
+
+> **İki ayrı oran bilinçli.** `prayerOnTimeRate` asıl ölçü;
+> `prayerDoneRate` kazayla birlikte kılınanları gösterir. Tek orana indirmek
+> kazayı ya görünmez yapardı ya da vaktinde kılmışla eşitlerdi.
+
+> **Payda "kaydı olan vakit"tir, 5 değil.** Bugünün henüz işaretlenmemiş
+> vakitleri paydaya girmez (gün içinde *1/3* görünür); gün bitince
+> mühürleyici kalanları yazar ve payda 5'e tamamlanır. Sabit 5 alınsaydı
+> yaşanmakta olan gün hep başarısız görünürdü.
+
+- Namaz günde beş satır tuttuğu için sorgu satırları taşımaz, **gün bazında
+  saydırır** (`count(*) FILTER (WHERE status = …)`), ve uyanma/sporla **aynı
+  turda** çekilir — trend için ikinci bir gidiş yok.
+
+> ⚠️ **Bu iş sırasında bulunan hata: toplam satırında spor hiç birikmiyordu.**
+> `totals` indirgemesi yalnızca görev/soru/uyanma alanlarını topluyordu;
+> spor alanları her zaman 0 kalıyordu. Ekranda spor toplamı gösterilmediği
+> için görünmüyordu — namaz KPI'si eklenirken aynı hatayı tekrarlamamak için
+> ikisi birlikte tamamlandı ve *Spor (zamanında)* kartı da eklendi.
+
+Doğrulandı (21-27 Eylül haftası): 18 kayıtlı vakitte 2 vaktinde / 3 kaza /
+13 kılınmadı → *2/18 · %11.1*, kaza satırı *"3 kaza · kılınan %27.8"*, trend
+önceki haftaya göre **▲11.1** (o hafta 5 vaktin tamamı kılınmamıştı). Gün
+kırılımı 21-24 Eylül'ü doğru kırdı (*0/5 · 5 kılınmadı*, *0/5 · 1 kaza ·
+4 kılınmadı*, *1/5 · 4 kılınmadı*, *1/3 · 2 kaza*), kayıt olmayan günler
+*"-"*. Rutini olmayan öğrenci **"-"** gösteriyor. Öğrenci → `/admin/analysis`
+**403**. 1440 / 390px'te sayfa taşması **0**; iki analiz tablosu kapsayıcı
+içinde yatay kaydırıyor (gün kırılımı 1440'ta 316px — kabul edilen desen),
+telefonda kart etiketi *Namaz* doğru.
+
 ### Arayüz
 
 - **Öğrenci** `/student/prayer`: *Bugün* alanında beş vakit beş kart, her kart
@@ -1287,9 +1328,11 @@ hedefler yerine), o yüzden "kanıt" iki şekilde sağlanır:
 studentId)` bir haftanın metriklerini üretir:
 
 - **Öğrenci karşılaştırması**: kişi başına görev tamamlama oranı, çözülen
-  soru, doğruluk (%), çalışma süresi, **uyanma** (zamanında/toplam + oran) ve
-  ortalama kalkış saati; tamamlama ve uyanma oranında **önceki haftaya göre
-  puan farkı**.
+  soru, doğruluk (%), çalışma süresi, **uyanma** (zamanında/toplam + oran),
+  ortalama kalkış saati, **spor** ve **namaz** (vaktinde/kayıtlı vakit +
+  oran); tamamlama, uyanma, spor ve namaz oranında **önceki haftaya göre
+  puan farkı**. Namazın paydası gün değil vakittir — bkz. *Günlük 5 vakit
+  namaz rutini → Haftalık analizde*.
 - **Seçili öğrenci için kırılım**: kategori bazında ve gün bazında aynı
   metrikler. Gün satırları `academicCalendar` etiketini, ayrıca o günün
   kalkış saatini ve uyanma durumunu taşır. Uyanma kategoriye bağlı olmadığı
@@ -1302,7 +1345,13 @@ studentId)` bir haftanın metriklerini üretir:
 
 Sorgular tek turda hem içinde bulunulan hem önceki haftayı çeker
 (`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok —
-`wake_logs` de aynı desenle aynı turda çekilir.
+`wake_logs`, `sport_logs` ve `prayer_logs` de aynı desenle aynı turda
+çekilir. `prayer_logs` günde beş satır tuttuğu için satırları taşımak yerine
+**gün bazında saydırılır**.
+
+Tablolar namaz sütunuyla birlikte 14 ve 15 sütuna çıktı; `min-width`
+değerleri 1300 / 1400px'e yükseltildi (kapsayıcı içinde yatay kaydırma,
+telefonda `.stack-mobile` ile karta dönüş aynen duruyor).
 
 ## Açılış öncesi doğrulama (2026-09-14)
 

@@ -967,8 +967,16 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   const prevWeekStart = shiftDate(weekStart, -7);
   const prevWeekEnd = shiftDate(weekStart, -1);
 
-  const [studentsRes, categoriesRes, tasksRes, statusesRes, questionsRes, wakeRes, sportRes] =
-    await Promise.all([
+  const [
+    studentsRes,
+    categoriesRes,
+    tasksRes,
+    statusesRes,
+    questionsRes,
+    wakeRes,
+    sportRes,
+    prayerRes
+  ] = await Promise.all([
     query(`SELECT id, name FROM users WHERE role = 'student' ORDER BY name ASC`),
     query(`SELECT id, name FROM categories ORDER BY name ASC`),
     query(`
@@ -1028,6 +1036,22 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         WHERE day BETWEEN $1 AND $2
       `,
       [prevWeekStart, weekEnd]
+    ),
+    // Namaz gun basina BES satir: satirlari tasimak yerine gun bazinda
+    // saydirip getiriyoruz (hafta x ogrenci x 5 satir yerine gun basina tek
+    // satir).
+    query(
+      `
+        SELECT student_id AS "studentId", day,
+               count(*)::int AS "tracked",
+               count(*) FILTER (WHERE status = 'on_time')::int AS "onTime",
+               count(*) FILTER (WHERE status = 'qada')::int AS "qada",
+               count(*) FILTER (WHERE status = 'missed')::int AS "missed"
+        FROM prayer_logs
+        WHERE day BETWEEN $1 AND $2
+        GROUP BY student_id, day
+      `,
+      [prevWeekStart, weekEnd]
     )
   ]);
 
@@ -1077,6 +1101,16 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
   }));
   const sportByStudentDay = new Map(sportRows.map((r) => [`${r.studentId}:${r.date}`, r]));
 
+  const prayerRows = prayerRes.rows.map((row) => ({
+    studentId: row.studentId,
+    date: toDateOnly(row.day),
+    tracked: Number(row.tracked || 0),
+    onTime: Number(row.onTime || 0),
+    qada: Number(row.qada || 0),
+    missed: Number(row.missed || 0)
+  }));
+  const prayerByStudentDay = new Map(prayerRows.map((r) => [`${r.studentId}:${r.date}`, r]));
+
   const bosMetrik = () => ({
     due: 0,
     done: 0,
@@ -1099,7 +1133,13 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     sportMissed: 0,
     sportDone: 0,
     sportMinutesSum: 0,
-    sportDelaySum: 0
+    sportDelaySum: 0,
+    // Namaz: payda GUN degil VAKIT sayisi (gunde bes). tracked = kaydi olan
+    // vakit sayisi; kaza ayri sayilir cunku "kilindi" ama "vaktinde" degil.
+    prayerTracked: 0,
+    prayerOnTime: 0,
+    prayerQada: 0,
+    prayerMissed: 0
   });
 
   /** Bir gunun uyanma kaydini metrige ekler. */
@@ -1132,6 +1172,15 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     }
   }
 
+  /** Bir gunun namaz ozetini metrige ekler (gun basina bes vakit). */
+  function addPrayer(metrik, gun) {
+    if (!gun) return;
+    metrik.prayerTracked += gun.tracked;
+    metrik.prayerOnTime += gun.onTime;
+    metrik.prayerQada += gun.qada;
+    metrik.prayerMissed += gun.missed;
+  }
+
   // Bir ogrencinin verilen gun araligindaki toplam metrikleri
   function metricsFor(studentId, days) {
     const metrik = bosMetrik();
@@ -1156,6 +1205,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
     for (const day of days) {
       addWake(metrik, wakeByStudentDay.get(`${studentId}:${day}`));
       addSport(metrik, sportByStudentDay.get(`${studentId}:${day}`));
+      addPrayer(metrik, prayerByStudentDay.get(`${studentId}:${day}`));
     }
 
     return metrik;
@@ -1179,7 +1229,12 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       sportTracked: metrik.sportTracked,
       sportOnTime: metrik.sportOnTime,
       sportOnTimeRate: oran(metrik.sportOnTime, metrik.sportTracked),
-      averageSport: metrik.sportDone ? minutesToHm(metrik.sportMinutesSum / metrik.sportDone) : null
+      averageSport: metrik.sportDone ? minutesToHm(metrik.sportMinutesSum / metrik.sportDone) : null,
+      // Iki ayri oran bilerek: "vaktinde" asil olcu, "kaza ile birlikte"
+      // kilinan vakitleri gosterir. Tek orana indirmek kazayi ya gorunmez
+      // yapardi ya da vaktinde kilmisla esitlerdi.
+      prayerOnTimeRate: oran(metrik.prayerOnTime, metrik.prayerTracked),
+      prayerDoneRate: oran(metrik.prayerOnTime + metrik.prayerQada, metrik.prayerTracked)
     };
   }
 
@@ -1208,6 +1263,10 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         wakeOnTimeRate:
           current.wakeOnTimeRate !== null && previous.wakeOnTimeRate !== null
             ? Math.round((current.wakeOnTimeRate - previous.wakeOnTimeRate) * 10) / 10
+            : null,
+        prayerOnTimeRate:
+          current.prayerOnTimeRate !== null && previous.prayerOnTimeRate !== null
+            ? Math.round((current.prayerOnTimeRate - previous.prayerOnTimeRate) * 10) / 10
             : null
       }
     };
@@ -1227,6 +1286,19 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       acc.wakeWoke += row.current.wakeWoke;
       acc.wakeMinutesSum += row.current.wakeMinutesSum;
       acc.wakeDelaySum += row.current.wakeDelaySum;
+      // Spor alanlari bu toplamda hic birikmiyordu (toplam spor oranı her
+      // zaman bos donerdi); namaz KPI'si eklenirken birlikte tamamlandi.
+      acc.sportTracked += row.current.sportTracked;
+      acc.sportOnTime += row.current.sportOnTime;
+      acc.sportLate += row.current.sportLate;
+      acc.sportMissed += row.current.sportMissed;
+      acc.sportDone += row.current.sportDone;
+      acc.sportMinutesSum += row.current.sportMinutesSum;
+      acc.sportDelaySum += row.current.sportDelaySum;
+      acc.prayerTracked += row.current.prayerTracked;
+      acc.prayerOnTime += row.current.prayerOnTime;
+      acc.prayerQada += row.current.prayerQada;
+      acc.prayerMissed += row.current.prayerMissed;
       return acc;
     }, bosMetrik())
   );
@@ -1282,6 +1354,8 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
       addWake(gun, wakeLog);
       const sportLog = sportByStudentDay.get(`${selected.id}:${day}`) || null;
       addSport(gun, sportLog);
+      const prayerGun = prayerByStudentDay.get(`${selected.id}:${day}`) || null;
+      addPrayer(gun, prayerGun);
 
       return {
         date: day,
@@ -1294,6 +1368,7 @@ async function buildWeeklyAnalysis(weekStart, selectedStudentId) {
         sport: sportLog
           ? { ...sportLog, statusText: sportStatusText(sportLog.status) }
           : null,
+        prayer: prayerGun,
         ...ozetle(gun)
       };
     });

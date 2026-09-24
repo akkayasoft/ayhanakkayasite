@@ -793,6 +793,21 @@
             <p class="kpi-label">Ortalama Kalkış</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.averageWake || '-' %></p>
           </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.sport %></span>
+            <p class="kpi-label">Spor (zamanında)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.sportOnTimeRate === null ? '-' : weeklyAnalysis.totals.sportOnTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.prayer %></span>
+            <p class="kpi-label">Namaz (vaktinde)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.prayerOnTimeRate === null ? '-' : weeklyAnalysis.totals.prayerOnTimeRate + '%' %></p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span>
+            <p class="kpi-label">Namaz (kaza dahil)</p>
+            <p class="kpi-value"><%= weeklyAnalysis.totals.prayerDoneRate === null ? '-' : weeklyAnalysis.totals.prayerDoneRate + '%' %></p>
+          </article>
         </section>
 
         <% if (currentSection === 'karsilastirma') { %>
@@ -817,6 +832,7 @@
                   <th>Ort. Kalkış</th>
                   <th>Spor</th>
                   <th>Ort. Spor</th>
+                  <th>Namaz</th>
                   <th>Detay</th>
                 </tr>
               </thead>
@@ -877,6 +893,25 @@
                     <% } %>
                   </td>
                   <td><%= r.current.averageSport || '-' %></td>
+                  <%# Payda GUN degil VAKIT sayisi (gunde bes). Kaza ayri
+                      satirda: kilindi ama vaktinde degil. %>
+                  <td>
+                    <% if (r.current.prayerTracked === 0) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="status-pill <%= r.current.prayerOnTimeRate >= 80 ? 'ok' : r.current.prayerOnTimeRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= r.current.prayerOnTime %>/<%= r.current.prayerTracked %> · <%= r.current.prayerOnTimeRate %>%
+                    </span>
+                    <% if (r.delta.prayerOnTimeRate !== null && r.delta.prayerOnTimeRate !== 0) { %>
+                    <span class="trend <%= r.delta.prayerOnTimeRate > 0 ? 'up' : 'down' %>">
+                      <%= r.delta.prayerOnTimeRate > 0 ? '▲' : '▼' %> <%= Math.abs(r.delta.prayerOnTimeRate) %>
+                    </span>
+                    <% } %>
+                    <% if (r.current.prayerQada) { %>
+                    <br /><small class="muted"><%= r.current.prayerQada %> kaza · kılınan %<%= r.current.prayerDoneRate %></small>
+                    <% } %>
+                    <% } %>
+                  </td>
                   <td>
                     <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
                        href="/admin/analysis?bolum=kategori&weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
@@ -957,6 +992,7 @@
                   <th>Uyanma</th>
                   <th>Spor Saati</th>
                   <th>Spor</th>
+                  <th>Namaz</th>
                 </tr>
               </thead>
               <tbody>
@@ -1005,6 +1041,18 @@
                     <span class="day-badge late">Geç</span>
                     <% } else { %>
                     <span class="day-badge miss">Yapılmadı</span>
+                    <% } %>
+                  </td>
+                  <%# Gunde bes vakit: tek rozet yerine kirilim. %>
+                  <td>
+                    <% if (!d.prayer) { %>
+                    <span class="muted">-</span>
+                    <% } else { %>
+                    <span class="day-badge <%= d.prayer.onTime === d.prayer.tracked ? 'ok' : d.prayer.onTime ? 'late' : 'miss' %>">
+                      <%= d.prayer.onTime %>/<%= d.prayer.tracked %> vaktinde
+                    </span>
+                    <% if (d.prayer.qada) { %><br /><small class="muted"><%= d.prayer.qada %> kaza</small><% } %>
+                    <% if (d.prayer.missed) { %><br /><small class="muted"><%= d.prayer.missed %> kılınmadı</small><% } %>
                     <% } %>
                   </td>
                 </tr>
