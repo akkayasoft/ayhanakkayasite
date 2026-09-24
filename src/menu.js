@@ -115,6 +115,17 @@ const ADMIN_MENU = [
     ]
   },
   {
+    key: 'yds',
+    label: 'YDS Rutini',
+    icon: 'yds',
+    href: '/admin/yds',
+    sections: [
+      { key: 'rutinler', label: 'Öğrenci Rutinleri' },
+      { key: 'kayitlar', label: 'Günlük Kayıtlar' },
+      { key: 'ayar', label: 'Rutin Ayarla' }
+    ]
+  },
+  {
     key: 'prayer',
     label: 'Namaz Rutini',
     icon: 'prayer',
@@ -207,6 +218,16 @@ const STUDENT_MENU = [
     label: 'Yapay Zeka Rutini',
     icon: 'ai',
     href: '/student/ai',
+    sections: [
+      { key: 'durum', label: 'Bugün' },
+      { key: 'gecmis', label: 'Son Günler' }
+    ]
+  },
+  {
+    key: 'yds',
+    label: 'YDS Rutini',
+    icon: 'yds',
+    href: '/student/yds',
     sections: [
       { key: 'durum', label: 'Bugün' },
       { key: 'gecmis', label: 'Son Günler' }

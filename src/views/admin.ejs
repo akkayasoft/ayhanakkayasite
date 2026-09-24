@@ -808,17 +808,19 @@
             <p class="kpi-label">Namaz (kaza dahil)</p>
             <p class="kpi-value"><%= weeklyAnalysis.totals.prayerDoneRate === null ? '-' : weeklyAnalysis.totals.prayerDoneRate + '%' %></p>
           </article>
+          <% studyKinds.forEach((k) => { const m = weeklyAnalysis.totals.study[k.key]; %>
           <article class="kpi">
-            <span class="kpi-icon" aria-hidden="true"><%- menuIcons.ai %></span>
-            <p class="kpi-label">Yapay Zeka (yapıldı)</p>
-            <p class="kpi-value"><%= weeklyAnalysis.totals.aiDoneRate === null ? '-' : weeklyAnalysis.totals.aiDoneRate + '%' %></p>
+            <span class="kpi-icon" aria-hidden="true"><%- menuIcons[k.icon] %></span>
+            <p class="kpi-label"><%= k.label %> (yapıldı)</p>
+            <p class="kpi-value"><%= m.doneRate === null ? '-' : m.doneRate + '%' %></p>
           </article>
           <article class="kpi">
             <span class="kpi-icon" aria-hidden="true"><%- menuIcons.duration %></span>
-            <p class="kpi-label">YZ Çalışma Süresi</p>
-            <p class="kpi-value"><%= Math.round(weeklyAnalysis.totals.aiMinutes / 60 * 10) / 10 %> saat</p>
-            <p class="muted" style="margin: 0; font-size: 0.7rem"><%= weeklyAnalysis.totals.aiActualDays %> gün gerçek süre</p>
+            <p class="kpi-label"><%= k.label %> Süresi</p>
+            <p class="kpi-value"><%= Math.round(m.minutes / 60 * 10) / 10 %> saat</p>
+            <p class="muted" style="margin: 0; font-size: 0.7rem"><%= m.actualDays %> gün gerçek süre</p>
           </article>
+          <% }) %>
         </section>
 
         <% if (currentSection === 'karsilastirma') { %>
@@ -844,7 +846,7 @@
                   <th>Spor</th>
                   <th>Ort. Spor</th>
                   <th>Namaz</th>
-                  <th>Yapay Zeka</th>
+                  <% studyKinds.forEach((k) => { %><th><%= k.label %></th><% }) %>
                   <th>Detay</th>
                 </tr>
               </thead>
@@ -924,24 +926,26 @@
                     <% } %>
                     <% } %>
                   </td>
+                  <% studyKinds.forEach((k) => { const m = r.current.study[k.key]; const d = r.delta.study[k.key]; %>
                   <td>
-                    <% if (r.current.aiTracked === 0) { %>
+                    <% if (m.tracked === 0) { %>
                     <span class="muted">-</span>
                     <% } else { %>
-                    <span class="status-pill <%= r.current.aiDoneRate >= 80 ? 'ok' : r.current.aiDoneRate >= 50 ? 'idle' : 'bad' %>">
-                      <%= r.current.aiDone %>/<%= r.current.aiTracked %> · <%= r.current.aiDoneRate %>%
+                    <span class="status-pill <%= m.doneRate >= 80 ? 'ok' : m.doneRate >= 50 ? 'idle' : 'bad' %>">
+                      <%= m.done %>/<%= m.tracked %> · <%= m.doneRate %>%
                     </span>
-                    <% if (r.delta.aiDoneRate !== null && r.delta.aiDoneRate !== 0) { %>
-                    <span class="trend <%= r.delta.aiDoneRate > 0 ? 'up' : 'down' %>">
-                      <%= r.delta.aiDoneRate > 0 ? '▲' : '▼' %> <%= Math.abs(r.delta.aiDoneRate) %>
+                    <% if (d !== null && d !== 0) { %>
+                    <span class="trend <%= d > 0 ? 'up' : 'down' %>">
+                      <%= d > 0 ? '▲' : '▼' %> <%= Math.abs(d) %>
                     </span>
                     <% } %>
                     <br /><small class="muted">
-                      <%= Math.round(r.current.aiMinutes / 60 * 10) / 10 %> saat<% if (r.current.aiMakeup) { %> · <%= r.current.aiMakeup %> telafi<% } %>
-                      <br /><%= r.current.aiActualDays %> gün gerçek süre
+                      <%= Math.round(m.minutes / 60 * 10) / 10 %> saat<% if (m.makeup) { %> · <%= m.makeup %> telafi<% } %>
+                      <br /><%= m.actualDays %> gün gerçek süre
                     </small>
                     <% } %>
                   </td>
+                  <% }) %>
                   <td>
                     <a class="button-link <%= weeklyAnalysis.selectedStudentId === r.id ? 'active' : '' %>"
                        href="/admin/analysis?bolum=kategori&weekStart=<%= weeklyAnalysis.weekStart %>&analysisStudentId=<%= r.id %>">İncele</a>
@@ -1023,7 +1027,7 @@
                   <th>Spor Saati</th>
                   <th>Spor</th>
                   <th>Namaz</th>
-                  <th>Yapay Zeka</th>
+                  <% studyKinds.forEach((k) => { %><th><%= k.label %></th><% }) %>
                 </tr>
               </thead>
               <tbody>
@@ -1086,19 +1090,21 @@
                     <% if (d.prayer.missed) { %><br /><small class="muted"><%= d.prayer.missed %> kılınmadı</small><% } %>
                     <% } %>
                   </td>
+                  <% studyKinds.forEach((k) => { const sl = d.studyLogs[k.key]; %>
                   <td>
-                    <% if (!d.ai) { %>
+                    <% if (!sl) { %>
                     <span class="muted">-</span>
                     <% } else { %>
-                    <span class="state-pill <%= d.ai.status %>"><%= d.ai.statusText %></span>
-                    <% if (d.ai.status === 'done' || d.ai.status === 'makeup') { %>
+                    <span class="state-pill <%= sl.status %>"><%= sl.statusText %></span>
+                    <% if (sl.status === 'done' || sl.status === 'makeup') { %>
                     <br /><small class="muted">
-                      <%= d.ai.actualMinutes === null ? d.ai.minutes : d.ai.actualMinutes %> dk<%
-                      if (d.ai.actualMinutes === null) { %> <span title="Gerçek süre girilmedi, plan sayılıyor">(plan)</span><% } %>
+                      <%= sl.actualMinutes === null ? sl.minutes : sl.actualMinutes %> dk<%
+                      if (sl.actualMinutes === null) { %> <span title="Gerçek süre girilmedi, plan sayılıyor">(plan)</span><% } %>
                     </small>
                     <% } %>
                     <% } %>
                   </td>
+                  <% }) %>
                 </tr>
                 <% }) %>
               </tbody>
@@ -1668,12 +1674,14 @@
         <% } %>
         <% } %>
 
-        <%# YAPAY ZEKA RUTINI (admin). Namazla ayni sekil; farki gunde tek
-            kayit ve bir PLANIN olmasi (gunluk pencere + dakika). %>
-        <% if (currentPage === 'ai' && aiAdmin) { %>
-        <% const aa = aiAdmin; %>
+        <%# PLANLI CALISMA RUTINI (admin) — yapay zeka · YDS. Iki tur birebir
+            ayni davrandigi icin markup TEKTIR; gorunum modeli hangi tur
+            oldugunu `studyAdmin` icinde tasir. Namazla farki gunde tek kayit
+            ve bir PLANIN olmasi (gunluk pencere + dakika). %>
+        <% if (studyAdmin) { %>
+        <% const aa = studyAdmin; %>
         <header class="content-header">
-          <h2>Yapay Zeka Rutini</h2>
+          <h2><%= aa.label %> Rutini</h2>
           <p class="muted">
             Günlük çalışma planı (varsayılan <strong>1 saat</strong>). Durum saatten
             <strong>hesaplanmaz</strong>: öğrenci <strong>yapıldı</strong>,
@@ -1692,8 +1700,8 @@
             "bugün ne yapacağım"ı söyler — ve o günün kaydına kopyalanır ki plan
             sonradan değişse de geçmiş okunabilir kalsın.
           </p>
-          <form method="post" action="/admin/ai" class="stack">
-            <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+          <form method="post" action="<%= aa.adminPath %>" class="stack">
+            <input type="hidden" name="next" value="<%= aa.adminPath %>?bolum=rutinler" />
             <label>Öğrenci</label>
             <select name="studentId" required>
               <% aa.rows.forEach((r) => { %>
@@ -1702,10 +1710,10 @@
             </select>
 
             <label>Günlük Başlangıç</label>
-            <input type="time" name="startTime" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.startTime : '06:30' %>" />
+            <input type="time" name="startTime" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.startTime : aa.defaultStart %>" />
 
             <label>Günlük Süre (dk)</label>
-            <input type="number" name="minutes" min="15" max="600" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.minutes : 60 %>" />
+            <input type="number" name="minutes" min="15" max="600" required value="<%= aa.detail && aa.detail.routine ? aa.detail.routine.minutes : aa.defaultMinutes %>" />
 
             <label>Durum</label>
             <select name="isActive">
@@ -1730,7 +1738,7 @@
               <tbody>
                 <% aa.rows.forEach((r) => { %>
                 <tr>
-                  <td><a href="/admin/ai?bolum=kayitlar&aiStudentId=<%= r.student.id %>"><%= r.student.name %></a></td>
+                  <td><a href="<%= aa.adminPath %>?bolum=kayitlar&<%= aa.studentIdParam %>=<%= r.student.id %>"><%= r.student.name %></a></td>
                   <td class="single-line-cell">
                     <% if (r.routine) { %><%= r.routine.startTime %> - <%= r.routine.endTime %> · <%= r.routine.minutes %> dk<% } else { %>-<% } %>
                   </td>
@@ -1741,17 +1749,17 @@
                   </td>
                   <td>
                     <% if (r.routine) { %>
-                    <form method="post" action="/admin/ai/delete" onsubmit="return confirm('<%= r.student.name %> için yapay zeka rutini kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
-                      <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+                    <form method="post" action="<%= aa.adminPath %>/delete" onsubmit="return confirm('<%= r.student.name %> için <%= aa.label %> rutini kaldırılsın mı? Geçmiş kayıtlar silinmez.')">
+                      <input type="hidden" name="next" value="<%= aa.adminPath %>?bolum=rutinler" />
                       <input type="hidden" name="studentId" value="<%= r.student.id %>" />
                       <button type="submit" class="danger">Kaldır</button>
                     </form>
                     <% } else { %>
-                    <form method="post" action="/admin/ai">
-                      <input type="hidden" name="next" value="/admin/ai?bolum=rutinler" />
+                    <form method="post" action="<%= aa.adminPath %>">
+                      <input type="hidden" name="next" value="<%= aa.adminPath %>?bolum=rutinler" />
                       <input type="hidden" name="studentId" value="<%= r.student.id %>" />
-                      <input type="hidden" name="startTime" value="06:30" />
-                      <input type="hidden" name="minutes" value="60" />
+                      <input type="hidden" name="startTime" value="<%= aa.defaultStart %>" />
+                      <input type="hidden" name="minutes" value="<%= aa.defaultMinutes %>" />
                       <input type="hidden" name="isActive" value="on" />
                       <button type="submit">1 Saatlik Rutini Aç</button>
                     </form>
@@ -1811,8 +1819,8 @@
                     <% } %>
                   </td>
                   <td>
-                    <form method="post" action="/admin/ai/log" class="state-fix">
-                      <input type="hidden" name="next" value="/admin/ai?bolum=kayitlar&aiStudentId=<%= aa.selected.id %>" />
+                    <form method="post" action="<%= aa.adminPath %>/log" class="state-fix">
+                      <input type="hidden" name="next" value="<%= aa.adminPath %>?bolum=kayitlar&<%= aa.studentIdParam %>=<%= aa.selected.id %>" />
                       <input type="hidden" name="studentId" value="<%= aa.selected.id %>" />
                       <input type="hidden" name="day" value="<%= g.day %>" />
                       <select name="durum" aria-label="<%= g.day %> durumu">
@@ -1836,10 +1844,10 @@
         <section class="panel narrow">
           <h3>Kayıt yok</h3>
           <p class="muted">
-            <%= aa.selected ? aa.selected.name : 'Bu öğrenci' %> için yapay zeka rutini tanımlı
-            değil. Önce <a href="/admin/ai?bolum=ayar">Rutin Ayarla</a> alanından planı gir;
+            <%= aa.selected ? aa.selected.name : 'Bu öğrenci' %> için <%= aa.label %> rutini tanımlı
+            değil. Önce <a href="<%= aa.adminPath %>?bolum=ayar">Rutin Ayarla</a> alanından planı gir;
             günlük kayıtlar bundan sonra burada listelenir. Başka bir öğrencinin kayıtlarına
-            <a href="/admin/ai?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
+            <a href="<%= aa.adminPath %>?bolum=rutinler">Öğrenci Rutinleri</a> alanından geçebilirsin.
           </p>
         </section>
         <% } %>

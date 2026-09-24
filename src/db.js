@@ -561,6 +561,50 @@ async function initDb() {
     CHECK (actual_minutes IS NULL OR actual_minutes BETWEEN 1 AND 1440)
   `);
 
+  // GUNLUK YDS CALISMA RUTINI (gunde 1 saat).
+  //
+  // Yapay zeka rutiniyle BIREBIR ayni sekil ve ayni sutunlar; kod tarafinda
+  // tek bir motor (STUDY_KINDS) ikisini de surer. Tablolar yine de AYRI:
+  // iki rutin birbirinden bagimsiz acilip kapanir ve tek tabloda "tur"
+  // sutunuyla birlestirmek her sorguya bir filtre borcu yuklerdi.
+  //
+  // Varsayilan pencere 20:00 — sabahki yapay zeka saatiyle carpismasin.
+  await query(`
+    CREATE TABLE IF NOT EXISTS yds_routines (
+      student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      start_time TIME NOT NULL DEFAULT '20:00',
+      minutes INTEGER NOT NULL DEFAULT 60 CHECK (minutes BETWEEN 15 AND 600),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS yds_logs (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('done', 'not_done', 'makeup')),
+      start_time TIME NOT NULL,
+      minutes INTEGER NOT NULL,
+      actual_minutes INTEGER CHECK (actual_minutes IS NULL OR actual_minutes BETWEEN 1 AND 1440),
+      done_at TIME NULL,
+      makeup_day DATE NULL,
+      makeup_at TIME NULL,
+      note TEXT NOT NULL DEFAULT '',
+      corrected_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      corrected_at TIMESTAMPTZ,
+      previous_status TEXT,
+      correction_note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (student_id, day)
+    )
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS yds_logs_student_day_idx ON yds_logs (student_id, day DESC)`
+  );
+
   // --- YZ / YDS programlari kaldirildi -----------------------------------
   //
   // Gorevler artik yalnizca UYANMA RUTINI, SPOR RUTINI ve DERS DEFTERI'nden

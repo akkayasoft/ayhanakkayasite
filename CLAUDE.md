@@ -16,8 +16,8 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
 | **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
 
-> **Namaz ve yapay zeka rutinleri bu tabloda yok — bilinçli.** Yapay zeka
-> rutini görev üretmez: günde tek bir işaret, kendi sayfasında ve pano
+> **Rutinler (uyanma, spor, namaz, yapay zeka, YDS) bu tabloda yok —
+> bilinçli.** Çalışma rutinleri görev üretmez: günde tek bir işaret, kendi sayfasında ve pano
 > şeridinde. (19 Eylül'de kaldırılan **YZ programı** görev üreten bir
 > müfredat aktarımıydı; bu onun yerine geçmez, bir rutindir.)
 >
@@ -1023,8 +1023,10 @@ kaydet" mantığı. Tek fark hedefin tek saat değil bir **aralık** olması
 >
 > ⚠️ Nitekim öyle oldu: **yapay zeka rutini** namazla aynı şeklin ikincisi
 > çıktı ve ortak çekirdek (`canAdvanceDeclaredStatus` + `.state-*` sınıfları)
-> o noktada çıkarıldı — ama yalnızca gerçekten ortak olan kadarı. Bkz.
-> *Üç durumlu beyan rutinleri*.
+> o noktada çıkarıldı — ama yalnızca gerçekten ortak olan kadarı. Ardından
+> **YDS rutini** yapay zekanın *birebir* aynısı çıkınca motor `STUDY_KINDS`
+> ile parametrelendi ve yapay zeka da ona taşındı. Bkz. *Üç durumlu beyan
+> rutinleri* ve *Planlı günlük çalışma rutinleri*.
 
 ### Elle kayıt (admin) — rutinlerin tek geri dönüşü
 
@@ -1181,16 +1183,54 @@ kaydın değeri dürüstlüğünden geliyor, düzeltmesi adminde.
 > aynı renklere eşlenir. Beş vakitlik kart ızgarası (`.prayer-*`) yalnızca
 > namaza aittir.
 
-## Günlük yapay zeka çalışma rutini (günde 1 saat)
+## Planlı günlük çalışma rutinleri (yapay zeka · YDS)
 
-Yukarıdaki şeklin ikinci örneği. Namazdan iki farkı var: günde **bir** kayıt
-tutar ve bir **planı** vardır.
+Yukarıdaki şeklin ikinci ve üçüncü örneği. **Birbirinin aynısıdırlar** —
+farkları yalnızca tablo adları, etiketler ve varsayılan saat:
 
-- `ai_routines`: `start_time` (varsayılan 06:30), `minutes` (varsayılan
-  **60**), `is_active`. **Bitiş saati saklanmaz, hesaplanır**
+| | Yapay Zeka | YDS |
+|---|---|---|
+| Varsayılan pencere | **06:30 - 07:30** | **20:00 - 21:00** |
+| Tablolar | `ai_routines` / `ai_logs` | `yds_routines` / `yds_logs` |
+| Yollar | `/admin/ai`, `/student/ai` | `/admin/yds`, `/student/yds` |
+
+Namazdan iki farkları var: günde **bir** kayıt tutarlar ve bir **planları**
+vardır.
+
+### Tek motor: `STUDY_KINDS`
+
+YDS geldiğinde üçüncü bir kopya yazmak yerine motor `kind` ile
+parametrelendi — CLAUDE.md'nin *"aynı şeklin üçüncüsü gelirse önce
+soyutlama"* kuralının tam olarak işaret ettiği durum. Tek bir tanım
+(`STUDY_KINDS`) sürer:
+
+- **Model:** `getStudyRoutine` · `sealMissedStudyLogs` · `buildStudyView` ·
+  `studyEffectiveMinutes` · `wouldStudySealerRewrite`.
+- **Rotalar** tür üzerinde bir **döngüde** kurulur (admin ayar/sil/elle
+  kayıt, öğrenci işaretle/süre) — beş rota × iki tür.
+- **Şablonlar tek**: öğrenci sayfası `studyView`, admin sayfası `studyAdmin`
+  alır ve hangi türde olduğunu bilmek zorunda değildir; etiket, yollar ve
+  plan görünüm modelinden gelir. Pano şeridi `studyStrips` üzerinde döner.
+- **Analiz** de tür başına döngüdür: metrikler `metrik.study[tür]` altında,
+  sütunlar `studyKinds.forEach`.
+
+> ⚠️ **Tablo adları SQL'e doğrudan gömülür** (tablo adı `$1` ile verilemez).
+> Güvenli, çünkü değerler **yalnızca** bu sabit haritadan gelir: rota yolları
+> döngüde bağlanır, tür adı **istekten gelmez**. Yeni bir tür eklenirse aynı
+> kural korunmalı.
+
+> ⚠️ **Namaz bu motora girmez.** Günde beş kayıt tutar ve planı yoktur;
+> sokmak motoru bayrak enflasyonuna çevirirdi. Ortak olan yalnızca üç durumlu
+> beyan çekirdeğidir (`canAdvanceDeclaredStatus`, `.state-*`).
+
+> ⚠️ **Tablolar ayrı tutuldu** (tek tabloda `tur` sütunu yerine): iki rutin
+> birbirinden bağımsız açılıp kapanır ve birleştirmek her sorguya bir filtre
+> borcu yüklerdi.
+
+- `<tür>_routines`: `start_time`, `minutes` (varsayılan **60**), `is_active`. **Bitiş saati saklanmaz, hesaplanır**
   (`aiWindowEnd`) — "kaçta biter" sorusunun tek doğru cevabı olsun diye
   (zil saatlerindeki kararın aynısı).
-- `ai_logs`: `UNIQUE (student_id, day)`; `status` ∈ *done, not_done,
+- `<tür>_logs`: `UNIQUE (student_id, day)`; `status` ∈ *done, not_done,
   makeup*. `done_at` basılan saat, `makeup_day` / `makeup_at` **telafinin
   hangi gün ve saatte yapıldığı** — telafi başka bir gün yapıldığı için ayrı
   tutulur.
@@ -1207,18 +1247,18 @@ tutar ve bir **planı** vardır.
 geleceğe ve **rutin kurulmadan öncesine** hiçbiri. Geçmiş listesi de rutinin
 kurulduğu günde biter.
 
-**Elle kayıt (admin):** `/admin/ai` → *Günlük Kayıtlar*; her günün satırında
+**Elle kayıt (admin):** `/admin/<tür>` → *Günlük Kayıtlar*; her günün satırında
 durum seçici + gerekçe. `POST /admin/ai/log`; gelecek güne ve taban tarihten
 öncesine yazılamaz, *"Kaydı sil"* yalnızca mühürleme penceresi dışında açık,
 her yazma `corrected_by` / `corrected_at` / `previous_status` /
 `correction_note` ile saklanır.
 
-**Arayüz:** öğrenci `/student/ai` → *Bugün* (tek kart, üç düğme, planı
+**Arayüz:** öğrenci `/student/<tür>` → *Bugün* (tek kart, üç düğme, planı
 yazar) ve *Son Günler* (gün · plan · durum · telafi düğmesi). Panodaki şerit
 namazdan farklı olarak **doğrudan işaretler** — günde tek kayıt olduğu için
 tek düğme yeter.
 
-**Haftalık analizde:** karşılaştırmada *Yapay Zeka* sütunu
+**Haftalık analizde:** karşılaştırmada her tür için bir sütun
 (`yapıldı/kayıtlı gün` + oran + trend, altında çalışılan saat, telafi sayısı
 ve kaç günde gerçek süre girildiği), gün kırılımında durum rozeti + dakika,
 özet kartlarında *Yapay Zeka (yapıldı)* ve *YZ Çalışma Süresi*. Çalışılan
@@ -1227,7 +1267,7 @@ süre gerçek girdilerden toplanır, girilmemiş günlerde plana düşer (bkz.
 
 ### Gerçek çalışılan dakika
 
-`ai_logs.actual_minutes` (**NULL olabilir**) gerçekte kaç dakika çalışıldığını
+`<tür>_logs.actual_minutes` (**NULL olabilir**) gerçekte kaç dakika çalışıldığını
 tutar. Plandan ayrı durur: plan *"bugün ne yapacağım"*, bu sütun *"gerçekte ne
 kadar yaptım"*.
 
@@ -1243,10 +1283,10 @@ kadar yaptım"*.
   *(plan)* etiketi durur. Sayının nereden geldiği görünür kalmalı.
 - **Süre DURUM gibi kilitlenmez.** İş sabah işaretlenir, kaç dakika sürdüğü
   çoğu zaman sonra yazılır — uyanma/spor notundaki kararın aynısı. Rota
-  `POST /student/ai/minutes`; yalnızca `done` / `makeup` günlerine yazılır
+  `POST /student/<tür>/minutes`; yalnızca `done` / `makeup` günlerine yazılır
   (*"yapılmadı"* günde yazılacak süre yoktur), boş göndermek temizler.
   İşaretleme formunda da opsiyonel bir alan olarak duruyor.
-- Admin `/admin/ai/log` formundan da süre yazabilir. Durum aynı kalıp yalnızca
+- Admin `/admin/<tür>/log` formundan da süre yazabilir. Durum aynı kalıp yalnızca
   süre değiştirilmek istenirse bu **geçerli bir istektir** — yoksa *"gün zaten
   o durumda"* deyip süreyi yutardık. Bir gün `not_done`'a çevrilirse süre
   **temizlenir** (yazılacak süre kalmadı).
@@ -1269,7 +1309,25 @@ süre"* olarak gösteriyor. Admin → `/student/ai/minutes` **403**, oturumsuz
 19 adres **200**; 1440 / 390px'te taşma **0**, telefonda kart etiketleri
 (*Gün / Plan / Durum / Çalışılan Süre / İşlem*) doğru.
 
-Doğrulandı (lokal, 24 Eylül): rutin 06:30-07:30 / 60 dk açıldı. Geçişler:
+Doğrulandı (YDS eklendikten sonra): **yapay zeka rutini bozulmadı** —
+5 kayıt ve 3 gerçek süre girdisi yerinde, sayfa aynı çalışıyor. YDS rutini
+20:00-21:00 / 60 dk açıldı; `Yapıldı · 70 dk` yazıldı, kapanmış güne yazma ve
+geçmişe "yapıldı" **reddedildi**; mühürleyici YDS için 3 gün yazdı ve yapay
+zeka kayıtlarına **dokunmadı** (iki tür bağımsız). Menüde iki rutin ayrı
+satır, panoda iki ayrı şerit. Analizde iki ayrı sütun (*YZ 1/4 · %25 · 4.5
+saat*, *YDS 1/4 · %25 · 1.2 saat*), gün kırılımında ikisi ayrı ayrı, dört
+özet kartı. Öğrenci → admin YDS rotaları **403**, admin → öğrenci **403**,
+oturumsuz **302**. 35 adres **200**; 1440 / 390px'te sayfa taşması **0**,
+telefonda kart etiketleri doğru.
+
+> ⚠️ İki hata bu refaktörde yakalandı. (1) Rota döngüsü modül yüklenirken
+> çalışıyor ama `STUDY_KINDS` daha aşağıda tanımlıydı — *temporal dead zone*;
+> blok motorun arkasına alındı. (2) Gün kırılımı satırında `study: gunStudy`
+> (kayıt haritası) `...ozetle(gun)`'un döndürdüğü `study` **metrik**
+> nesnesiyle çakışıyordu ve hücreler boş kalıyordu; kayıt haritası
+> `studyLogs` olarak ayrıldı.
+
+Doğrulandı (yapay zeka, 24 Eylül): rutin 06:30-07:30 / 60 dk açıldı. Geçişler:
 `not_done → done` **reddedildi** (*"yalnızca telafisi işaretlenebilir"*),
 `not_done → makeup` **kabul**, ikinci telafi reddedildi, kapanmış kayda
 yazma reddedildi. Gün kuralları: gelecek, geçmişe "yapıldı", rutin öncesi ve
@@ -1480,9 +1538,9 @@ studentId)` bir haftanın metriklerini üretir:
 - **Öğrenci karşılaştırması**: kişi başına görev tamamlama oranı, çözülen
   soru, doğruluk (%), çalışma süresi, **uyanma** (zamanında/toplam + oran),
   ortalama kalkış saati, **spor**, **namaz** (vaktinde/kayıtlı vakit + oran)
-  ve **yapay zeka** (yapıldı/kayıtlı gün + oran, çalışılan saat);
-  tamamlama, uyanma, spor, namaz ve yapay zeka oranında **önceki haftaya
-  göre puan farkı**. Namazın paydası gün değil vakittir — bkz. *Günlük 5 vakit
+  ve **planlı çalışma rutinlerinin her biri** (yapay zeka, YDS —
+  yapıldı/kayıtlı gün + oran, çalışılan saat); tamamlama, uyanma, spor, namaz
+  ve her çalışma rutininin oranında **önceki haftaya göre puan farkı**. Namazın paydası gün değil vakittir — bkz. *Günlük 5 vakit
   namaz rutini → Haftalık analizde*.
 - **Seçili öğrenci için kırılım**: kategori bazında ve gün bazında aynı
   metrikler. Gün satırları `academicCalendar` etiketini, ayrıca o günün
@@ -1496,12 +1554,12 @@ studentId)` bir haftanın metriklerini üretir:
 
 Sorgular tek turda hem içinde bulunulan hem önceki haftayı çeker
 (`BETWEEN prevWeekStart AND weekEnd`), trend için ikinci bir gidiş yok —
-`wake_logs`, `sport_logs`, `prayer_logs` ve `ai_logs` de aynı desenle aynı
-turda çekilir. `prayer_logs` günde beş satır tuttuğu için satırları taşımak yerine
+`wake_logs`, `sport_logs`, `prayer_logs` ve planlı çalışma rutinlerinin
+tabloları da aynı desenle aynı turda çekilir. `prayer_logs` günde beş satır tuttuğu için satırları taşımak yerine
 **gün bazında saydırılır**.
 
-Tablolar namaz ve yapay zeka sütunlarıyla 15 ve 16 sütuna çıktı;
-`min-width` değerleri 1420 / 1520px'e yükseltildi (kapsayıcı içinde yatay kaydırma,
+Tablolar namaz + iki çalışma rutini sütunuyla 16 ve 17 sütuna çıktı;
+`min-width` değerleri 1560 / 1660px'e yükseltildi (kapsayıcı içinde yatay kaydırma,
 telefonda `.stack-mobile` ile karta dönüş aynen duruyor).
 
 ## Açılış öncesi doğrulama (2026-09-14)

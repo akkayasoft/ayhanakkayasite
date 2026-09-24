@@ -2388,11 +2388,11 @@ tr.day-off td {
 /* Namaz sutunu eklenince ikisi de bir sutun genisledi (13 -> 14 ve
    14 -> 15). Kapsayici icinde yatay kaydirma zaten kabul edilen desen. */
 .analysis-table {
-  min-width: 1420px;
+  min-width: 1560px;
 }
 
 .analysis-day-table {
-  min-width: 1520px;
+  min-width: 1660px;
 }
 
 /* Rutin gun tablosu (uyanma / spor): 6 bilgi sutununun yanina bir de elle
