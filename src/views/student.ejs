@@ -166,9 +166,10 @@
 
         <p class="section-label">Bugünün Özeti</p>
         <section class="kpi-grid">
-          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= activeTasks.length %></p></article>
-          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= doneCount %></p></article>
-          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(activeTasks.length - doneCount, 0) %></p></article>
+          <% const _bo = (typeof bugunOzet !== 'undefined' && bugunOzet) ? bugunOzet : { toplam: activeTasks.length, tamamlanan: doneCount }; %>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= _bo.toplam %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= _bo.tamamlanan %></p></article>
+          <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(_bo.toplam - _bo.tamamlanan, 0) %></p></article>
         </section>
 
         <section class="panel compact-panel">
@@ -296,15 +297,10 @@
                   <td data-label="İşlem">
                     <div class="task-table-actions">
                       <% if (task.isRoutine) { %>
-                      <%# Rutinin tek eylemi var: isaretle. Ilk basis gecerli. %>
-                      <% if (task.isMarked) { %>
-                      <span class="lock-note" title="<%= task.routineStatusText %> · değiştirilemez">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                          <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                        <%= task.routineStatusText %>
-                      </span>
-                      <% } else { %>
+                      <%# Uyanma/spor bugun tek dokunusla isaretlenir (ilk basis
+                          gecerli); YZ/YDS uc durumlu oldugu icin kendi sayfasina
+                          baglanti; gecmis kilitli; gelecek "Bekliyor". %>
+                      <% if (task.routineMarkInline) { %>
                       <form method="post" action="<%= task.routineEndpoint %>">
                         <button type="submit" class="icon-btn ok" title="İşaretle" aria-label="İşaretle">
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -312,6 +308,17 @@
                           </svg>
                         </button>
                       </form>
+                      <% } else if (task.routineActionHref) { %>
+                      <a class="button-link" href="<%= task.routineActionHref %>"><%= task.routineActionLabel %> →</a>
+                      <% } else if (task.isMarked) { %>
+                      <span class="lock-note" title="<%= task.routineStatusText %> · değiştirilemez">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <%= task.routineStatusText %>
+                      </span>
+                      <% } else { %>
+                      <span class="muted">Bekliyor</span>
                       <% } %>
                       <% } else if (task.isLocked) { %>
                       <%# Kilit iki sebepten olabilir; etiket hangisiyse onu söylesin. %>

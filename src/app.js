@@ -6699,6 +6699,113 @@ app.post(
   })
 );
 
+/**
+ * Bir rutinin (uyanma / spor / yapay zeka / YDS) ICINDE BULUNULAN HAFTANIN her
+ * gunu icin "Gorevlerim" tablosuna sahte satirlar uretir. Namaz HARIC — gunde
+ * 5 vakit tutar, listeyi bogar (bkz. CLAUDE.md), kendi seridinde kalir.
+ *
+ * - Rutin kuruldugu gunden (createdDay) once satir yok; sistem taban tarihinden
+ *   oncesine de inmez.
+ * - Gecmis gunler kendi durumlariyla (kilitli), BUGUN islem yapilabilir,
+ *   gelecek gunler "Bekliyor".
+ * - Zaman-tabanli rutinler (uyanma/spor) bugun tek dokunusla isaretlenir (satir
+ *   ici dugme); planli rutinler (YZ/YDS) uc durumlu oldugu icin satirdan kendi
+ *   sayfasina baglanti verilir.
+ *
+ * `view` = buildWakeView / buildSportView / buildStudyView sonucu (rows: en yeni
+ * ustte, son N gun). `haftaGunleri` = Pzt..Paz tarih dizisi.
+ */
+function buildRoutineWeekRows(config, view, haftaGunleri, today) {
+  const { tur, baslik, endpoint, page, tip } = config;
+  if (!view || !view.routine || view.routine.isActive === false) return [];
+  const routine = view.routine;
+  const taban = [routine.createdDay || SYSTEM_START_DATE, SYSTEM_START_DATE].sort().pop();
+  const logByDay = new Map((view.rows || []).map((r) => [r.day, r]));
+
+  const saatAna = tip === 'time' && tur === 'wake' ? routine.targetTime : routine.startTime;
+  const saatAlt =
+    tip === 'time' && tur === 'wake'
+      ? routine.toleranceMinutes
+        ? `+${routine.toleranceMinutes} dk`
+        : ''
+      : `→ ${routine.endTime}`;
+
+  const satirlar = [];
+  for (const gun of haftaGunleri) {
+    if (gun < taban) continue;
+    const bugun = gun === today;
+    const gecmis = gun < today;
+    const r = logByDay.get(gun) || null;
+    const durum = r ? r.status : null;
+
+    // "isaretli" = o gun icin kapanmis/gercek bir durum var mi.
+    const isaretli =
+      tip === 'time'
+        ? durum === 'on_time' || durum === 'late' || durum === 'missed'
+        : durum === 'done' || durum === 'not_done' || durum === 'makeup';
+
+    // Sayac ve satir rengi icin done/not_done'a indirger.
+    let displayDurum = null;
+    if (isaretli) {
+      if (tip === 'time') displayDurum = durum === 'missed' ? 'not_done' : 'done';
+      else displayDurum = durum === 'done' || durum === 'makeup' ? 'done' : 'not_done';
+    }
+
+    // Islem: uyanma/spor bugun satir ici dugme; YZ/YDS bugun (bekliyor) ya da
+    // gecmis (yapilmadi -> telafi) kendi sayfasina baglanti.
+    const markInline = tip === 'time' && bugun && !isaretli;
+    let actionHref = null;
+    let actionLabel = null;
+    if (tip === 'study') {
+      if (bugun && durum !== 'done' && durum !== 'makeup') {
+        actionHref = page;
+        actionLabel = durum === 'not_done' ? 'Telafi' : 'İşaretle';
+      } else if (gecmis && durum === 'not_done') {
+        actionHref = page;
+        actionLabel = 'Telafi';
+      }
+    }
+
+    // Kapanmis (kilit rozeti gosterilecek) durum: isaretli ve baska islem yok.
+    const kilitli = isaretli && !actionHref;
+
+    satirlar.push({
+      id: `routine-${tur}-${gun}`,
+      isRoutine: true,
+      routineTur: tur,
+      routineEndpoint: endpoint || null,
+      routineMarkInline: markInline,
+      routineActionHref: actionHref,
+      routineActionLabel: actionLabel,
+      routinePage: page,
+      // Not yalnizca uyanma/spor'da ve YALNIZCA bugun (kayit varsa) yazilir.
+      cellEndpoint: tip === 'time' && bugun && isaretli ? `/student/routines/${tur}/note` : null,
+      title: baslik,
+      categoryName: 'Rutin',
+      scheduleText: bugun ? `${gun} · Bugün` : gun,
+      singleDate: gun,
+      estimatedTime: saatAlt ? `${saatAna} ${saatAlt}` : saatAna,
+      routineSaatAna: saatAna,
+      routineSaatAlt: saatAlt,
+      description: r ? r.note || '' : '',
+      canEditDescription: tip === 'time' && bugun && isaretli,
+      canEditTime: false,
+      canManage: false,
+      isMarked: kilitli,
+      isLocked: kilitli,
+      routineDoneAt: r ? (tur === 'wake' ? r.wokeAt : r.doneAt) || (r.makeupAt || null) : null,
+      routineStatus: durum,
+      routineStatusText: r && r.statusText ? r.statusText : 'Bekliyor',
+      routineDelay: r && r.delayMinutes ? r.delayMinutes : 0,
+      displayStatus: displayDurum ? { status: displayDurum, day: gun } : null,
+      displayStatusIsToday: bugun,
+      displayStatusDay: gun,
+      todayStatus: bugun && isaretli ? { status: durum } : null
+    });
+  }
+  return satirlar;
+}
+
 async function getStudentViewModel(req, currentPage) {
   const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
   const nowHm = timeStringInTimeZone();
@@ -6922,65 +7029,6 @@ async function getStudentViewModel(req, currentPage) {
       ? await buildSportView(req.currentUser.id, currentPage === 'sport' ? 14 : 7)
       : null;
 
-  // Rutinler gorev listesinde de AYNI BICIMDE gorunur: gorev satirlarindan
-  // birer sahte satir uretilir. Tek gun (bugun) gosterilir — rutin gunluktur,
-  // gecmis gunleri listeye doldurmak gunluk gorevleri bogardi.
-  //
-  // Farklari iki sutunda: Durum rozetleri (zamaninda / gec / kacirildi) ve
-  // Islem (tek "Isaretle" dugmesi, gorevlerdeki iki dugme degil).
-  const rutinSatirlari = [];
-  for (const [tur, gorunum, baslik, endpoint] of [
-    ['wake', wake, 'Uyanma Rutini', '/student/wake'],
-    ['sport', sport, 'Spor Rutini', '/student/sport']
-  ]) {
-    if (currentPage !== 'dashboard' || !gorunum || !gorunum.routine) continue;
-    const log = gorunum.todayLog;
-    // Saat hucresi 72px: tek parca metin ("06:00 (+10 dk)") oraya sigmiyor ve
-    // tarayici "(+10 / dk)" gibi anlamsiz yerlerden kiriyordu. Degeri ANLAMLI
-    // yerden iki satira boluyoruz: ust satir asil saat, alt satir ayrinti.
-    const saatAna = tur === 'wake' ? gorunum.routine.targetTime : gorunum.routine.startTime;
-    const saatAlt =
-      tur === 'wake'
-        ? gorunum.routine.toleranceMinutes
-          ? `+${gorunum.routine.toleranceMinutes} dk`
-          : ''
-        : `→ ${gorunum.routine.endTime}`;
-    const hedef = saatAlt ? `${saatAna} ${saatAlt}` : saatAna;
-    rutinSatirlari.push({
-      id: `routine-${tur}`,
-      isRoutine: true,
-      routineTur: tur,
-      routineEndpoint: endpoint,
-      // Not yazma gorev rotasina degil rutin rotasina gider.
-      cellEndpoint: `/student/routines/${tur}/note`,
-      title: baslik,
-      categoryName: 'Rutin',
-      scheduleText: `${today} · Bugün`,
-      singleDate: today,
-      estimatedTime: hedef,
-      routineSaatAna: saatAna,
-      routineSaatAlt: saatAlt,
-      description: log ? log.note : '',
-      // Isaretlenince not hala yazilabilir: rutin sabah basilir, not sonra
-      // yazilir. Basilmadan once yazacak kayit yok.
-      canEditDescription: Boolean(log),
-      canEditTime: false,
-      canManage: false,
-      isMarked: Boolean(log),
-      isLocked: Boolean(log),
-      routineDoneAt: log ? (tur === 'wake' ? log.wokeAt : log.doneAt) : null,
-      routineStatus: log ? log.status : null,
-      routineStatusText: log ? log.statusText : 'Bekliyor',
-      routineDelay: log ? log.delayMinutes : 0,
-      displayStatus: log
-        ? { status: log.status === 'missed' ? 'not_done' : 'done', day: today }
-        : null,
-      displayStatusIsToday: Boolean(log),
-      displayStatusDay: today,
-      todayStatus: log ? { status: log.status } : null
-    });
-  }
-
   // Namaz gorunumu panoda da gerekiyor (ust serit), o yuzden dashboard'da da
   // hesaplanir — uyanma/spor ile ayni desen.
   const prayer =
@@ -6993,13 +7041,54 @@ async function getStudentViewModel(req, currentPage) {
   const studyView = STUDY_KINDS[currentPage]
     ? await buildStudyView(STUDY_KINDS[currentPage], req.currentUser.id, 14)
     : null;
+
+  // YZ/YDS gorunumleri panoda hem UST SERIT hem GOREVLERIM tablosu icin
+  // haftalik (son 7 gun) cekilir; ikisinde de ayni veriyi kullanir.
+  const aiWeek =
+    currentPage === 'dashboard' ? await buildStudyView(STUDY_KINDS.ai, req.currentUser.id, 7) : null;
+  const ydsWeek =
+    currentPage === 'dashboard' ? await buildStudyView(STUDY_KINDS.yds, req.currentUser.id, 7) : null;
   const studyStrips =
     currentPage === 'dashboard'
-      ? (
-          await Promise.all(
-            Object.values(STUDY_KINDS).map((k) => buildStudyView(k, req.currentUser.id, 1))
+      ? [aiWeek, ydsWeek].filter((v) => v && v.routine && v.routine.isActive)
+      : [];
+
+  // Rutinler "Gorevlerim" tablosunda da gorunur: uyanma, spor, yapay zeka ve
+  // YDS — ICINDE BULUNULAN HAFTANIN her gunu icin birer satir. Namaz HARIC
+  // (gunde 5 vakit, listeyi bogar; kendi seridinde kalir — bkz. CLAUDE.md).
+  // Gecmis gunler durumlariyla, bugun islem yapilabilir, gelecek gunler
+  // "Bekliyor". Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu
+  // oldugu icin kendi sayfasina baglanti.
+  const haftaGunleri = [];
+  for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) haftaGunleri.push(g);
+  const rutinSatirlari =
+    currentPage === 'dashboard'
+      ? [
+          ...buildRoutineWeekRows(
+            { tur: 'wake', baslik: 'Uyanma Rutini', endpoint: '/student/wake', page: '/student/wake', tip: 'time' },
+            wake,
+            haftaGunleri,
+            today
+          ),
+          ...buildRoutineWeekRows(
+            { tur: 'sport', baslik: 'Spor Rutini', endpoint: '/student/sport', page: '/student/sport', tip: 'time' },
+            sport,
+            haftaGunleri,
+            today
+          ),
+          ...buildRoutineWeekRows(
+            { tur: 'ai', baslik: 'Yapay Zeka Rutini', page: '/student/ai', tip: 'study' },
+            aiWeek,
+            haftaGunleri,
+            today
+          ),
+          ...buildRoutineWeekRows(
+            { tur: 'yds', baslik: 'YDS Rutini', page: '/student/yds', tip: 'study' },
+            ydsWeek,
+            haftaGunleri,
+            today
           )
-        ).filter((v) => v.routine && v.routine.isActive)
+        ]
       : [];
 
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
@@ -7039,8 +7128,9 @@ async function getStudentViewModel(req, currentPage) {
   // once tarih, ayni gun icinde once rutinler (sabah), sonra ders saatleri.
   // Ders saati sirasi baslik metninden degil source_key'deki sayidan gelir —
   // "10. ders" metinsel siralamada "2. ders"in onune duserdi.
+  const RUTIN_SIRA = { wake: 0, sport: 1, ai: 2, yds: 3 };
   const satirSirasi = (satir) => {
-    if (satir.isRoutine) return satir.routineTur === 'wake' ? 0 : 1;
+    if (satir.isRoutine) return RUTIN_SIRA[satir.routineTur] ?? 4;
     if (isLessonTask(satir.sourceKey)) {
       const saat = Number(String(satir.sourceKey).split(':')[2]);
       return Number.isFinite(saat) ? 100 + saat : 900;
@@ -7079,6 +7169,17 @@ async function getStudentViewModel(req, currentPage) {
     (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
   ).length;
 
+  // "Bugunun Ozeti" KPI'si YALNIZCA BUGUNU sayar: liste artik tum haftayi
+  // (ders gorevleri + rutinler) gosterdigi icin tum listeyi saymak "bugun"
+  // etiketiyle celisirdi. Gun bazli sayac (gunOzeti) zaten her gun basliginda.
+  const bugunSatirlari = listeSatirlari.filter((satir) => (satir.singleDate || today) === today);
+  const bugunOzet = {
+    toplam: bugunSatirlari.length,
+    tamamlanan: bugunSatirlari.filter(
+      (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
+    ).length
+  };
+
   const currentSection = menu.resolveSection(
     menu.STUDENT_MENU,
     currentPage,
@@ -7097,6 +7198,7 @@ async function getStudentViewModel(req, currentPage) {
     activeTasks: listeSatirlari,
     dersGorevBilgi,
     doneCount,
+    bugunOzet,
     questionEntry: null,
     questionHistory,
     calendar,

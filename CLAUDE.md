@@ -1131,22 +1131,34 @@ değişmedi. Dört genişlikte (1440 / 1180 / 1024 / 390px) **sayfa taşması 0*
 > o sayfalardaki formlar `next="/admin/sport"` göndermesine rağmen kayıttan
 > sonra panoya dönüyordu. Liste tamamlandı.
 
-### Rutinler görev listesinde de görünür
+### Rutinler görev listesinde de görünür (hafta hafta)
 
-Uyanma ve spor, panonun tepesindeki şeride **ek olarak** "Görevlerim"
-tablosunda da birer satır olur — aynı sütunlar, aynı satır içi düzenleme.
+Uyanma, spor, **yapay zeka ve YDS**, panonun tepesindeki şeride **ek olarak**
+"Görevlerim" tablosunda da satır olur. **Namaz hariç** — günde 5 vakit tutar,
+listeyi boğardı; kendi şeridinde/sayfasında kalır.
 
 - Satırlar `tasks` kaydı **değildir**; görünüm modelinde üretilen sahte
-  satırlardır (`isRoutine: true`, id `routine-wake` / `routine-sport`).
-  Yalnızca **bugün** gösterilir: rutin günlüktür, geçmiş günleri listeye
-  doldurmak günlük görevleri boğardı.
-- İki sütun farklı davranır: **Durum** rutinin kendi rozetini gösterir
-  (Zamanında / Geç / Kaçırıldı + basılan saat + gecikme), **İşlem** ise tek
-  bir "İşaretle" düğmesidir — görevlerdeki iki düğme değil.
-- **Açıklama** `wake_logs.note` / `sport_logs.note` sütunlarında tutulur ve
-  satır içi düzenlenir. Yazma rotası `POST /student/routines/:tur/note`;
-  satır kendi uç noktasını `data-cell-endpoint` ile taşır, düzenleme betiği
-  o varsa onu kullanır (yoksa görev rotası).
+  satırlardır (`isRoutine: true`, id `routine-<tür>-<gün>`). Tümü
+  `buildRoutineWeekRows` yardımcısından gelir.
+- **İçinde bulunulan haftanın (Pzt-Paz) her günü** için bir satır; rutinin
+  kurulduğu günden (`createdDay`) ve `SYSTEM_START_DATE`'ten öncesine inmez.
+  > Önce yalnızca **bugün** ve yalnızca uyanma/spor gösteriliyordu ("geçmiş
+  > günleri doldurmak listeyi boğar" kaygısıyla). Kullanıcı tüm rutinleri
+  > tarihe göre istedi; hafta penceresi ders görevleriyle aynı, gün gün
+  > başlıklarla okunur, namaz dışarıda tutularak liste yönetilebilir kaldı.
+- **Gün durumuna göre davranır:**
+  - **Geçmiş gün:** kilitli, kendi durumuyla (uyanma/spor: Zamanında/Geç/
+    Kaçırıldı; YZ/YDS: Yapıldı/Yapılmadı/Telafi). YZ/YDS'de *yapılmadı* günde
+    **İşlem = "Telafi →"** (kendi sayfasına gider).
+  - **Bugün:** uyanma/spor **satır içi tek dokunuş** ("İşaretle" düğmesi, ilk
+    basış geçerli); YZ/YDS üç durumlu olduğu için **"İşaretle →"** bağlantısı.
+  - **Gelecek gün:** **"Bekliyor"**, işlem yok.
+- **"Bugünün Özeti" KPI'si (Toplam/Tamamlanan/Bekleyen) yalnızca BUGÜNÜ sayar**
+  (`bugunOzet`). Liste artık tüm haftayı gösterdiği için tüm listeyi saymak
+  "bugün" etiketiyle çelişirdi; gün bazlı sayaç zaten her gün başlığında.
+- **Açıklama (not)** yalnızca **uyanma/spor'da ve yalnızca bugün** (kayıt varsa)
+  satır içi düzenlenir; `wake_logs.note` / `sport_logs.note`, rota
+  `POST /student/routines/:tur/note`. YZ/YDS satırında not düzenlenmez.
 
 > Görevlerden ayrılan bir kural: **not işaretlemeyle kilitlenmez.** Rutin
 > sabah basılır, not ise çoğu zaman sonra yazılır ("3 km koştum"). İşaretle
