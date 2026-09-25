@@ -178,13 +178,30 @@ a:hover {
   /* minmax(0, 1fr): 1fr varsayilani minmax(auto, 1fr)'dir ve genis bir
      tablo tum sayfayi yatay kaydirtir. 0 ile taban genisligi sifirlanir. */
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  /* Sol sutun (kenar cubugu) HER ZAMAN koyu. Kenar cubugu ogesi icerikten
+     kisa kalirsa (uzun bir icerik sayfasi) altinda beyaz serit goruluyordu;
+     bu gradient sol --sidebar-w'yi koyu, gerisini zemin rengiyle boyar, boylece
+     kenar cubugunun altinda hicbir zaman beyaz kalmaz. Mobilde (ust bar)
+     asagida sifirlanir. */
+  background: linear-gradient(
+    to right,
+    var(--sidebar-bg) var(--sidebar-w),
+    var(--bg) var(--sidebar-w)
+  );
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   align-self: start;
-  height: 100vh;
+  /* height:100vh degil MIN-height:100vh. Sabit 100vh, 768px'lik bir laptopta
+     (yaygin 15.6") 14 menu satiri + marka + kimlik blogunu SIGDIRAMIYOR;
+     "Cikis" kutusu koyu kutunun ALTINA, beyaz sayfa zeminine tasiyordu (ayrica
+     dikey tasma). min-height ile kutu icerigi kadar buyur, her sey koyu zemin
+     icinde kalir. Kenar cubugu ucan listesi (.submenu) saga tastigi icin
+     buraya overflow VERILMEZ - overflow-y:auto, overflow-x'i de auto yapip o
+     listeyi kirpardi. */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -2207,10 +2224,15 @@ tr.day-off td {
      ekranin ilk ~280px'ini kapliyordu. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    /* Ust bara donunce sol koyu sutun gradyeni anlamsiz; duz zemine don. */
+    background: var(--bg);
   }
 
   .sidebar {
     position: static;
+    /* Masaustunde min-height:100vh; ust barda sifirlanmali yoksa ust bar
+       ekran boyu uzardi. */
+    min-height: 0;
     height: auto;
     flex-direction: row;
     flex-wrap: wrap;
