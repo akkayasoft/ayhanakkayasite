@@ -22,13 +22,14 @@ const GUN_ADLARI = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma',
 
 // Tek kaynak: DERS PROGRAMI izgarasi, gun ozeti, islenen konular panosu ve
 // ders gorevleri bu listeyi kullanir; boylece "kac gun" sorusu tek yerde
-// yanitlanir. Bir donem hafta sonu (6,7) da vardi (DYK/ek ders icin); kullanici
-// hafta sonunu cizelgeden cikardigi icin liste yeniden Pzt-Cum. Hafta sonuna
-// girilmis eski kayitlar veritabaninda durur ama bu listede olmadigi icin
-// izgarada, gun ozetinde, defterde ve ders gorevlerinde GORUNMEZ.
-// (Haftalik Takvim yine 7 gundur — o academicCalendar + dayOfWeek uzerinden
-// gercek tarihleri gezer, bu listeyi kullanmaz.)
-const GUNLER = [1, 2, 3, 4, 5];
+// yanitlanir. Onceden hafta sonu (6,7) da vardi (DYK/ek ders), sonra Pzt-Cum'a
+// dondu; kullanici Pazartesi (1) ve Carsamba (3) gunlerini de cikardi, artik
+// yalnizca SALI (2), PERSEMBE (4), CUMA (5). Listeden cikan gunlere girilmis
+// eski kayitlar veritabaninda DURUR ama bu listede olmadigi icin izgarada,
+// gun ozetinde, defterde ve ders gorevlerinde GORUNMEZ; toplu yapistirmada da
+// reddedilir. (Haftalik Takvim yine 7 gundur — o academicCalendar + dayOfWeek
+// uzerinden gercek tarihleri gezer, bu listeyi kullanmaz.)
+const GUNLER = [2, 4, 5];
 
 const VARSAYILAN_AYAR = {
   startTime: '08:00',
@@ -312,10 +313,14 @@ function parseScheduleText(metin, periodCount = 16) {
       continue;
     }
 
-    // Ders programi Pzt-Cum (bkz. GUNLER). Hafta sonu satirlari izgarada
-    // gorunmeyecegi icin sessizce kabul etmek yerine reddedilir.
+    // Ders programi yalnizca GUNLER'deki gunler (Sal/Per/Cum). Disaridaki gun
+    // satirlari izgarada gorunmeyecegi icin sessizce kabul etmek yerine
+    // reddedilir.
     if (!GUNLER.includes(gun)) {
-      hatali.push({ satir, hata: `Hafta sonu ders programına eklenemez: "${alanlar[0]}"` });
+      hatali.push({
+        satir,
+        hata: `"${alanlar[0]}" ders programı gününe eklenemez (yalnızca Salı · Perşembe · Cuma).`
+      });
       continue;
     }
 

@@ -214,7 +214,7 @@
             <% if (!dersGorevBilgi.toplam) { %>
             <strong>Bu hesapta hiç ders görevi yok.</strong>
             Ders görevleri çizelgeden üretilir: öğretmenin
-            <strong>Ders Programı → İşlenen Konular → Ders Görevleri</strong>
+            <strong>GAP MTAL → İşlenen Konular → Ders Görevleri</strong>
             panelinden <em>bu öğrenciyi seçip</em> oluşturması gerekir.
             <% } else { %>
             Bu hesapta <strong><%= dersGorevBilgi.toplam %> ders görevi</strong>
@@ -1451,7 +1451,7 @@
         <% if (currentPage === 'schedule' && scheduleView) { %>
         <header class="content-header row space-between center">
           <div>
-            <h2>Ders Programı</h2>
+            <h2>GAP MTAL</h2>
             <p class="muted">
               <% if (scheduleView.gorunum === 'konular' && scheduleView.canEditTopics) { %>
               Haftalık işlenen konular. Dersi olan her saate o hafta işlediğin konuyu yazarsın.

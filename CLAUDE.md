@@ -576,27 +576,33 @@ arkasında (doğrulandı: öğrenci rolüyle beş POST rotası ve `/admin/schedu
   `kind` (`lesson` | `duty`). `UNIQUE (term, day_of_week, period)` — aynı hücre
   iki kez dolamaz.
 
-### Çizelge Pzt-Cum (hafta sonu çizelgeden çıkarıldı)
+### Ders programı yalnızca Salı · Perşembe · Cuma (menü adı: GAP MTAL)
 
-> ⚠️ **Sonradan geri alındı: ders programı yeniden Pzt-Cum.** Bir dönem hafta
-> sonu da eklenmişti (aşağıdaki geçmiş bunu anlatır); kullanıcı hafta sonunu
-> **ders programından çıkarttı**. `schedule.GUNLER = [1,2,3,4,5]` — Ders
-> Programı ızgarası, **Gün Özeti**, **İşlenen Konular** panosu ve **ders
-> görevleri** artık yalnızca Pzt-Cum. Gün seçicileri (Ders Ekle, Gün Gün Zil
-> Saatleri) ve toplu yapıştırma da Pzt-Cum; **yapıştırmada Cumartesi/Pazar
-> satırları reddedilir**.
+> ⚠️ **Ders günleri daraltıldı: `schedule.GUNLER = [2, 4, 5]`** (Salı,
+> Perşembe, Cuma). Önce hafta sonu (6,7) eklenmişti, sonra Pzt-Cum'a dönüldü,
+> ardından kullanıcı **Pazartesi (1) ve Çarşamba (3)** günlerini de çıkardı.
+> `GUNLER` tek kaynak: Ders Programı ızgarası, **Gün Özeti**, **İşlenen
+> Konular** panosu, **ders görevleri**, gün seçicileri (Ders Ekle, Gün Gün Zil
+> Saatleri) ve toplu yapıştırma hep buradan gelir. Yapıştırmada `GUNLER`
+> dışındaki gün satırları **reddedilir** (*"… ders programı gününe eklenemez
+> (yalnızca Salı · Perşembe · Cuma)"*).
 >
-> Kapsam **bilinçli olarak dar**: hafta sonu yalnızca *çizelge/defter*ten
-> çıktı. **Haftalık Takvim yine 7 gün** gösterir (gerçek tarihleri gezer,
-> `GUNLER`'i kullanmaz) ama hafta sonu günlerine **ders düşmez** — bu yüzden
-> `dayOfWeek()`, `GUN_ADLARI` ve DB'nin 1-7 kısıtı 6/7'yi hâlâ tanır
-> (aşağıdaki 7-günlük altyapı bu yüzden duruyor).
+> **Menü/sayfa adı "GAP MTAL":** `src/menu.js`'te admin+öğrenci `schedule`
+> satırının `label`'ı ve iki şablondaki (`admin.ejs` / `student.ejs`) sayfa
+> başlığı (`<h2>`) "GAP MTAL". Rota anahtarı (`schedule`), yol
+> (`/admin|/student/schedule`) ve `key` değişmedi — yalnızca görünen ad.
 >
-> **Veri silinmedi:** DB'de kalmış eski Cumartesi/Pazar (`day_of_week` 6-7)
-> ders kayıtları ve o günlere yazılmış işlenen konular **durur** ama `GUNLER`
-> dışında oldukları için ızgarada, sayaçlarda, defterde, ders görevlerinde ve
-> takvim ders listesinde **görünmez** (view'lerde `GUNLER.includes` ile
-> elenir). Hafta sonu yeniden istenirse `GUNLER`'e 6,7 eklemek yeterli.
+> Kapsam **bilinçli olarak dar**: daraltma yalnızca *çizelge/defter*te.
+> **Haftalık Takvim yine 7 gün** gösterir (gerçek tarihleri gezer, `GUNLER`'i
+> kullanmaz) ama `GUNLER` dışı günlere **ders düşmez** (`GUNLER.includes`
+> ile) — bu yüzden `dayOfWeek()`, `GUN_ADLARI` ve DB'nin 1-7 kısıtı tüm
+> günleri hâlâ tanır (aşağıdaki 7-günlük altyapı bu yüzden duruyor).
+>
+> **Veri silinmedi:** DB'de kalmış Pazartesi/Çarşamba/Cumartesi/Pazar
+> (`day_of_week ∈ {1,3,6,7}`) ders kayıtları ve o günlere yazılmış işlenen
+> konular **durur** ama `GUNLER` dışında oldukları için ızgarada, sayaçlarda,
+> defterde, ders görevlerinde ve takvim ders listesinde **görünmez**. Bir gün
+> geri istenirse `GUNLER`'e eklemek yeterli.
 
 Aşağısı hafta sonunun **eklendiği** dönemin geçmişidir; 7-günlük altyapının
 (dayOfWeek 6/7, DB 1-7 kısıtı) neden hâlâ durduğunu açıklar.

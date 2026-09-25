@@ -138,7 +138,7 @@ const ADMIN_MENU = [
   },
   {
     key: 'schedule',
-    label: 'Ders Programı',
+    label: 'GAP MTAL',
     icon: 'timetable',
     href: '/admin/schedule',
     sections: [
@@ -173,7 +173,7 @@ const STUDENT_MENU = [
   },
   {
     key: 'schedule',
-    label: 'Ders Programı',
+    label: 'GAP MTAL',
     icon: 'timetable',
     href: '/student/schedule',
     sections: [
