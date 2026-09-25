@@ -2098,7 +2098,9 @@ async function buildTopicWeekView(req, ayar, ozelSaatler = null) {
 // yapilan isi gostermiyordu. Model ders basina goreve cevrildi.
 
 const LESSON_PREFIX = 'ders';
-const LESSON_CATEGORY = 'Ders Programı';
+// Ders gorevlerinin kategorisi. Kullanici "Ders Programi" adini "GAP MTAL"
+// yapti; db.js'teki idempotent goc mevcut kategoriyi de yeniden adlandirir.
+const LESSON_CATEGORY = 'GAP MTAL';
 
 function lessonSourceKey(tarih, saat) {
   return `${LESSON_PREFIX}:${tarih}:${saat}`;
@@ -3279,9 +3281,17 @@ async function getAdminViewModel(req, currentPage) {
   const sortedAllTasks = [...tasks]
     .sort(compareTasksBySchedule)
     .map((task) => ({ ...task, ...dersGorevAyrinti(task) }));
-  const taskTableTasks = activeTaskStudentId
+  // Gorev listesinde YALNIZCA okul gunleri (Sal/Per/Cum — schedule.GUNLER) ve
+  // YALNIZCA BUGUNE KADAR (ileri tarihler gizli — cizelge hafta hafta kurulur)
+  // gorunur. Tarihi olmayan (tekrarli) gorevler elenmez. Not: gizlenen ileri
+  // ders gorevleri DB'de durur; hepsini "Tum Ders Gorevlerini Sil" temizler.
+  const okulGunu = (t) =>
+    !t.singleDate ||
+    (schedule.GUNLER.includes(schedule.dayOfWeek(t.singleDate)) && t.singleDate <= today);
+  const taskTableTasks = (activeTaskStudentId
     ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
-    : sortedAllTasks;
+    : sortedAllTasks
+  ).filter(okulGunu);
   const activeTasks = sortedAllTasks.filter((t) => !t.isArchived);
   const archivedTasks = sortedAllTasks.filter((t) => t.isArchived);
 
@@ -4000,6 +4010,22 @@ app.post(
     }
     return adminRedirect(req, res, {
       message: `${sonuc.inserted} ders görevi eklendi (${sonuc.lessons} ders saati).${notlar.length ? ' ' + notlar.join(' ') : ''}`
+    });
+  })
+);
+
+// TUM ders gorevlerini sil: tarih/ogrenci ayrimi yapmadan butun `ders:%`
+// gorevlerini (ve durumlarini CASCADE ile) temizler. Kullanici cizelgeyi
+// hafta hafta kurup "Ders Gorevlerini Olustur" ile yeniden uretecek.
+app.post(
+  '/admin/schedule/tasks/delete-all',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const deleted = await query(`DELETE FROM tasks WHERE source_key LIKE $1`, [
+      `${LESSON_PREFIX}:%`
+    ]);
+    return adminRedirect(req, res, {
+      message: `${deleted.rowCount} ders görevi silindi. Çizelgeyi kurup "Ders Görevlerini Oluştur" ile yeniden oluşturabilirsiniz.`
     });
   })
 );
@@ -7208,8 +7234,13 @@ async function getStudentViewModel(req, currentPage) {
   // Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu oldugu icin
   // kendi sayfasina baglanti; NAMAZ gunde 5 vakit oldugu icin TEK OZET satir
   // ("2/5 vaktinde · 1 kaza · ...") ve isaretleme kendi sayfasinda.
+  // Gorevlerim listesi YALNIZCA okul gunlerini (Sal/Per/Cum — schedule.GUNLER)
+  // ve YALNIZCA BUGUNE KADAR gosterir (ileri tarihler gizli); rutin satirlari
+  // da yalnizca bu gunler icin uretilir.
   const haftaGunleri = [];
-  for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) haftaGunleri.push(g);
+  for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) {
+    if (g <= today && schedule.GUNLER.includes(schedule.dayOfWeek(g))) haftaGunleri.push(g);
+  }
   const rutinSatirlari =
     currentPage === 'dashboard'
       ? [
@@ -7292,7 +7323,12 @@ async function getStudentViewModel(req, currentPage) {
     }
     return 900;
   };
-  const listeSatirlari = [...rutinSatirlari, ...activeTasks].sort(
+  // Yalnizca okul gunu (Sal/Per/Cum) ve bugune kadar; ileri tarihli ve okul
+  // disi gunlerdeki gorevler listede gizlenir. Tarihi olmayan satirlar kalir.
+  const okulGunuSatir = (s) =>
+    !s.singleDate ||
+    (schedule.GUNLER.includes(schedule.dayOfWeek(s.singleDate)) && s.singleDate <= today);
+  const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(okulGunuSatir).sort(
     (a, b) =>
       String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
       satirSirasi(a) - satirSirasi(b) ||

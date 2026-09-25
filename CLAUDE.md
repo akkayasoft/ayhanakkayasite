@@ -880,9 +880,12 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   dersler eklenir, **işaretlenmemiş ve günü gelmemiş** görevlerin
   başlığı/açıklaması tazelenir, çizelgeden kalkan derslerin (yine yalnızca
   işaretlenmemiş + gelecek) görevleri silinir.
-- Kategori: `Ders Programı`. Her hafta **kendi çizelgesiyle** hesaplanır
-  (özelleştirilmiş hafta kendi satırlarını kullanır); takvim hiçbir günü
-  elemez — "bu hafta ders yok" demenin yolu o haftanın çizelgesini boşaltmak.
+- Kategori: **`GAP MTAL`** (`LESSON_CATEGORY`; eskiden "Ders Programı" idi,
+  menü/sayfa adıyla aynılaştı). `db.js`'te **idempotent göç** mevcut
+  `Ders Programı` kategorisini `GAP MTAL` yoksa ona yeniden adlandırır (varsa
+  dokunmaz). Her hafta **kendi çizelgesiyle** hesaplanır (özelleştirilmiş hafta
+  kendi satırlarını kullanır); takvim hiçbir günü elemez — "bu hafta ders yok"
+  demenin yolu o haftanın çizelgesini boşaltmak.
 - **Son saat yazılmaz**: son teslim gün sonudur (23:59). Dersin bitiş saatine
   bağlansaydı akşam deftere yazan öğretmenin görevi öğleden sonra "yapılmadı"
   mühürlenmiş olurdu.
@@ -939,6 +942,26 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   Diğerleri silinmez: Haftalık Takvim, Yıllık Plan, haftalık analiz ve
   raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
   açılır; hepsi listede dursaydı sayfa kullanılamazdı.)
+
+  > ⚠️ **Görev listeleri yalnızca Sal/Per/Cum ve YALNIZCA BUGÜNE KADAR
+  > gösterir.** Hem admin **Tüm Görevler** (`taskTableTasks`, `okulGunu`) hem
+  > öğrenci **Görevlerim** (`listeSatirlari` + `haftaGunleri`, `okulGunuSatir`)
+  > tarihli satırları `schedule.GUNLER.includes(dayOfWeek) && singleDate <=
+  > today` ile süzer; **ileri tarihli** ve **okul dışı gün** (Pzt/Çar/hafta
+  > sonu) görevleri **listede gizlenir** (silinmez — DB'de durur, diğer
+  > görünümlerde çıkar). Öğrenci tarafında rutin sahte satırları da yalnızca bu
+  > günler için üretilir (`haftaGunleri` filtresi). Tarihi olmayan (tekrarlı)
+  > görevler elenmez. Kullanıcı çizelgeyi **hafta hafta** kurup ileriyi
+  > doldurmak istediği için gelecek görünmemeli; geçmiş okul günleri kalır.
+  > Doğrulandı: 09-21 Pzt ve 09-29 (gelecek Sal) gizli, 09-22/24/25
+  > (Sal/Per/Cum, bugüne kadar) görünür; 1440/390px taşma 0.
+
+  > **Tüm Ders Görevlerini Sil** (`POST /admin/schedule/tasks/delete-all`,
+  > `requireRole('admin')`): tarih/öğrenci ayrımı yapmadan bütün `ders:%`
+  > görevlerini (durumları CASCADE ile) tek düğmede siler. Panel: GAP MTAL →
+  > **Ders Görevleri** alanının altında. Kullanıcı çizelgeyi sıfırdan kurup
+  > "Ders Görevlerini Oluştur" ile yeniden üretmek için ister. Doğrulandı:
+  > 5 görev tek hamlede silindi (DB 0), öğrenci **403**, oturumsuz **302**.
 
   > ⚠️ Önce **"yalnızca bugün"** idi ve hafta sonu liste bomboş kalıyordu:
   > cumartesi bakan kullanıcı görevleri oluşturduğu hâlde hiçbir şey göremedi

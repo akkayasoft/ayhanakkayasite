@@ -648,6 +648,24 @@ async function initDb() {
     console.log(`${silinenKategori.rowCount} boşalan program kategorisi silindi.`);
   }
 
+  // --- "Ders Programı" kategorisi -> "GAP MTAL" ---------------------------
+  //
+  // Ders gorevlerinin kategorisi yeniden adlandirildi. Mevcut kategori satirini
+  // (ve dolayisiyla tum eski ders gorevlerini) yeni ada tasir. Idempotent:
+  // zaten "GAP MTAL" varsa dokunmaz (UNIQUE cakismasini onler); "Ders Programı"
+  // yoksa da sessizce gecer.
+  const kategoriAdi = await query(
+    `
+      UPDATE categories
+      SET name = 'GAP MTAL'
+      WHERE name = 'Ders Programı'
+        AND NOT EXISTS (SELECT 1 FROM categories c2 WHERE c2.name = 'GAP MTAL')
+    `
+  );
+  if (kategoriAdi.rowCount > 0) {
+    console.log('"Ders Programı" kategorisi "GAP MTAL" olarak yeniden adlandırıldı.');
+  }
+
   // --- Puan sistemi kaldirildi -------------------------------------------
   //
   // Odul/ceza puanlamasi uygulamadan tamamen cikarildi. Asagidaki migrasyon
