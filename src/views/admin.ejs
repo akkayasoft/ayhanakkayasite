@@ -2150,13 +2150,24 @@
                 <% }) %>
               </select>
 
-              <label>Ders Saati</label>
+              <label>Ders Saati (sıra)</label>
               <select name="period" required>
                 <option value="">Seçin</option>
                 <% scheduleView.saatler.forEach((s) => { %>
-                <option value="<%= s.period %>" <%= String(scheduleView.form.period) === String(s.period) ? 'selected' : '' %>><%= s.period %>. ders (<%= s.start %> - <%= s.end %>)</option>
+                <option value="<%= s.period %>" <%= String(scheduleView.form.period) === String(s.period) ? 'selected' : '' %>><%= s.period %>. ders</option>
                 <% }) %>
               </select>
+
+              <div class="grid two">
+                <div>
+                  <label>Başlangıç Saati</label>
+                  <input type="time" name="startTime" required value="<%= scheduleView.form.startTime %>" />
+                </div>
+                <div>
+                  <label>Bitiş Saati</label>
+                  <input type="time" name="endTime" required value="<%= scheduleView.form.endTime %>" />
+                </div>
+              </div>
 
               <label>Ders Adı</label>
               <input type="text" name="subject" required value="<%= scheduleView.form.subject %>" placeholder="Mobil Uygulamalar" />
@@ -2175,8 +2186,11 @@
 
               <button type="submit">Kaydet</button>
               <p class="muted">
-                Dolu bir saate tekrar kaydedersen üstüne yazılır; önce silmene gerek yok.
-                <br />Ders <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong> haftasına
+                <strong>Saat zorunludur</strong> — standart saat yok; her dersin başlangıç
+                ve bitiş saatini sen girersin. "Ders Saati (sıra)" yalnızca çizelgedeki
+                satır sırasıdır; gerçek saat yazdığın saattir.
+                <br />Dolu bir saate tekrar kaydedersen üstüne yazılır; önce silmene gerek yok.
+                Ders <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong> haftasına
                 eklenir; yalnızca bu haftaya işler, diğer haftalar etkilenmez.
               </p>
             </form>

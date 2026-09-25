@@ -767,13 +767,41 @@ tutturana kadar ayarlar (08:00 + 13 ders × 40 dk + 10 dk teneffüs + 6. dersten
 sonra 40 dk öğle = **hesaplanan** son zil 19:10). Daha geç biten bir gün — ör.
 akşam 20:20'ye kadar süren ek dersler — **haftaya özel** zil saatiyle girilir.
 
+### Ders eklerken saat ZORUNLU (standart saat yok)
+
+Kullanıcı *"saatler de ayarlansın, standart saatler olmasın; admin o hafta hangi
+gün isterse istediği saati girebilmeli"* dedi. Bu yüzden **Ders Ekle** formunda
+**Başlangıç** ve **Bitiş** saati **zorunludur**:
+
+- `POST /admin/schedule/entry` `startTime`/`endTime` alır; boşsa ya da bitiş ≤
+  başlangıçsa **reddeder**. Kayıt tek transaction'da hem `class_schedule` satırını
+  hem o hücrenin **haftaya özel** `period_times(hafta, gün, period)` satırını yazar.
+- **"Ders Saati (sıra)"** yalnızca çizelgedeki **satır sırasıdır** (grid'in kaçıncı
+  satırı); gerçek saat girilen `startTime`-`endTime`'dır. Period seçeneklerinden
+  hesaplanan saat etiketi kaldırıldı (standart saat dayatmasın diye).
+- **Dersi düzenlerken** formda o hücrenin mevcut saati ön dolu gelir
+  (`ozelSaatler.get('gün:period')`).
+- **Ders silinince** o hücrenin `period_times` satırı da silinir (öksüz saat
+  kalmasın; aynı hücreye sonra başka ders eklenirse eski saati devralmasın).
+- Hesaplanan (`buildPeriods`) saatler yalnızca **Gün Gün Zil Saatleri** panelinde
+  yer tutucu/placeholder ve dokunulmamış hücreler için fallback olarak durur;
+  elle eklenen her dersin saati her zaman açıktır. **Toplu Yapıştır** hâlâ
+  saatsizdir (bulk kısayolu); saatli toplu giriş gerekirse ayrı iş.
+
+Doğrulandı (temiz DB, 25 Eylül): saatsiz ders **reddedildi** (0 satır), ters saat
+(bitiş≤başlangıç) **reddedildi**; 18:00-18:40 girilen ders `class_schedule` +
+`period_times`'a yazıldı; ders görevi açıklaması `18:00-18:40 · 11-A` oldu;
+düzenleme formu 18:00/18:40 ön dolu geldi; ders silinince `period_times` de
+silindi (0). Ders Ekle 1440/390px **taşma 0**, saat alanları görünür.
+
 ### Gün gün zil saatleri (elle giriş, HAFTAYA ÖZEL)
 
 Bu düzen **bütün günler için** geçerliydi; oysa her gün aynı değil (ikili
 öğretim, DYK, kısa cuma, telafi) **ve her hafta da farklı olabilir**.
 `/admin/schedule` → **Gün Gün Zil Saatleri** panelinde **seçili hafta** için bir
 gün seçilip o günün ders saatleri **elle** yazılır (form + gün-sekmesi bağlantısı
-`hafta`'yı taşır; rota o haftaya yazar).
+`hafta`'yı taşır; rota o haftaya yazar). Ders Ekle'deki zorunlu saat çoğu durumu
+zaten kapsar; bu panel bir günün **tüm** ders saatlerini toplu düzenlemek için.
 
 - `period_times` (`PRIMARY KEY (week_start, day_of_week, period)`): `start_time`,
   `end_time`. Satır **yalnızca istisnadır** — o hafta için satır yoksa davranış

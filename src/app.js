@@ -2747,7 +2747,12 @@ async function buildScheduleView(req) {
           subject: duzenlenen.subject,
           className: duzenlenen.className,
           room: duzenlenen.room,
-          kind: duzenlenen.kind
+          kind: duzenlenen.kind,
+          // Duzenlenen dersin o haftaya ozel saati (varsa) forma on dolgu gelir.
+          startTime:
+            (ozelSaatler.get(`${duzenlenen.dayOfWeek}:${duzenlenen.period}`) || {}).start || '',
+          endTime:
+            (ozelSaatler.get(`${duzenlenen.dayOfWeek}:${duzenlenen.period}`) || {}).end || ''
         }
       : {
           isEdit: false,
@@ -2757,7 +2762,9 @@ async function buildScheduleView(req) {
           subject: '',
           className: '',
           room: '',
-          kind: 'lesson'
+          kind: 'lesson',
+          startTime: '',
+          endTime: ''
         }
   };
 }
@@ -4672,14 +4679,26 @@ app.post(
       return adminRedirect(req, res, { error: 'Ders adı zorunlu.' });
     }
 
+    // Saat ZORUNLU: standart/hesaplanan saat kullanilmaz, admin her ders icin
+    // baslangic-bitis girer. Girilen saat o haftanin o hucresine (period_times)
+    // yazilir; boylece ayni ders saati gunden gune ve haftadan haftaya
+    // istenildigi gibi farkli olabilir.
+    const bas = normalizeEstimatedTimeForStorage(normalizeText(req.body.startTime));
+    const bit = normalizeEstimatedTimeForStorage(normalizeText(req.body.endTime));
+    if (!bas.ok || !bas.value || !bit.ok || !bit.value) {
+      return adminRedirect(req, res, { error: 'Başlangıç ve bitiş saati zorunlu (ör. 18:00).' });
+    }
+    if (schedule.hmToMinutes(bit.value) <= schedule.hmToMinutes(bas.value)) {
+      return adminRedirect(req, res, { error: 'Bitiş saati başlangıçtan sonra olmalı.' });
+    }
+
     // Ayni hucre ikinci kez girilirse ustune yazilir; boylece duzeltmek icin
     // once silmek gerekmez.
     const hafta = hedefHafta(req.body);
     const client = await pool.connect();
-    let kopyalanan = 0;
     try {
       await client.query('BEGIN');
-      kopyalanan = await ensureWeekCustomized(client, hafta);
+      await ensureWeekCustomized(client, hafta);
       await client.query(
         `
           INSERT INTO class_schedule (id, term, day_of_week, period, subject, class_name, room, kind, week_start)
@@ -4692,6 +4711,18 @@ app.post(
         `,
         [makeId('sch'), dayOfWeek, period, subject, className, room, kind, hafta]
       );
+      // Hucrenin saati de yazilir (haftaya ozel).
+      await client.query(
+        `
+          INSERT INTO period_times (week_start, day_of_week, period, start_time, end_time, updated_at)
+          VALUES ($1,$2,$3,$4,$5,NOW())
+          ON CONFLICT (week_start, day_of_week, period) DO UPDATE SET
+            start_time = EXCLUDED.start_time,
+            end_time = EXCLUDED.end_time,
+            updated_at = NOW()
+        `,
+        [hafta, dayOfWeek, period, bas.value, bit.value]
+      );
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -4700,11 +4731,8 @@ app.post(
       client.release();
     }
 
-    const kopyaNotu = kopyalanan
-      ? ` Hafta özelleştirildi: varsayılan çizelgeden ${kopyalanan} ders kopyalandı.`
-      : '';
     return adminRedirect(req, res, {
-      message: `${schedule.GUN_ADLARI[dayOfWeek]} ${period}. ders kaydedildi (${haftaEtiketi(hafta)}).${kopyaNotu}`
+      message: `${schedule.GUN_ADLARI[dayOfWeek]} ${period}. ders (${bas.value}-${bit.value}) kaydedildi (${haftaEtiketi(hafta)}).`
     });
   })
 );
@@ -4713,10 +4741,22 @@ app.post(
   '/admin/schedule/entry/:id/delete',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
+    // Dersin hucresine ait haftaya ozel zil saati de silinsin (bosalan hucrede
+    // oksuz saat kalmasin, ayni hucreye sonra baska ders eklenirse eski saati
+    // devralmasin).
+    const kayit = await query(
+      `SELECT week_start AS "weekStart", day_of_week AS "dayOfWeek", period FROM class_schedule WHERE id = $1`,
+      [req.params.id]
+    );
     const silindi = await query(`DELETE FROM class_schedule WHERE id = $1`, [req.params.id]);
     if (silindi.rowCount === 0) {
       return adminRedirect(req, res, { error: 'Kayıt bulunamadı.' });
     }
+    const r = kayit.rows[0];
+    await query(
+      `DELETE FROM period_times WHERE week_start = $1 AND day_of_week = $2 AND period = $3`,
+      [toDateOnly(r.weekStart), r.dayOfWeek, r.period]
+    );
     return adminRedirect(req, res, { message: 'Ders kaydı silindi.' });
   })
 );
