@@ -575,10 +575,34 @@ arkasında (doğrulandı: öğrenci rolüyle beş POST rotası ve `/admin/schedu
   `kind` (`lesson` | `duty`). `UNIQUE (term, day_of_week, period)` — aynı hücre
   iki kez dolamaz.
 
-### Çizelge 7 günlük (hafta sonu dahil)
+### Çizelge Pzt-Cum (hafta sonu çizelgeden çıkarıldı)
+
+> ⚠️ **Sonradan geri alındı: ders programı yeniden Pzt-Cum.** Bir dönem hafta
+> sonu da eklenmişti (aşağıdaki geçmiş bunu anlatır); kullanıcı hafta sonunu
+> **ders programından çıkarttı**. `schedule.GUNLER = [1,2,3,4,5]` — Ders
+> Programı ızgarası, **Gün Özeti**, **İşlenen Konular** panosu ve **ders
+> görevleri** artık yalnızca Pzt-Cum. Gün seçicileri (Ders Ekle, Gün Gün Zil
+> Saatleri) ve toplu yapıştırma da Pzt-Cum; **yapıştırmada Cumartesi/Pazar
+> satırları reddedilir**.
+>
+> Kapsam **bilinçli olarak dar**: hafta sonu yalnızca *çizelge/defter*ten
+> çıktı. **Haftalık Takvim yine 7 gün** gösterir (gerçek tarihleri gezer,
+> `GUNLER`'i kullanmaz) ama hafta sonu günlerine **ders düşmez** — bu yüzden
+> `dayOfWeek()`, `GUN_ADLARI` ve DB'nin 1-7 kısıtı 6/7'yi hâlâ tanır
+> (aşağıdaki 7-günlük altyapı bu yüzden duruyor).
+>
+> **Veri silinmedi:** DB'de kalmış eski Cumartesi/Pazar (`day_of_week` 6-7)
+> ders kayıtları ve o günlere yazılmış işlenen konular **durur** ama `GUNLER`
+> dışında oldukları için ızgarada, sayaçlarda, defterde, ders görevlerinde ve
+> takvim ders listesinde **görünmez** (view'lerde `GUNLER.includes` ile
+> elenir). Hafta sonu yeniden istenirse `GUNLER`'e 6,7 eklemek yeterli.
+
+Aşağısı hafta sonunun **eklendiği** dönemin geçmişidir; 7-günlük altyapının
+(dayOfWeek 6/7, DB 1-7 kısıtı) neden hâlâ durduğunu açıklar.
 
 Program önce **Pzt-Cum** idi; hafta sonuna ders koyan bir düzen (DYK, ek ders,
-hafta sonu kursu) programa hiç girilemiyordu. Artık çizelge **7 gündür**.
+hafta sonu kursu) programa hiç girilemiyordu. O dönem çizelge **7 güne**
+çıkarılmıştı.
 
 - Gün numaraları **ISO**: 1 = Pazartesi … **6 = Cumartesi, 7 = Pazar**.
   `schedule.GUNLER` tek kaynaktır; izgara, gün özeti ve görünümler onu kullanır.

@@ -15,14 +15,20 @@
  * Istisna haritasi bos oldugunda davranis 1. katmanla birebir aynidir.
  */
 
-// Cizelge 7 GUNLUK. Once Pzt-Cum idi; hafta sonuna ders koyan bir duzen
-// (DYK, ek ders, kurs) programa hic girilemiyordu. Gun numaralari ISO:
-// 1 = Pazartesi ... 7 = Pazar.
+// Gun adlari ISO sirada: 1 = Pazartesi ... 7 = Pazar. Liste hafta sonunu da
+// icerir cunku HAFTALIK TAKVIM (ayri bir sayfa) yine 7 gundur ve dayOfWeek()
+// hafta sonu tarihleri icin 6/7 dondurur; bu ad tablosu orada kullanilir.
 const GUN_ADLARI = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
-// Tek kaynak: izgara, gun ozeti ve gorunumler bu listeyi kullanir; boylece
-// "kac gun" sorusu tek yerde yanitlanir.
-const GUNLER = [1, 2, 3, 4, 5, 6, 7];
+// Tek kaynak: DERS PROGRAMI izgarasi, gun ozeti, islenen konular panosu ve
+// ders gorevleri bu listeyi kullanir; boylece "kac gun" sorusu tek yerde
+// yanitlanir. Bir donem hafta sonu (6,7) da vardi (DYK/ek ders icin); kullanici
+// hafta sonunu cizelgeden cikardigi icin liste yeniden Pzt-Cum. Hafta sonuna
+// girilmis eski kayitlar veritabaninda durur ama bu listede olmadigi icin
+// izgarada, gun ozetinde, defterde ve ders gorevlerinde GORUNMEZ.
+// (Haftalik Takvim yine 7 gundur — o academicCalendar + dayOfWeek uzerinden
+// gercek tarihleri gezer, bu listeyi kullanmaz.)
+const GUNLER = [1, 2, 3, 4, 5];
 
 const VARSAYILAN_AYAR = {
   startTime: '08:00',
@@ -303,6 +309,13 @@ function parseScheduleText(metin, periodCount = 16) {
     const gun = parseGun(alanlar[0]);
     if (!gun) {
       hatali.push({ satir, hata: `Gün anlaşılmadı: "${alanlar[0]}"` });
+      continue;
+    }
+
+    // Ders programi Pzt-Cum (bkz. GUNLER). Hafta sonu satirlari izgarada
+    // gorunmeyecegi icin sessizce kabul etmek yerine reddedilir.
+    if (!GUNLER.includes(gun)) {
+      hatali.push({ satir, hata: `Hafta sonu ders programına eklenemez: "${alanlar[0]}"` });
       continue;
     }
 

@@ -2138,8 +2138,8 @@
               <label>Gün</label>
               <select name="dayOfWeek" required>
                 <option value="">Seçin</option>
-                <% [1,2,3,4,5,6,7].forEach((g) => { %>
-                <option value="<%= g %>" <%= String(scheduleView.form.dayOfWeek) === String(g) ? 'selected' : '' %>><%= ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'][g] %></option>
+                <% scheduleView.gunler.forEach((g) => { %>
+                <option value="<%= g.dayOfWeek %>" <%= String(scheduleView.form.dayOfWeek) === String(g.dayOfWeek) ? 'selected' : '' %>><%= g.gunAdi %></option>
                 <% }) %>
               </select>
 
@@ -2324,7 +2324,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
 
             <ul class="clean-list muted paste-hints">
               <li><strong>Blok ders:</strong> <code>1-2</code> ya da <code>2/4</code> yazarsan her saate ayrı ayrı işlenir.</li>
-              <li><strong>Gün adı:</strong> tam ad ya da kısaltma (<code>Pzt</code>, <code>Sal</code>, <code>Çar</code>, <code>Per</code>, <code>Cum</code>, <code>Cmt</code>, <code>Paz</code>) — hafta sonu da yazılabilir.</li>
+              <li><strong>Gün adı:</strong> tam ad ya da kısaltma (<code>Pzt</code>, <code>Sal</code>, <code>Çar</code>, <code>Per</code>, <code>Cum</code>) — ders programı Pazartesi-Cuma; hafta sonu satırları kabul edilmez.</li>
               <li><strong>Nöbet:</strong> ders adına <code>Nöbet</code> yaz, otomatik nöbet olarak işaretlenir.</li>
               <li><code>#</code> ile başlayan satırlar not sayılır, atlanır.</li>
               <li>
@@ -2350,9 +2350,8 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <section class="panel">
           <h3>Haftalık Çizelge</h3>
           <p class="muted">Boş hücredeki <strong>+</strong> ile o gün/saate ders eklersin; dolu hücreye tıklayınca düzenlersin.</p>
-          <% const gunAdlari = ['','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar']; %>
           <div class="table-wrap">
-            <div class="board" style="--gun-sayisi: 7; --saat-sayisi: <%= scheduleView.izgara.length %>">
+            <div class="board" style="--gun-sayisi: <%= scheduleView.gunler.length %>; --saat-sayisi: <%= scheduleView.izgara.length %>">
               <div class="board-corner">Saat</div>
               <% scheduleView.izgara.forEach((satir, i) => { %>
               <div class="board-time <%= satir.lunchAfter ? 'lunch-after' : '' %>" style="--s: <%= i + 2 %>">
@@ -2361,12 +2360,12 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               </div>
               <% }) %>
 
-              <% [1,2,3,4,5,6,7].forEach((g) => { %>
-              <h4 class="board-dayhead" style="--g: <%= g + 1 %>"><%= gunAdlari[g] %></h4>
-              <% scheduleView.izgara.forEach((satir, i) => { const h = satir.hucreler[g - 1]; %>
+              <% scheduleView.gunler.forEach((g, gi) => { %>
+              <h4 class="board-dayhead" style="--g: <%= gi + 2 %>"><%= g.gunAdi %></h4>
+              <% scheduleView.izgara.forEach((satir, i) => { const h = satir.hucreler[gi]; %>
               <div
                 class="board-cell <%= h.entry ? (h.entry.kind === 'duty' ? 'duty' : 'filled') : 'empty' %> <%= satir.lunchAfter ? 'lunch-after' : '' %>"
-                style="--g: <%= g + 1 %>; --s: <%= i + 2 %>"
+                style="--g: <%= gi + 2 %>; --s: <%= i + 2 %>"
               >
                 <span class="board-cell-time <%= h.saat.ozel ? 'ozel-saat' : '' %>" <%= h.saat.ozel ? 'title="Bu güne elle girilmiş saat"' : '' %>><%= satir.period %>. ders · <%= h.saat.start %>-<%= h.saat.end %></span>
                 <% if (h.entry) { %>

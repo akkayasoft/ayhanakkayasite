@@ -789,16 +789,13 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
 
     const dayInfo = academicCalendar.getDayInfo(day);
 
-    // Cizelge HER GUN isler: hafta sonu da tatil de. O gun ders yoksa zaten
-    // izgarada hucre yoktur; "bu hafta ders yok" demek icin o haftanin
-    // cizelgesi bosaltilir.
+    // Haftalik takvim 7 gun kartini gosterir ama ders programi Pzt-Cum
+    // (bkz. schedule.GUNLER): hafta sonu gunlerine ders dusmez. Boylece DB'de
+    // kalan eski Cmt/Paz kayitlari takvimde de lesson olarak gorunmez.
     const haftaninGunu = schedule.dayOfWeek(day);
-    const dersler = schedule.lessonsForDay(
-      scheduleEntries,
-      haftaninGunu,
-      scheduleSettings,
-      scheduleTimes
-    );
+    const dersler = schedule.GUNLER.includes(haftaninGunu)
+      ? schedule.lessonsForDay(scheduleEntries, haftaninGunu, scheduleSettings, scheduleTimes)
+      : [];
 
     return {
       date: day,
@@ -1965,7 +1962,11 @@ async function buildTopicWeekView(req, ayar, ozelSaatler = null) {
 
   // O HAFTANIN cizelgesi: hafta ozellestirilmisse kendi satirlari, degilse
   // sablon. Defter, o hafta gercekten ne okutulduguna gore acilir.
-  const kayitlar = await getScheduleEntries(weekStart);
+  // Hafta sonu ders programindan cikarildi (bkz. schedule.GUNLER): DB'de kalan
+  // Cmt/Paz kayitlari defterde de gorunmesin diye elenir (silinmez).
+  const kayitlar = (await getScheduleEntries(weekStart)).filter((k) =>
+    schedule.GUNLER.includes(Number(k.dayOfWeek))
+  );
   const haftaBilgi = await getWeekScheduleInfo(weekStart);
 
   const saatler = schedule.buildPeriods(ayar);
@@ -2366,11 +2367,15 @@ async function buildStudentScheduleView(req) {
   const haftaParam = normalizeText(req.query.hafta);
   const hafta = isDateOnly(haftaParam) ? startOfWeek(haftaParam) : startOfWeek(bugun);
 
-  const [ayar, kayitlar, ozelSaatler] = await Promise.all([
+  const [ayar, kayitlarHam, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(hafta),
     getPeriodTimes()
   ]);
+  // Hafta sonu ders programindan cikarildi (bkz. schedule.GUNLER): DB'de kalan
+  // Cmt/Paz kayitlari izgarada, sayaclarda ve defterde gorunmesin diye elenir
+  // (silinmez).
+  const kayitlar = kayitlarHam.filter((k) => schedule.GUNLER.includes(Number(k.dayOfWeek)));
   const haftaBilgi = await getWeekScheduleInfo(hafta);
   // Gorunum artik ayri bir parametre degil, SECILI BOLUMDEN turer: defter
   // alanlari (konular/gorevler/defter/excel) konular gorunumunu kullanir.
@@ -2390,6 +2395,10 @@ async function buildStudentScheduleView(req) {
     ayar,
     saatler: schedule.buildPeriods(ayar),
     izgara: schedule.buildGrid(kayitlar, ayar, ozelSaatler),
+    // Cizelge panosunun sutun basliklari: tek kaynak GUNLER (Pzt-Cum). Sablona
+    // gomulu 1-7 yerine bu listeden gelir ki hafta sonu cikinca sutunlar da
+    // kendiliginden azalsin.
+    gunler: schedule.GUNLER.map((gun) => ({ dayOfWeek: gun, gunAdi: schedule.GUN_ADLARI[gun] })),
     bitisSaati: schedule.endOfDay(ayar),
     ozelSaatVar: ozelSaatler.size > 0,
     toplamDers: kayitlar.filter((k) => k.kind === 'lesson').length,
@@ -2592,11 +2601,15 @@ async function buildScheduleView(req) {
   const sablonModu = !isDateOnly(haftaParam);
   const hafta = sablonModu ? null : startOfWeek(haftaParam);
 
-  const [ayar, kayitlar, ozelSaatler] = await Promise.all([
+  const [ayar, kayitlarHam, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(hafta),
     getPeriodTimes()
   ]);
+  // Hafta sonu ders programindan cikarildi (bkz. schedule.GUNLER): DB'de kalan
+  // Cmt/Paz kayitlari izgarada, sayaclarda ve defterde gorunmesin diye elenir
+  // (silinmez).
+  const kayitlar = kayitlarHam.filter((k) => schedule.GUNLER.includes(Number(k.dayOfWeek)));
   const haftaBilgi = hafta ? await getWeekScheduleInfo(hafta) : { ozel: false, satirSayisi: 0 };
   const saatler = schedule.buildPeriods(ayar);
   const izgara = schedule.buildGrid(kayitlar, ayar, ozelSaatler);
@@ -2657,6 +2670,10 @@ async function buildScheduleView(req) {
     izgara,
     kayitlar,
     gunSayilari,
+    // Cizelge panosunun sutun basliklari: tek kaynak GUNLER (Pzt-Cum). Sablona
+    // gomulu 1-7 yerine bu listeden gelir ki hafta sonu cikinca sutunlar da
+    // kendiliginden azalsin.
+    gunler: schedule.GUNLER.map((gun) => ({ dayOfWeek: gun, gunAdi: schedule.GUN_ADLARI[gun] })),
     // Hafta secimi: sablonModu ise varsayilan sablon duzenleniyor demektir.
     sablonModu,
     hafta,
