@@ -1655,10 +1655,24 @@ durumlar, rutin kayıtları ve defter satırları gerçek bir geçmiş değil **
 artığı**. `SYSTEM_START_DATE` (ortam değişkeni, varsayılan **`2026-09-14`**)
 uygulamanın kaydının başladığı gündür ve iki iş yapar:
 
-1. **Mühürleme bu tarihten öncesine hiç inmez.** Uyanma/spor mühürleme tabanı
-   `max(rutinin kurulduğu gün, SYSTEM_START_DATE)`; görev mühürleme penceresi
-   `max(geriye bakış, AUTO_LOCK_START_DATE, SYSTEM_START_DATE)`. Rutin
-   görünümleri de gün listesini burada keser.
+1. **Mühürleme bu tarihten öncesine hiç inmez.** Uyanma/spor/namaz/YZ/YDS
+   mühürleme, görünüm ve elle düzeltme tabanı **`SYSTEM_START_DATE`**; görev
+   mühürleme penceresi `max(geriye bakış, AUTO_LOCK_START_DATE,
+   SYSTEM_START_DATE)`. Rutin görünümleri de gün listesini burada keser.
+
+   > ⚠️ **Rutinler artık 14 Eylül'den itibaren takip edilir — kurulma gününden
+   > değil.** Önceden taban `max(rutinin kurulduğu gün, SYSTEM_START_DATE)`
+   > idi: sonradan açılan bir rutin ancak açıldığı günden itibaren sayılıyordu.
+   > Kullanıcı **tüm rutinlerin 14 Eylül'den başlamasını** istedi. Bu yüzden
+   > `getWakeRoutine` / `getSportRoutine` / `getPrayerRoutine` /
+   > `getStudyRoutine` artık `createdDay = SYSTEM_START_DATE` döner (gerçek
+   > `created_at` yalnızca kayıt için durur, tabanı daraltmaz) ve dört
+   > mühürleyicinin tabanı doğrudan `SYSTEM_START_DATE`'tir. Böylece 14 Eylül
+   > ile bugün arası işaretlenmemiş her gün/vakit mühürlenir; **admin bunların
+   > hepsini 14 Eylül'e kadar geriye düzeltebilir** (admin günlük kayıt paneli
+   > `SYSTEM_START_DATE`'ten bugüne kadar tüm günleri listeler). Aşağıdaki
+   > "rutin kurulmadan önce" notları bu karar öncesine aittir; artık geçerli
+   > taban tek başına `SYSTEM_START_DATE`.
 2. **Açılışta öncesi silinir** (`purgeBeforeSystemStart`, `runSealSafely`
    içinde, mühürlemeden **önce**). Tek işlemde çalışır, idempotenttir.
 

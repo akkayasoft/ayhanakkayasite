@@ -364,7 +364,10 @@ async function getWakeRoutine(studentId) {
     targetTime: normalizeEstimatedTimeForDisplay(row.targetTime),
     toleranceMinutes: Number(row.toleranceMinutes) || 0,
     isActive: row.isActive,
-    createdDay: toDateOnly(row.createdAt)
+    // Rutinler okul yılı başından (SYSTEM_START_DATE = 14 Eylül) itibaren
+    // takip edilir; gerçek oluşturma günü tabanı DARALTMAZ (kullanıcı tüm
+    // rutinleri 14 Eylül'den başlattı). created_at yalnızca kayıt için durur.
+    createdDay: SYSTEM_START_DATE
   };
 }
 
@@ -442,7 +445,10 @@ async function getSportRoutine(studentId) {
     isActive: row.isActive,
     // Muhurleyici rutin kurulmadan onceki gunlere inmez; elle silmenin
     // kalici olup olmadigini bu tarih belirler.
-    createdDay: toDateOnly(row.createdAt)
+    // Rutinler okul yılı başından (SYSTEM_START_DATE = 14 Eylül) itibaren
+    // takip edilir; gerçek oluşturma günü tabanı DARALTMAZ (kullanıcı tüm
+    // rutinleri 14 Eylül'den başlattı). created_at yalnızca kayıt için durur.
+    createdDay: SYSTEM_START_DATE
   };
 }
 
@@ -460,8 +466,9 @@ async function sealMissedSportLogs() {
 
   let sealed = 0;
   for (const routine of routines.rows) {
-    const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    // Rutinler 14 Eylül'den (SYSTEM_START_DATE) itibaren mühürlenir; rutinin
+    // gerçek oluşturma günü tabanı daraltmaz.
+    const basladi = SYSTEM_START_DATE;
     for (let i = 1; i <= SPORT_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -585,8 +592,9 @@ async function sealMissedWakeLogs() {
   for (const routine of routines.rows) {
     // Rutin kurulmadan onceki gunler geriye donuk muhurlenmez; ayrica
     // SYSTEM_START_DATE'ten onceye hic inilmez.
-    const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    // Rutinler 14 Eylül'den (SYSTEM_START_DATE) itibaren mühürlenir; rutinin
+    // gerçek oluşturma günü tabanı daraltmaz.
+    const basladi = SYSTEM_START_DATE;
     for (let i = 1; i <= WAKE_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -3090,6 +3098,14 @@ async function getAdminViewModel(req, currentPage) {
 
   const scheduleView = currentPage === 'schedule' ? await buildScheduleView(req) : null;
 
+  // Admin günlük kayıt paneli 14 Eylül'den (SYSTEM_START_DATE) bugüne KADAR tüm
+  // günleri göstersin ki admin hepsini düzeltebilsin (rutinler 14 Eylül'den
+  // takip edilir). En az 14 gün.
+  const routineDetayGun = Math.max(
+    14,
+    Math.round((Date.parse(today) - Date.parse(SYSTEM_START_DATE)) / 86400000) + 1
+  );
+
   let sportAdmin = null;
   // Planli calisma rutinleri (yapay zeka · YDS) ayni sekli paylastigi icin
   // tek gorunum modeli uretilir; sablon hangi turde oldugunu bilmek zorunda
@@ -3099,7 +3115,7 @@ async function getAdminViewModel(req, currentPage) {
   if (studyKind) {
     const secilenIdRaw = normalizeText(req.query[studyKind.studentIdParam]);
     const secilen = students.find((st) => st.id === secilenIdRaw) || students[0] || null;
-    const detay = secilen ? await buildStudyView(studyKind, secilen.id, 14) : null;
+    const detay = secilen ? await buildStudyView(studyKind, secilen.id, routineDetayGun) : null;
 
     const routinesRes = await query(
       `
@@ -3143,7 +3159,7 @@ async function getAdminViewModel(req, currentPage) {
   if (currentPage === 'prayer') {
     const secilenIdRaw = normalizeText(req.query.prayerStudentId);
     const secilen = students.find((st) => st.id === secilenIdRaw) || students[0] || null;
-    const detay = secilen ? await buildPrayerView(secilen.id, 14) : null;
+    const detay = secilen ? await buildPrayerView(secilen.id, routineDetayGun) : null;
 
     // Tum ogrencilerin rutinlerini tek sorguda cek (liste tablosu icin).
     const routinesRes = await query(
@@ -3169,7 +3185,7 @@ async function getAdminViewModel(req, currentPage) {
   if (currentPage === 'sport') {
     const secilenIdRaw = normalizeText(req.query.sportStudentId);
     const secilen = students.find((s) => s.id === secilenIdRaw) || students[0] || null;
-    const detay = secilen ? await buildSportView(secilen.id, 14) : null;
+    const detay = secilen ? await buildSportView(secilen.id, routineDetayGun) : null;
     const routinesRes = await query(
       `
         SELECT student_id AS "studentId", start_time AS "startTime",
@@ -3201,7 +3217,7 @@ async function getAdminViewModel(req, currentPage) {
   if (currentPage === 'wake') {
     const secilenIdRaw = normalizeText(req.query.wakeStudentId);
     const secilen = students.find((s) => s.id === secilenIdRaw) || students[0] || null;
-    const detay = secilen ? await buildWakeView(secilen.id, 14) : null;
+    const detay = secilen ? await buildWakeView(secilen.id, routineDetayGun) : null;
 
     // Tum ogrencilerin rutinlerini tek sorguda cek (liste tablosu icin).
     const routinesRes = await query(
@@ -5281,7 +5297,10 @@ async function getPrayerRoutine(studentId) {
     studentId: row.studentId,
     isActive: row.isActive,
     // Muhurleyici rutin kurulmadan onceki gunlere inmez.
-    createdDay: toDateOnly(row.createdAt)
+    // Rutinler okul yılı başından (SYSTEM_START_DATE = 14 Eylül) itibaren
+    // takip edilir; gerçek oluşturma günü tabanı DARALTMAZ (kullanıcı tüm
+    // rutinleri 14 Eylül'den başlattı). created_at yalnızca kayıt için durur.
+    createdDay: SYSTEM_START_DATE
   };
 }
 
@@ -5304,8 +5323,9 @@ async function sealMissedPrayerLogs() {
 
   let sealed = 0;
   for (const routine of routines.rows) {
-    const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    // Rutinler 14 Eylül'den (SYSTEM_START_DATE) itibaren mühürlenir; rutinin
+    // gerçek oluşturma günü tabanı daraltmaz.
+    const basladi = SYSTEM_START_DATE;
     for (let i = 1; i <= PRAYER_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
@@ -5582,7 +5602,10 @@ async function getStudyRoutine(kind, studentId) {
     minutes,
     endTime: studyWindowEnd(startTime, minutes),
     isActive: row.isActive,
-    createdDay: toDateOnly(row.createdAt)
+    // Rutinler okul yılı başından (SYSTEM_START_DATE = 14 Eylül) itibaren
+    // takip edilir; gerçek oluşturma günü tabanı DARALTMAZ (kullanıcı tüm
+    // rutinleri 14 Eylül'den başlattı). created_at yalnızca kayıt için durur.
+    createdDay: SYSTEM_START_DATE
   };
 }
 
@@ -5605,8 +5628,9 @@ async function sealMissedStudyLogs(kind) {
 
   let sealed = 0;
   for (const routine of routines.rows) {
-    const kuruldu = toDateOnly(routine.createdAt) || today;
-    const basladi = kuruldu > SYSTEM_START_DATE ? kuruldu : SYSTEM_START_DATE;
+    // Rutinler 14 Eylül'den (SYSTEM_START_DATE) itibaren mühürlenir; rutinin
+    // gerçek oluşturma günü tabanı daraltmaz.
+    const basladi = SYSTEM_START_DATE;
     for (let i = 1; i <= STUDY_LOOKBACK_DAYS; i += 1) {
       const gun = shiftDate(today, -i);
       if (gun < basladi) break;
