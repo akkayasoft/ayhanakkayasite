@@ -4697,6 +4697,49 @@ app.post(
   })
 );
 
+// Toplu sil (cizelge): izgarada isaretlenen ders kayitlarini tek seferde siler.
+// Tek kayit silmeyle ayni (DELETE by id), yalnizca coklu.
+app.post(
+  '/admin/schedule/entries/bulk-delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    let ids = req.body.entryIds;
+    if (!Array.isArray(ids)) ids = ids ? [ids] : [];
+    ids = ids.map((x) => normalizeText(x)).filter(Boolean);
+    if (!ids.length) {
+      return adminRedirect(req, res, { error: 'Silinecek ders kaydı seçilmedi.' });
+    }
+    const silindi = await query(`DELETE FROM class_schedule WHERE id = ANY($1)`, [ids]);
+    return adminRedirect(req, res, { message: `${silindi.rowCount} ders kaydı silindi.` });
+  })
+);
+
+// Toplu sil (islenen konular): bir TARIH ARALIGINDAKI islenen konu kayitlarini
+// siler. lesson_topics (week_start, day_of_week) -> gercek tarih
+// week_start + (day_of_week - 1); aralik o tarihe gore.
+app.post(
+  '/admin/schedule/topics/bulk-delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const from = normalizeText(req.body.from);
+    const to = normalizeText(req.body.to);
+    if (!isDateOnly(from) || !isDateOnly(to)) {
+      return adminRedirect(req, res, { error: 'Geçerli bir tarih aralığı girin.' });
+    }
+    if (from > to) {
+      return adminRedirect(req, res, { error: 'Başlangıç tarihi bitişten sonra olamaz.' });
+    }
+    const silindi = await query(
+      `DELETE FROM lesson_topics
+       WHERE (week_start + (day_of_week - 1)) BETWEEN $1::date AND $2::date`,
+      [from, to]
+    );
+    return adminRedirect(req, res, {
+      message: `${from} – ${to} aralığında ${silindi.rowCount} işlenen konu kaydı silindi.`
+    });
+  })
+);
+
 // Bir haftayi OZELLESTIR: varsayilan sablonu o haftaya kopyalar. Kopyalama
 // sarttir — bos baslasaydi "bu hafta yalnizca su ders degisti" demek icin tum
 // hafta elle yeniden girilirdi.
@@ -6720,6 +6763,25 @@ app.post(
     }
 
     return adminRedirect(req, res, { message: 'Görev kalıcı olarak silindi.' });
+  })
+);
+
+// Toplu sil: "Tum Gorevler" listesinde secilen gorevleri tek seferde siler.
+// Tek gorev silmeyle ayni kural (admin her gorevi silebilir), yalnizca coklu.
+app.post(
+  '/admin/tasks/bulk-delete',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    let ids = req.body.taskIds;
+    if (!Array.isArray(ids)) ids = ids ? [ids] : [];
+    ids = ids.map((x) => normalizeText(x)).filter(Boolean);
+    if (!ids.length) {
+      return adminRedirect(req, res, { error: 'Silinecek görev seçilmedi.' });
+    }
+    const deleted = await query(`DELETE FROM tasks WHERE id = ANY($1)`, [ids]);
+    return adminRedirect(req, res, {
+      message: `${deleted.rowCount} görev kalıcı olarak silindi.`
+    });
   })
 );
 

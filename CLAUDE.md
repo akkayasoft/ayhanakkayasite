@@ -384,6 +384,30 @@ nesneyi güncellemek** yeterlidir, gerisi tarihlerden türetilir.
 > Not: Otomatik kilit (aşağıda) şu an **tatil günlerini ayırt etmez** — tatile
 > denk gelen bir görev de süresi dolunca "yapılmadı" işaretlenir.
 
+## Toplu silme (admin)
+
+Üç yerde admin çoklu kaydı tek seferde siler; hepsi tekil silmeyle aynı kural,
+yalnızca çoklu:
+
+- **Görevler → Tüm Görevler** (`/admin/tasks/active`): satır kutuları +
+  başlıkta "tümünü seç" (yalnızca filtreden geçen görünür satırları kapsar) +
+  **"Seçilenleri Sil (N)"**. `POST /admin/tasks/bulk-delete` (`taskIds[]` →
+  `DELETE ... WHERE id = ANY`). Kutular HTML `form="bulkTaskForm"` ile listenin
+  dışındaki forma bağlıdır. (`isUpdatePage`/`isInlineEditPage` kaldırılan toplu
+  güncelleme sayfasından kalan ölü bayraklardı; kutular artık `bulkSelect =
+  isActivePage` ile açılır.)
+- **GAP MTAL → Haftalık Çizelge**: dolu her hücrede bir kutu (`.cell-select`,
+  seçili hücre kırmızı çerçeve) + **"Seçilenleri Sil (N)"**.
+  `POST /admin/schedule/entries/bulk-delete` (`entryIds[]` → `DELETE
+  class_schedule WHERE id = ANY`). Tekil `×` ve "Bu Haftayı Boşalt" duruyor.
+- **GAP MTAL → İşlenen Konular**: **tarih aralığı** formu (`from`/`to`,
+  varsayılan görüntülenen hafta) → `POST /admin/schedule/topics/bulk-delete`.
+  `lesson_topics`'te gerçek tarih `week_start + (day_of_week - 1)`; silme o
+  tarihe göre `BETWEEN`. Yalnızca konu metinleri gider; çizelge/dersler durur.
+
+Her üçü de `requireRole('admin')`, `onsubmit` onayı ister ve `adminRedirect`
+ile silinen sayıyı bildirir.
+
 ## Görev süresi ve otomatik kilit
 
 Bir görev örneği (görev + gün) **iki sebepten** kilitlenir; ikisi de kalıcıdır:

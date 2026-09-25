@@ -1719,6 +1719,20 @@ tr.day-off td {
   font-size: 0.6875rem;
 }
 
+/* Toplu silme kutusu: dolu hucrenin sol ustunde, akista (mutlak degil) durur
+   ki masaustunde de telefonda da metinle cakismasin. Isaretli hucre kirmizi
+   cerceveyle belirginlesir. */
+.cell-select {
+  margin: 0 0 2px;
+  cursor: pointer;
+}
+
+.board-cell.filled:has(.cell-select:checked),
+.board-cell.duty:has(.cell-select:checked) {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
 .cell-delete {
   position: absolute;
   top: 2px;
