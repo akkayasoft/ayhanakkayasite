@@ -784,7 +784,7 @@ async function buildStudentCalendar(studentId, requestedWeekStart, fallbackDate,
   const [scheduleSettings, scheduleEntries, scheduleTimes] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(weekStart),
-    getPeriodTimes()
+    getPeriodTimes(weekStart)
   ]);
 
   const days = getWeekDates(weekStart).map((day) => {
@@ -1821,14 +1821,21 @@ async function getScheduleSettings() {
  * Tablo bos oldugunda harita bos doner ve butun cagiranlar eskisi gibi
  * hesaplanan saatleri kullanir.
  */
-async function getPeriodTimes() {
+async function getPeriodTimes(weekStart = null) {
+  // Zil saatleri artik HAFTAYA OZEL: her hafta kendi elle girilmis saatlerini
+  // tasir (period_times.week_start). Hafta verilmezse bos harita doner —
+  // varsayilan sablon kalktigi icin "hafta yok" = elle saat yok demektir.
+  const hafta = isDateOnly(weekStart) ? startOfWeek(weekStart) : null;
+  if (!hafta) return schedule.buildPeriodTimeMap([]);
   const res = await query(
     `
       SELECT day_of_week AS "dayOfWeek", period,
              start_time AS "startTime", end_time AS "endTime"
       FROM period_times
+      WHERE week_start = $1
       ORDER BY day_of_week ASC, period ASC
-    `
+    `,
+    [hafta]
   );
   return schedule.buildPeriodTimeMap(
     res.rows.map((r) => ({
@@ -1838,6 +1845,38 @@ async function getPeriodTimes() {
       end: normalizeEstimatedTimeForDisplay(r.endTime)
     }))
   );
+}
+
+/**
+ * Ogretim yilindaki TUM haftalarin elle girilmis zil saatleri:
+ * weekStart -> (gun:saat -> {start,end}) haritasi. Ders gorevleri tum yili
+ * hafta hafta gezdigi icin her haftanin kendi saatlerine tek sorguda ulasir.
+ */
+async function getAllPeriodTimes() {
+  const res = await query(
+    `
+      SELECT week_start AS "weekStart", day_of_week AS "dayOfWeek", period,
+             start_time AS "startTime", end_time AS "endTime"
+      FROM period_times
+      ORDER BY week_start ASC, day_of_week ASC, period ASC
+    `
+  );
+  const satirlarByWeek = new Map();
+  for (const r of res.rows) {
+    const hafta = toDateOnly(r.weekStart);
+    if (!satirlarByWeek.has(hafta)) satirlarByWeek.set(hafta, []);
+    satirlarByWeek.get(hafta).push({
+      dayOfWeek: r.dayOfWeek,
+      period: r.period,
+      start: normalizeEstimatedTimeForDisplay(r.startTime),
+      end: normalizeEstimatedTimeForDisplay(r.endTime)
+    });
+  }
+  const out = new Map();
+  for (const [hafta, satirlar] of satirlarByWeek) {
+    out.set(hafta, schedule.buildPeriodTimeMap(satirlar));
+  }
+  return out;
 }
 
 /**
@@ -1870,19 +1909,17 @@ async function isWeekOverridden(weekStart) {
 }
 
 /**
- * Bir haftanin GECERLI cizelgesi (hafta verilmezse varsayilan sablon).
+ * Bir haftanin cizelgesi: YALNIZCA o haftanin kendi satirlari.
  *
- * Olcut satir varligi DEGIL isarettir: isaretli bir hafta BOS da olabilir
- * ("bu hafta ders yok") ve o zaman sablona donmemelidir.
+ * Varsayilan sablon KALDIRILDI: her hafta bagimsizdir, admin o hafta gelince
+ * girer, girilmemis hafta BOSTUR (gelecek haftalar onceden belli degil).
+ * Hafta verilmezse yine bos doner — cagiranlar artik somut bir hafta gecer.
  */
 async function getScheduleEntries(weekStart = null) {
   const hafta = isDateOnly(weekStart) ? startOfWeek(weekStart) : null;
-  if (hafta && (await isWeekOverridden(hafta))) {
-    const ozel = await query(SCHEDULE_SELECT, [hafta]);
-    return ozel.rows.map(mapScheduleEntry);
-  }
-  const sablon = await query(SCHEDULE_SELECT, [SABLON_HAFTA]);
-  return sablon.rows.map(mapScheduleEntry);
+  if (!hafta) return [];
+  const ozel = await query(SCHEDULE_SELECT, [hafta]);
+  return ozel.rows.map(mapScheduleEntry);
 }
 
 /**
@@ -2113,25 +2150,26 @@ function isLessonTask(sourceKey) {
 /**
  * Ogretim yilindaki TUM ders saatleri, gorev satirina cevrilmis hali.
  *
- * Her hafta KENDI cizelgesiyle hesaplanir: ozellestirilmis hafta kendi
- * satirlarini, digerleri sablonu kullanir. Takvim hicbir gunu elemez —
- * "bu hafta ders yok" demenin yolu o haftanin cizelgesini bosaltmaktir.
+ * Her hafta KENDI cizelgesiyle hesaplanir; varsayilan sablon KALKTI, o yuzden
+ * girilmemis hafta ders URETMEZ (gelecek onceden belli degil). Zil saatleri de
+ * haftaya ozeldir: `tumSaatler` weekStart -> (gun:saat -> saat) haritasidir.
  */
-function buildLessonTaskRows(sablon, ozelHaftalar, ayar, ozelSaatler = null) {
+function buildLessonTaskRows(ozelHaftalar, ayar, tumSaatler = new Map()) {
   const { start, end } = academicCalendar.ACADEMIC_YEAR;
-  // Zil saati gune bagli: gorev aciklamasinda yazan saat, o gunun gercek
-  // saati olmali (aksi halde elle girilen saatler gorevlerde gorunmezdi).
-  const gunSaatleri = new Map(
-    schedule.GUNLER.map((gun) => [
-      gun,
-      new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
-    ])
-  );
   const satirlar = [];
 
   let weekStart = startOfWeek(start);
   while (weekStart <= end) {
-    const haftaninKayitlari = ozelHaftalar.get(weekStart) || sablon;
+    const haftaninKayitlari = ozelHaftalar.get(weekStart) || [];
+    // Zil saati gune VE haftaya bagli: gorev aciklamasinda yazan saat, o
+    // haftanin o gununun gercek saati olmali.
+    const ozelSaatler = tumSaatler.get(weekStart) || null;
+    const gunSaatleri = new Map(
+      schedule.GUNLER.map((gun) => [
+        gun,
+        new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
+      ])
+    );
     for (const gun of schedule.GUNLER) {
       const tarih = shiftDate(weekStart, gun - 1);
       if (tarih < start || tarih > end) continue;
@@ -2182,13 +2220,12 @@ function lessonTaskDescription(satir) {
  * ogleden sonra "yapilmadi" muhurlenmis olurdu.
  */
 async function importLessonTasks(studentId, createdBy) {
-  const [ayar, sablon, ozelHaftalar, ozelSaatler] = await Promise.all([
+  const [ayar, ozelHaftalar, tumSaatler] = await Promise.all([
     getScheduleSettings(),
-    getScheduleEntries(),
     getCustomScheduleWeeks(),
-    getPeriodTimes()
+    getAllPeriodTimes()
   ]);
-  const satirlar = buildLessonTaskRows(sablon, ozelHaftalar, ayar, ozelSaatler);
+  const satirlar = buildLessonTaskRows(ozelHaftalar, ayar, tumSaatler);
   if (!satirlar.length) {
     return { inserted: 0, updated: 0, removed: 0, skipped: 0, categories: 0, lessons: 0 };
   }
@@ -2380,7 +2417,7 @@ async function buildStudentScheduleView(req) {
   const [ayar, kayitlarHam, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(hafta),
-    getPeriodTimes()
+    getPeriodTimes(hafta)
   ]);
   // Hafta sonu ders programindan cikarildi (bkz. schedule.GUNLER): DB'de kalan
   // Cmt/Paz kayitlari izgarada, sayaclarda ve defterde gorunmesin diye elenir
@@ -2603,24 +2640,23 @@ async function buildMonthlyGoalsView(req, students) {
 
 /** Admin "Ders Programı" sayfasinin goruntusu. */
 async function buildScheduleView(req) {
-  // Cizelge artik HAFTAYA OZEL olabiliyor. `?hafta=` verilmezse VARSAYILAN
-  // SABLON duzenlenir (eski davranis); bir hafta secilirse o haftanin kendi
-  // izgarasi acilir.
+  // Cizelge HAFTAYA OZEL: varsayilan sablon KALKTI. `?hafta=` verilmezse
+  // ICINDE BULUNULAN HAFTA acilir (admin her hafta o haftayi girer); girilmemis
+  // hafta bostur, gelecek onceden belli degil.
   const bugun = todayDateString();
   const haftaParam = normalizeText(req.query.hafta);
-  const sablonModu = !isDateOnly(haftaParam);
-  const hafta = sablonModu ? null : startOfWeek(haftaParam);
+  const hafta = isDateOnly(haftaParam) ? startOfWeek(haftaParam) : startOfWeek(bugun);
 
   const [ayar, kayitlarHam, ozelSaatler] = await Promise.all([
     getScheduleSettings(),
     getScheduleEntries(hafta),
-    getPeriodTimes()
+    getPeriodTimes(hafta)
   ]);
   // Hafta sonu ders programindan cikarildi (bkz. schedule.GUNLER): DB'de kalan
   // Cmt/Paz kayitlari izgarada, sayaclarda ve defterde gorunmesin diye elenir
   // (silinmez).
   const kayitlar = kayitlarHam.filter((k) => schedule.GUNLER.includes(Number(k.dayOfWeek)));
-  const haftaBilgi = hafta ? await getWeekScheduleInfo(hafta) : { ozel: false, satirSayisi: 0 };
+  const haftaBilgi = await getWeekScheduleInfo(hafta);
   const saatler = schedule.buildPeriods(ayar);
   const izgara = schedule.buildGrid(kayitlar, ayar, ozelSaatler);
   // Gorunum artik ayri bir parametre degil, SECILI BOLUMDEN turer: defter
@@ -2651,10 +2687,11 @@ async function buildScheduleView(req) {
   }));
 
   // ZIL SAATLERI paneli: secili gunun her ders saati icin varsayilan ve
-  // (varsa) elle girilmis saat. Gun secilmezse pazartesi acilir.
+  // (varsa) o HAFTAYA ozel elle girilmis saat. Gun secilmezse ilk ders gunu
+  // (Sali) acilir — Pazartesi artik ders gunu degil.
   const saatGunu = schedule.GUNLER.includes(Number(normalizeText(req.query.saatGun)))
     ? Number(normalizeText(req.query.saatGun))
-    : 1;
+    : schedule.GUNLER[0];
   const saatSatirlari = schedule.periodsForDay(ayar, saatGunu, ozelSaatler).map((sa) => {
     const varsayilanSaat = saatler.find((v) => v.period === sa.period) || sa;
     return {
@@ -2684,17 +2721,15 @@ async function buildScheduleView(req) {
     // gomulu 1-7 yerine bu listeden gelir ki hafta sonu cikinca sutunlar da
     // kendiliginden azalsin.
     gunler: schedule.GUNLER.map((gun) => ({ dayOfWeek: gun, gunAdi: schedule.GUN_ADLARI[gun] })),
-    // Hafta secimi: sablonModu ise varsayilan sablon duzenleniyor demektir.
-    sablonModu,
+    // Varsayilan sablon kalkti; her zaman somut bir hafta duzenlenir.
+    sablonModu: false,
     hafta,
-    haftaSonu: hafta ? shiftDate(hafta, 6) : null,
-    oncekiHafta: shiftDate(hafta || startOfWeek(bugun), -7),
-    sonrakiHafta: shiftDate(hafta || startOfWeek(bugun), 7),
+    haftaSonu: shiftDate(hafta, 6),
+    oncekiHafta: shiftDate(hafta, -7),
+    sonrakiHafta: shiftDate(hafta, 7),
     buHafta: startOfWeek(bugun),
     ozelHafta: haftaBilgi.ozel,
-    haftaAkademik: hafta
-      ? academicCalendar.describeWeek(hafta, shiftDate(hafta, 6))
-      : null,
+    haftaAkademik: academicCalendar.describeWeek(hafta, shiftDate(hafta, 6)),
     ogrenciler: ogrenciler.rows,
     bitisSaati: schedule.endOfDay(ayar),
     saatGunu,
@@ -3863,19 +3898,31 @@ async function sendLessonTopicsExcel(req, res, redirect) {
     [shiftDate(startOfWeek(fromDate), 0), toDate]
   );
 
-  const [ayar, ozelSaatler] = await Promise.all([getScheduleSettings(), getPeriodTimes()]);
-  // Zil saati gune bagli oldugu icin tek bir "saat" haritasi yetmez.
-  const gunSaatleri = new Map(
-    schedule.GUNLER.map((gun) => [
-      gun,
-      new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
-    ])
-  );
+  const [ayar, tumSaatler] = await Promise.all([getScheduleSettings(), getAllPeriodTimes()]);
+  // Zil saati gune VE haftaya bagli: her haftanin kendi elle saatleri olabilir,
+  // o yuzden hafta basina bir gun->saat haritasi tutulur (talep uzerine).
+  const gunSaatleriByWeek = new Map();
+  const gunSaatleriIcin = (haftaBasi) => {
+    if (!gunSaatleriByWeek.has(haftaBasi)) {
+      const ozelSaatler = tumSaatler.get(haftaBasi) || null;
+      gunSaatleriByWeek.set(
+        haftaBasi,
+        new Map(
+          schedule.GUNLER.map((gun) => [
+            gun,
+            new Map(schedule.periodsForDay(ayar, gun, ozelSaatler).map((sa) => [sa.period, sa]))
+          ])
+        )
+      );
+    }
+    return gunSaatleriByWeek.get(haftaBasi);
+  };
 
   const satirlar = res_.rows
     .map((row) => {
       const haftaBasi = toDateOnly(row.weekStart);
       const tarih = shiftDate(haftaBasi, Number(row.dayOfWeek) - 1);
+      const gunSaatleri = gunSaatleriIcin(haftaBasi);
       const saat =
         (gunSaatleri.get(Number(row.dayOfWeek)) || new Map()).get(Number(row.period)) || null;
       const bilgi = academicCalendar.getDayInfo(tarih);
@@ -4404,20 +4451,25 @@ app.post(
     if (!schedule.GUNLER.includes(gun)) {
       return adminRedirect(req, res, { error: 'Gün seçilmedi.' });
     }
+    // Zil saatleri HAFTAYA OZEL: hangi haftaya yazildigi form ile gelir.
+    const hafta = hedefHafta(req.body);
 
     const ayar = await getScheduleSettings();
     const varsayilan = new Map(schedule.buildPeriods(ayar).map((sa) => [sa.period, sa]));
 
-    // "Bu günü varsayilana dondur": tek hamlede gunun tum istisnalari silinir.
+    // "Bu günü varsayilana dondur": o HAFTANIN o gunundeki tum istisnalari siler.
     if (normalizeText(req.body.islem) === 'sifirla') {
-      const silinen = await query(`DELETE FROM period_times WHERE day_of_week = $1`, [gun]);
+      const silinen = await query(
+        `DELETE FROM period_times WHERE week_start = $1 AND day_of_week = $2`,
+        [hafta, gun]
+      );
       if (silinen.rowCount === 0) {
         return adminRedirect(req, res, {
-          error: `${schedule.GUN_ADLARI[gun]} zaten varsayılan zil çizelgesini kullanıyor.`
+          error: `${schedule.GUN_ADLARI[gun]} (${hafta} haftası) zaten hesaplanan zil çizelgesini kullanıyor.`
         });
       }
       return adminRedirect(req, res, {
-        message: `${schedule.GUN_ADLARI[gun]}: ${silinen.rowCount} elle girilmiş saat kaldırıldı, gün varsayılan çizelgeye döndü.`
+        message: `${schedule.GUN_ADLARI[gun]} (${hafta} haftası): ${silinen.rowCount} elle girilmiş saat kaldırıldı, gün hesaplanan çizelgeye döndü.`
       });
     }
 
@@ -4463,21 +4515,21 @@ app.post(
       await client.query('BEGIN');
       if (silinecek.length) {
         await client.query(
-          `DELETE FROM period_times WHERE day_of_week = $1 AND period = ANY($2::int[])`,
-          [gun, silinecek]
+          `DELETE FROM period_times WHERE week_start = $1 AND day_of_week = $2 AND period = ANY($3::int[])`,
+          [hafta, gun, silinecek]
         );
       }
       for (const satir of yazilacak) {
         await client.query(
           `
-            INSERT INTO period_times (day_of_week, period, start_time, end_time, updated_at)
-            VALUES ($1,$2,$3,$4,NOW())
-            ON CONFLICT (day_of_week, period) DO UPDATE SET
+            INSERT INTO period_times (week_start, day_of_week, period, start_time, end_time, updated_at)
+            VALUES ($1,$2,$3,$4,$5,NOW())
+            ON CONFLICT (week_start, day_of_week, period) DO UPDATE SET
               start_time = EXCLUDED.start_time,
               end_time = EXCLUDED.end_time,
               updated_at = NOW()
           `,
-          [gun, satir.period, satir.start, satir.end]
+          [hafta, gun, satir.period, satir.start, satir.end]
         );
         eklenen += 1;
       }
@@ -4489,55 +4541,39 @@ app.post(
       client.release();
     }
 
-    const aralik = schedule.dayRange(ayar, gun, await getPeriodTimes());
-    const varsayilanNotu = eklenen === 0 ? ' Gün tamamen varsayılan çizelgede.' : '';
+    const aralik = schedule.dayRange(ayar, gun, await getPeriodTimes(hafta));
+    const varsayilanNotu = eklenen === 0 ? ' Gün tamamen hesaplanan çizelgede.' : '';
     return adminRedirect(req, res, {
-      message: `${schedule.GUN_ADLARI[gun]} zil saatleri kaydedildi: ${eklenen} saat elle girildi.${varsayilanNotu} Gün ${aralik ? `${aralik.start} - ${aralik.end}` : '-'} arası.`
+      message: `${schedule.GUN_ADLARI[gun]} (${hafta} haftası) zil saatleri kaydedildi: ${eklenen} saat elle girildi.${varsayilanNotu} Gün ${aralik ? `${aralik.start} - ${aralik.end}` : '-'} arası.`
     });
   })
 );
 
 /**
- * Yazma rotalarinin hedef haftasi. `hafta` verilmezse VARSAYILAN SABLON
- * duzenlenir; bir hafta verilirse o haftanin kendi cizelgesi.
+ * Yazma rotalarinin hedef haftasi. Varsayilan sablon KALKTI: `hafta` verilmezse
+ * ICINDE BULUNULAN HAFTA hedeflenir (admin her hafta o haftayi girer).
  */
 function hedefHafta(body) {
   const ham = normalizeText(body && body.hafta);
-  return isDateOnly(ham) ? startOfWeek(ham) : SABLON_HAFTA;
+  return isDateOnly(ham) ? startOfWeek(ham) : startOfWeek(todayDateString());
 }
 
 function haftaEtiketi(weekStart) {
-  return weekStart === SABLON_HAFTA ? 'varsayılan çizelge' : `${weekStart} haftası`;
+  return `${weekStart} haftası`;
 }
 
 /**
- * Bir haftaya yazmadan ONCE sablonu o haftaya kopyalar (henuz kopyalanmadiysa).
- *
- * Sarttir: hafta cozumlemesi "o haftanin satiri varsa YALNIZCA onlar" diyor.
- * Onlemsiz, ozellestirilmemis bir haftaya tek ders eklemek o haftayi tek
- * derslik bir cizelgeye cevirir ve haftanin geri kalani sessizce kaybolurdu.
- * Kopya sayisi cagirana doner ki mesajda bildirilebilsin.
+ * Bir haftayi "girildi" olarak isaretler (schedule_week_overrides). Varsayilan
+ * sablon kalktigi icin KOPYALANACAK bir sey yok — isaret yalnizca "bu hafta
+ * bilerek bos" (ders yok) ile "hic girilmedi" ayrimini korur (ogrenci sayfasi
+ * bu ayrimla dogru mesaji gosterir). Her zaman 0 kopya doner.
  */
 async function ensureWeekCustomized(client, hafta) {
-  if (hafta === SABLON_HAFTA) return 0;
-  const isaret = await client.query(
+  await client.query(
     `INSERT INTO schedule_week_overrides (week_start) VALUES ($1) ON CONFLICT DO NOTHING`,
     [hafta]
   );
-  // Isaret zaten varsa hafta ozellestirilmisti; kopya tekrarlanmaz.
-  if (isaret.rowCount === 0) return 0;
-
-  const kopya = await client.query(
-    `
-      INSERT INTO class_schedule (id, term, day_of_week, period, subject, class_name, room, kind, week_start)
-      SELECT 'sch_' || md5(random()::text || clock_timestamp()::text),
-             term, day_of_week, period, subject, class_name, room, kind, $2::date
-      FROM class_schedule
-      WHERE week_start = $1
-    `,
-    [SABLON_HAFTA, hafta]
-  );
-  return kopya.rowCount || 0;
+  return 0;
 }
 
 app.post(
@@ -4700,11 +4736,13 @@ app.post(
     let silindi = 0;
     try {
       await client.query('BEGIN');
-      // Bosaltmadan once isaret konur: isaret olmadan bos hafta "ozellestirilmemis"
-      // sayilir ve sablona geri donerdi — tam da anlatilmak isteneni siler.
+      // Bosaltmadan once isaret konur: isaret "bu hafta bilerek bos (ders yok)"
+      // ile "hic girilmedi" ayrimini korur; ogrenci sayfasi buna gore mesaj verir.
       await ensureWeekCustomized(client, hafta);
       const silme = await client.query(`DELETE FROM class_schedule WHERE week_start = $1`, [hafta]);
       silindi = silme.rowCount || 0;
+      // Haftaya ozel zil saatleri de temizlenir: ders yoksa saatin anlami kalmaz.
+      await client.query(`DELETE FROM period_times WHERE week_start = $1`, [hafta]);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -4713,12 +4751,8 @@ app.post(
       client.release();
     }
 
-    const bosNotu =
-      hafta === SABLON_HAFTA
-        ? ''
-        : ' Bu hafta artık "ders yok" sayılır: haftalık takvimde ders görünmez, defter görevi de açılmaz.';
     return adminRedirect(req, res, {
-      message: `${silindi} ders kaydı silindi; ${haftaEtiketi(hafta)} boşaltıldı.${bosNotu}`
+      message: `${silindi} ders kaydı silindi; ${haftaEtiketi(hafta)} boşaltıldı. Bu hafta artık "ders yok" sayılır: haftalık takvimde ders görünmez, defter görevi de açılmaz.`
     });
   })
 );
@@ -4766,72 +4800,9 @@ app.post(
   })
 );
 
-// Bir haftayi OZELLESTIR: varsayilan sablonu o haftaya kopyalar. Kopyalama
-// sarttir — bos baslasaydi "bu hafta yalnizca su ders degisti" demek icin tum
-// hafta elle yeniden girilirdi.
-app.post(
-  '/admin/schedule/week/customize',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const ham = normalizeText(req.body.hafta);
-    if (!isDateOnly(ham)) {
-      return adminRedirect(req, res, { error: 'Hafta seçilmedi.' });
-    }
-    const hafta = startOfWeek(ham);
-
-    const client = await pool.connect();
-    let kopyalanan = 0;
-    try {
-      await client.query('BEGIN');
-      const zaten = await client.query(
-        `SELECT 1 FROM schedule_week_overrides WHERE week_start = $1`,
-        [hafta]
-      );
-      if (zaten.rowCount) {
-        await client.query('ROLLBACK');
-        return adminRedirect(req, res, { error: `${hafta} haftası zaten özelleştirilmiş.` });
-      }
-      kopyalanan = await ensureWeekCustomized(client, hafta);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-
-    return adminRedirect(req, res, {
-      message:
-        kopyalanan > 0
-          ? `${hafta} haftası özelleştirildi: varsayılan çizelgeden ${kopyalanan} ders kopyalandı. Artık bu haftadaki değişiklikler diğer haftaları etkilemez.`
-          : `${hafta} haftası özelleştirildi (varsayılan çizelge boş olduğu için hafta da boş başladı).`
-    });
-  })
-);
-
-// Haftayi VARSAYILANA DONDUR: o haftanin kendi satirlari silinir, hafta yine
-// sablonu kullanmaya baslar. Gecmis defter kayitlari SILINMEZ — onlar
-// `lesson_topics` icinde ders/sinif adini kendi iclerinde tasir.
-app.post(
-  '/admin/schedule/week/reset',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const ham = normalizeText(req.body.hafta);
-    if (!isDateOnly(ham)) {
-      return adminRedirect(req, res, { error: 'Hafta seçilmedi.' });
-    }
-    const hafta = startOfWeek(ham);
-
-    const isaret = await query(`DELETE FROM schedule_week_overrides WHERE week_start = $1`, [hafta]);
-    if (isaret.rowCount === 0) {
-      return adminRedirect(req, res, { error: `${hafta} haftası zaten varsayılan çizelgeyi kullanıyor.` });
-    }
-    const silindi = await query(`DELETE FROM class_schedule WHERE week_start = $1`, [hafta]);
-    return adminRedirect(req, res, {
-      message: `${hafta} haftası varsayılan çizelgeye döndü (${silindi.rowCount} özel kayıt silindi). İşlenen konular silinmedi.`
-    });
-  })
-);
+// (Varsayilan sablon kaldirildigi icin "haftayi ozellestir" ve "varsayilana
+// dondur" rotalari da kalkti: her hafta zaten bagimsizdir, sablona donus yoktur.
+// Bir haftayi bosaltmak icin /admin/schedule/clear kullanilir.)
 
 app.post(
   '/admin/sport',

@@ -35,7 +35,7 @@ const VARSAYILAN_AYAR = {
   startTime: '08:00',
   lessonMinutes: 40,
   breakMinutes: 10,
-  periodCount: 10,
+  periodCount: 13,
   lunchAfterPeriod: 6,
   lunchMinutes: 40
 };

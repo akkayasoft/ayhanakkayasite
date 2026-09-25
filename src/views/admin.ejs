@@ -2054,49 +2054,40 @@
               <% } else { %>
               Haftalık ders çizelgen. Zil saatleri başlangıç saati ve sürelerden
               <strong>hesaplanır</strong>; bu düzene uymayan günlerde saatleri
-              <strong>gün gün elle</strong> de girebilirsin.
-              Program Haftalık Takvim'de de görünür. <strong>Varsayılan çizelge</strong>
-              her hafta için geçerlidir; bir haftayı seçip <strong>o haftaya özel</strong>
-              çizelge de yapabilirsin.
+              <strong>gün gün elle</strong> (o haftaya özel) de girebilirsin.
+              Program Haftalık Takvim'de de görünür. <strong>Her hafta bağımsızdır</strong>:
+              girdiğin dersler ve saatler yalnızca o haftaya işler; girilmemiş haftalar
+              boştur.
               <% } %>
             </p>
           </div>
         </header>
 
         <% if (scheduleView.gorunum === 'cizelge') { %>
-        <%# HAFTAYA OZEL CIZELGE. Varsayilan sablon her hafta gecerlidir; bir
-            hafta secilip ozellestirilirse o hafta icin YALNIZCA kendi satirlari
-            kullanilir. "Bu hafta ders yok" demek icin hafta ozellestirilip
-            bosaltilir — takvim artik hicbir seyi engellemiyor. %>
+        <%# HAFTAYA OZEL CIZELGE. Varsayilan sablon KALKTI: her hafta bagimsizdir,
+            admin o hafta gelince girer, girilmemis hafta bostur (gelecek onceden
+            belli degil). "Bu hafta ders yok" demek icin hafta bosaltilir. %>
         <% const hf = scheduleView.hafta; %>
-        <%# Yollar secili ALANI tasir: kayittan sonra kullanici ayni alana
-            donmeli, ilk alana degil. %>
-        <% const haftaSorgu = hf ? `?bolum=${currentSection}&hafta=${hf}` : `?bolum=${currentSection}`; %>
+        <%# Yollar secili ALANI ve HAFTAYI tasir: kayittan sonra kullanici ayni
+            alanda ve ayni haftada kalmali. %>
+        <% const haftaSorgu = `?bolum=${currentSection}&hafta=${hf}`; %>
         <% const cizelgeYolu = `/admin/schedule${haftaSorgu}`; %>
         <% if (currentSection === 'hafta') { %>
         <section class="panel">
           <div class="datatable-toolbar">
             <div class="row center">
-              <a class="button-link <%= scheduleView.sablonModu ? 'active' : '' %>" href="/admin/schedule?bolum=<%= currentSection %>">Varsayılan çizelge</a>
-              <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
-              <% if (!scheduleView.sablonModu) { %>
+              <a class="button-link <%= hf === scheduleView.buHafta ? 'active' : '' %>" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
               <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
               <a class="button-link" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
-              <% } %>
             </div>
             <form method="get" action="/admin/schedule" class="row center">
+              <input type="hidden" name="bolum" value="<%= currentSection %>" />
               <label for="scheduleWeek">Hafta</label>
-              <input id="scheduleWeek" type="date" name="hafta" value="<%= hf || scheduleView.buHafta %>" />
+              <input id="scheduleWeek" type="date" name="hafta" value="<%= hf %>" />
               <button type="submit">Git</button>
             </form>
           </div>
 
-          <% if (scheduleView.sablonModu) { %>
-          <p class="muted">
-            <strong>Varsayılan çizelge</strong> düzenleniyor. Burada yaptığın değişiklik
-            <strong>özelleştirilmemiş tüm haftalara</strong> işler.
-          </p>
-          <% } else { %>
           <p class="muted">
             <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong>
             <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
@@ -2106,31 +2097,15 @@
             <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.note) { %>
               · <%= scheduleView.haftaAkademik.note %><% } %>
           </p>
-          <% if (scheduleView.ozelHafta) { %>
           <p class="muted">
-            Bu hafta <strong>özelleştirilmiş</strong>: aşağıdaki değişiklikler yalnızca
-            bu haftaya işler, diğer haftalar varsayılan çizelgeyi kullanmaya devam eder.
-            Haftayı <strong>boşaltırsan</strong> o hafta ders yok sayılır — defter görevi
-            de açılmaz.
+            Her hafta <strong>bağımsızdır</strong>: bu haftaya girdiğin dersler ve zil
+            saatleri yalnızca bu haftaya işler; diğer haftalar etkilenmez. Girilmemiş
+            haftalar boştur — <strong>gelecek haftalar önceden belli değildir</strong>,
+            her haftanın çizelgesini o hafta gelince girersin.
+            <% if (scheduleView.ozelHafta && scheduleView.toplamDers === 0) { %>
+            <br />Bu hafta <strong>boşaltılmış</strong>: "ders yok" sayılır (defter görevi açılmaz).
+            <% } %>
           </p>
-          <form method="post" action="/admin/schedule/week/reset" class="stack" onsubmit="return confirm('<%= hf %> haftası varsayılan çizelgeye dönsün mü? Bu haftaya özel ders kayıtları silinir; işlenen konular silinmez.')">
-            <input type="hidden" name="hafta" value="<%= hf %>" />
-            <input type="hidden" name="next" value="<%= cizelgeYolu %>" />
-            <button type="submit" class="danger">Varsayılan çizelgeye döndür</button>
-          </form>
-          <% } else { %>
-          <p class="muted">
-            Bu hafta <strong>varsayılan çizelgeyi</strong> kullanıyor. Yalnızca bu haftayı
-            değiştirmek istersen önce özelleştir — varsayılan çizelge bu haftaya kopyalanır,
-            sonra istediğini ekler/çıkarırsın.
-          </p>
-          <form method="post" action="/admin/schedule/week/customize" class="stack">
-            <input type="hidden" name="hafta" value="<%= hf %>" />
-            <input type="hidden" name="next" value="<%= cizelgeYolu %>" />
-            <button type="submit">Bu haftayı özelleştir</button>
-          </form>
-          <% } %>
-          <% } %>
         </section>
         <% } %>
 
@@ -2201,11 +2176,8 @@
               <button type="submit">Kaydet</button>
               <p class="muted">
                 Dolu bir saate tekrar kaydedersen üstüne yazılır; önce silmene gerek yok.
-                <% if (hf && !scheduleView.ozelHafta) { %>
-                <br />Bu hafta henüz özelleştirilmedi: kaydedince varsayılan çizelge
-                önce bu haftaya <strong>kopyalanır</strong>, sonra dersin eklenir.
-                Diğer haftalar etkilenmez.
-                <% } %>
+                <br />Ders <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong> haftasına
+                eklenir; yalnızca bu haftaya işler, diğer haftalar etkilenmez.
               </p>
             </form>
           </article>
@@ -2256,14 +2228,16 @@
           <h3>Gün Gün Zil Saatleri</h3>
           <p class="muted">
             Bütün günler aynı düzende olmayabilir (ikili öğretim, DYK, kısa cuma,
-            telafi). Burada <strong><%= scheduleView.saatGunAdi %></strong> gününün
-            ders saatlerini elle yazarsın; yazdığın saat yalnızca o günü etkiler ve
+            telafi). Zil saatleri <strong>haftaya özeldir</strong>: burada
+            <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong> haftasının
+            <strong><%= scheduleView.saatGunAdi %></strong> gününün ders saatlerini
+            elle yazarsın; yazdığın saat yalnızca o haftanın o gününü etkiler ve
             <strong>sonraki saatleri kaydırmaz</strong>. Boş bıraktığın satır
             hesaplanan varsayılana döner.
             <% if (scheduleView.ozelSaatSayisi) { %>
-            <br />Şu an toplam <strong><%= scheduleView.ozelSaatSayisi %></strong> ders saati elle girilmiş.
+            <br />Bu haftada toplam <strong><%= scheduleView.ozelSaatSayisi %></strong> ders saati elle girilmiş.
             <% } else { %>
-            <br />Şu an hiçbir gün için elle saat girilmemiş; tüm günler hesaplanan çizelgeyi kullanıyor.
+            <br />Bu hafta için elle saat girilmemiş; tüm günler hesaplanan çizelgeyi kullanıyor.
             <% } %>
           </p>
 
@@ -2277,8 +2251,9 @@
           </div>
 
           <form method="post" action="/admin/schedule/period-times" class="stack">
-            <input type="hidden" name="next" value="/admin/schedule?bolum=gunzil&saatGun=<%= scheduleView.saatGunu %>" />
+            <input type="hidden" name="next" value="/admin/schedule?bolum=gunzil&saatGun=<%= scheduleView.saatGunu %>&hafta=<%= hf %>" />
             <input type="hidden" name="gun" value="<%= scheduleView.saatGunu %>" />
+            <input type="hidden" name="hafta" value="<%= hf %>" />
             <div class="table-wrap">
               <table class="stack-mobile">
                 <thead>
@@ -2477,10 +2452,10 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             </table>
           </div>
           <% if (scheduleView.kayitlar.length) { %>
-          <form method="post" action="/admin/schedule/clear" class="stack" onsubmit="return confirm('<%= scheduleView.sablonModu ? "Varsayılan çizelge tamamen silinsin mi? Zil ayarları kalır." : hf + " haftasının dersleri silinsin mi? Hafta boş kalırsa o hafta ders yok sayılır." %>')">
+          <form method="post" action="/admin/schedule/clear" class="stack" onsubmit="return confirm('<%= hf %> haftasının dersleri silinsin mi? Hafta boş kalırsa o hafta ders yok sayılır.')">
             <input type="hidden" name="next" value="<%= cizelgeYolu %>" />
-            <% if (hf) { %><input type="hidden" name="hafta" value="<%= hf %>" /><% } %>
-            <button type="submit" class="danger"><%= scheduleView.sablonModu ? 'Varsayılan Çizelgeyi Boşalt' : 'Bu Haftayı Boşalt' %></button>
+            <input type="hidden" name="hafta" value="<%= hf %>" />
+            <button type="submit" class="danger">Bu Haftayı Boşalt</button>
           </form>
           <% } %>
         </section>
@@ -2624,9 +2599,8 @@ Cuma&#9;8&#9;Nöbet"></textarea>
             <br />
             <span class="day-badge miss">Çizelge boş</span>
             Bu hafta hiç ders tanımlı değil; ders görevi de açılmaz.
-            <strong>Çizelge</strong> sekmesinde ders girin — hafta seçmeden
-            girerseniz <em>varsayılan çizelgeye</em>, hafta seçerek girerseniz
-            yalnızca <em>o haftaya</em> yazılır.
+            <strong>Çizelge</strong> sekmesinde bu haftanın derslerini girin —
+            girdiğiniz dersler yalnızca <em>bu haftaya</em> yazılır.
             <% } %>
           </p>
           <% if (tw.haftaGorevleri && tw.haftaGorevleri.length) { %>

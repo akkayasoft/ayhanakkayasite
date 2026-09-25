@@ -672,60 +672,72 @@ sonrası ek ders). Bu yüzden takvim kapısı **tamamen kaldırıldı**:
 > ÇİZELGE'dir** (aşağıya bakın): o haftanın ızgarası boşaltılır. Böyle bir
 > haftada ders görünmez ve defter görevi de açılmaz.
 
-### Haftaya özel çizelge
+### Haftaya özel çizelge (VARSAYILAN ŞABLON KALDIRILDI)
 
-Çizelge tek bir haftalık şablondu ve her hafta aynı kabul ediliyordu; oysa
-hafta hafta değişebiliyor (seminer, sınav haftası, telafi dersi, DYK düzeni).
+Her hafta **tamamen bağımsızdır**: admin o hafta gelince günleri, dersleri ve
+**o haftaya özel zil saatlerini** girer. Girilmemiş hafta **boştur** — gelecek
+haftalar önceden belli değildir.
 
-- `class_schedule.week_start`: **`1900-01-01` = varsayılan şablon**, başka bir
-  tarih o haftanın kendi çizelgesi. `UNIQUE (week_start, term, day_of_week,
-  period)`. NULL yerine **sabit tarih** kullanıldı — Postgres'te NULL'lar
-  birbirinden farklı sayıldığı için NULL'lu bir UNIQUE aynı hücrenin iki kez
-  girilmesini engellemezdi (`term`'de de aynı sebeple 0 seçilmişti).
-- Çözümleme **birleştirme değil tam değiştirme**: hafta özelleştirilmişse o
-  hafta için şablon hiç kullanılmaz. Birleştirme *"bu hafta bu ders yok"*u
-  ifade edemezdi (silinen hücre için mezar taşı satırı gerekirdi).
-  Özelleştirme bu yüzden **şablonu o haftaya kopyalayarak** başlar.
-- `/admin/schedule?hafta=YYYY-MM-DD` → o haftanın ızgarası. Parametre yoksa
-  **varsayılan şablon** düzenlenir (eski davranış). Panelde hafta gezinmesi,
-  *"Bu haftayı özelleştir"* ve *"Varsayılan çizelgeye döndür"* düğmeleri var.
+> ⚠️ **Eski model (varsayılan şablon) kaldırıldı.** Önce `1900-01-01` bir
+> "varsayılan şablon"du ve dokunulmamış her hafta ona düşerdi; böylece şablonda
+> ders varsa tüm gelecek haftalar **önceden belli** oluyordu. Kullanıcı bunu
+> istemedi: *"tüm haftaların çizelgesi her hafta başı admin tarafından
+> girilebilmeli, sonraki haftalar önceden belli olmamalı."* Bu yüzden şablon
+> fallback'i, *"haftayı özelleştir"* ve *"varsayılan çizelgeye döndür"* rotaları
+> ve düğmeleri kaldırıldı. `SABLON_HAFTA` sabiti yalnızca DB'de kalmış eski
+> şablon satırlarını **dışlamak** için duruyor (`getCustomScheduleWeeks` onları
+> saymaz).
+
+- `class_schedule.week_start`: her satır **kendi haftasının** dersi. `UNIQUE
+  (week_start, term, day_of_week, period)`. `getScheduleEntries(hafta)`
+  **yalnızca o haftanın** satırlarını döner, artık şablona düşmez; hafta
+  verilmezse boş.
+- `/admin/schedule?hafta=YYYY-MM-DD` → o haftanın ızgarası. **Parametre yoksa
+  içinde bulunulan hafta** açılır (eski "şablon modu" gitti). Panelde hafta
+  gezinmesi (Bu hafta / ← Önceki / Sonraki → / tarih seçici); *"Bu Haftayı
+  Boşalt"* o haftanın derslerini **ve o haftaya özel zil saatlerini** siler.
   Öğrenci tarafında da hafta gezinmesi var; varsayılan **bu haftadır**.
-- Ders ekleme ve toplu yapıştırma bir haftaya yazarken **önce şablonu o haftaya
-  kopyalar** (`ensureWeekCustomized`). Önlem olmasa özelleştirilmemiş bir
-  haftaya tek ders eklemek o haftayı tek derslik bir çizelgeye çevirir ve
-  haftanın geri kalanı sessizce kaybolurdu.
-- *"Bu Haftayı Boşalt"* yalnızca o haftayı siler; varsayılan şablona dokunmaz.
+- Yazma rotalarının hedef haftası (`hedefHafta`) `hafta` gelmezse **içinde
+  bulunulan haftadır**. Ders ekleme/yapıştırma o haftaya yazar; kopyalanacak
+  şablon olmadığı için `ensureWeekCustomized` yalnızca **işaret** koyar
+  (`schedule_week_overrides`), kopya yapmaz.
 
-> ⚠️ **"Özel" işareti ders satırlarından AYRI tutulur** (`schedule_week_overrides`).
-> Özelliği satır varlığından türetmek denendi ve tutmadı: bir haftayı
-> özelleştirip **boşaltmak** ("bu hafta hiç ders yok") satırları sildiği için
-> hafta yeniden şablona dönüyordu — tam da anlatılmak isteneni silen bir
-> davranış. Ölçüldü: boşaltılan hafta şablonun 6 dersini geri gösteriyordu.
-> İşaret ayrı durunca *"özel ama boş"* ifade edilebilir hale geldi.
+> ⚠️ **"Girildi" işareti hâlâ ders satırlarından AYRI** (`schedule_week_overrides`).
+> Şablon kalksa da işaret **"bu hafta bilerek boş (ders yok)"** ile **"hiç
+> girilmedi"** ayrımını korur: öğrenci sayfası işaretli boş haftada *"Bu hafta
+> ders yok"*, işaretsiz haftada *"Program henüz girilmedi"* yazar. Boşaltma
+> işareti bırakır (silmez).
 
-- `buildLessonLogWeeks` her haftayı **kendi çizelgesiyle** hesaplar; boş özel
-  haftalar `getCustomScheduleWeeks()` haritasına **boş dizi** olarak girer,
-  yoksa şablona düşerlerdi.
+- **Zil saatleri de haftaya özeldir** (bkz. *Gün gün zil saatleri*):
+  `period_times.week_start`. Bir haftanın bir gününe girilen saat yalnızca o
+  haftayı etkiler; girilmemiş hücre `school_settings`'ten **hesaplanan**
+  varsayılana düşer.
+- Ders görevleri (`buildLessonTaskRows`) **yalnızca girilmiş haftalar** için
+  üretilir (girilmemiş hafta ders üretmez → gelecek görünmez); her haftanın
+  görev açıklamasındaki zil saati **o haftanın** kendi saatidir
+  (`getAllPeriodTimes` → weekStart bazlı harita).
 - `lesson_topics` zaten ders/sınıf adını kaydın içine kopyaladığı için
-  **geçmiş defter bozulmaz**: haftayı varsayılana döndürmek işlenen konuları
-  silmez.
+  **geçmiş defter bozulmaz**: bir haftayı boşaltmak işlenen konuları silmez.
 
-Doğrulandı (temiz veritabanı, 26 Ekim 2026 saatiyle): varsayılan şablona 6 ders
-yapıştırıldı; 2 Kasım haftasına **doğrudan** cumartesi dersi eklendi ve hafta
-kendiliğinden özelleşti (şablondan 6 ders kopyalandı, toplam 7); o haftadan bir
-ders silindi ve **varsayılan şablon değişmedi**. 9 Kasım haftası özelleştirilip
-boşaltıldı: işaret kaldı, 0 hücre yazılabilir, sayaç *0 / 0*, o hafta için
-**defter görevi açılmadı** (40 haftanın hiçbirinde yok) ve öğrenci tarafında
-*"Bu hafta ders yok"* yazıyor (hafta gezinmesi duruyor). *Varsayılana döndür*
-sonrası hafta yine 6 derslik şablonu kullandı, ikinci kez döndürme
-**reddedildi**. Tatil günü (29 Ekim, Cumhuriyet Bayramı) **yazılabilir** ve
-defter görevi o hücreyle birlikte 6/6 olunca `done` işaretlendi; 2 Kasım haftası
-cumartesi dersiyle birlikte 7/7 olunca `done` oldu. 1-5 kısıtlı **eski** bir
-veritabanı açılışta göç etti: eski kısıt düştü, satırlar `1900-01-01` şablonuna
-yerleşti, defter kaydı ve ders satırları korundu. Yetki: öğrenci beş admin
-rotasında **403**, oturumsuz **302**; öğretmen bayraklı öğrenci özel haftaya
-defter yazabildi, bayrak kalkınca **403** ve satır değişmedi. Üç genişlikte
-(1440 / 1180 / 390px) 13 sayfada **taşma 0**, JS hatası 0.
+> **Günlük ders saati (`period_count`) 13'e çıkarıldı** (kullanıcı akşam
+> 20:20'ye kadar uzayan gün istedi): `school_settings` DEFAULT 13,
+> `VARSAYILAN_AYAR.periodCount = 13`, ve idempotent göç eski varsayılanı
+> (`period_count = 10`) 13'e çeker (başka değer ayarlanmışsa dokunmaz).
+
+Doğrulandı (temiz DB, 25 Eylül 2026, period_count 13): 09-21 haftası Salı 11.
+derse *Akşam Dersi* + o haftaya özel zil `18:00-18:40` girildi; 09-28 haftası
+Salı 11. derse *Farklı Ders* (zil override'sız) girildi. İzgara 09-21'de hücre
+**18:00** (özel) + sol sütun **16:50** (hesaplanan) gösterdi; 09-28 hücresi
+**18:00 taşımadı**, hesaplanan 16:50 kullandı; 2026-10-12 (girilmemiş) hafta
+**boş**. Ders görevleri: 09-22 → `18:00-18:40 · 11-A`, 09-29 → `16:50-17:30`
+(her hafta kendi saati); yalnızca girilmiş iki hafta görev üretti. *Bu Haftayı
+Boşalt* 09-28'in dersini + zilini sildi, işareti bıraktı → öğrenci *"Bu hafta
+ders yok"*; hiç girilmemiş hafta *"Program henüz girilmedi"*. Öğrenci çizelgesi
+09-21 için 18:00'ı ve *Akşam Dersi*'ni gösterdi; pano *Görevlerim* 09-22 dersini
+listeledi. Eski (week_start'sız, PK day/period) `period_times` tablosu açılışta
+**göç etti** (kolon eklendi, PK `(week_start, day_of_week, period)` oldu). 4
+admin çizelge alanı + öğrenci çizelgesi 200, 1440/390px **taşma 0**, gerçek JS
+hatası yok.
 
 Doğrulandı (temiz veritabanı, 21 Eylül 2026 saatiyle; Pzt-Cum + Cmt 2 ders +
 Paz 1 ders yapıştırıldı): çizelge 7 sütun, gün özeti 7 satır; defter ızgarasında
@@ -751,25 +763,30 @@ dönüyor ve Cumartesi/Pazar blokları da çıkıyor.
 başlangıç-bitişi başlangıç saati + ders/teneffüs/öğle sürelerinden gelir.
 Böylece "8. ders kaçta" sorusunun tek doğru cevabı olur ve saatler tek tek
 girilirken kaymaz. Sayfada günün bitiş saati gösterilir; kullanıcı süreleri
-tutturana kadar ayarlar (08:00 + 10 ders × 40 dk + 10 dk teneffüs + 6. dersten
-sonra 40 dk öğle = 16:40).
+tutturana kadar ayarlar (08:00 + 13 ders × 40 dk + 10 dk teneffüs + 6. dersten
+sonra 40 dk öğle = **hesaplanan** son zil 19:10). Daha geç biten bir gün — ör.
+akşam 20:20'ye kadar süren ek dersler — **haftaya özel** zil saatiyle girilir.
 
-### Gün gün zil saatleri (elle giriş)
+### Gün gün zil saatleri (elle giriş, HAFTAYA ÖZEL)
 
 Bu düzen **bütün günler için** geçerliydi; oysa her gün aynı değil (ikili
-öğretim, DYK, kısa cuma, telafi). `/admin/schedule` → **Gün Gün Zil Saatleri**
-panelinde bir gün seçilip o günün ders saatleri **elle** yazılır.
+öğretim, DYK, kısa cuma, telafi) **ve her hafta da farklı olabilir**.
+`/admin/schedule` → **Gün Gün Zil Saatleri** panelinde **seçili hafta** için bir
+gün seçilip o günün ders saatleri **elle** yazılır (form + gün-sekmesi bağlantısı
+`hafta`'yı taşır; rota o haftaya yazar).
 
-- `period_times` (`PRIMARY KEY (day_of_week, period)`): `start_time`,
-  `end_time`. Satır **yalnızca istisnadır** — tablo boşken davranış eskisiyle
-  birebir aynıdır, her gün hesaplanan çizelgeyi kullanır.
+- `period_times` (`PRIMARY KEY (week_start, day_of_week, period)`): `start_time`,
+  `end_time`. Satır **yalnızca istisnadır** — o hafta için satır yoksa davranış
+  hesaplanan çizelgeyle birebir aynıdır. `getPeriodTimes(hafta)` tek haftayı,
+  `getAllPeriodTimes()` tüm haftaları weekStart bazlı harita olarak döner (ders
+  görevleri tüm yılı gezdiği için).
 - **Elle giriş satır bazındadır: sonraki saatleri KAYDIRMAZ.** Kaydırsaydı tek
   bir düzeltme günün geri kalanını sessizce değiştirirdi; oysa elle giriş tam
   da *"bu saat diğerlerine uymuyor"* demek.
 - **Boş satır = varsayılana dön** (kayıt silinir). Varsayılanla **birebir aynı**
   saat de saklanmaz: saklansaydı süreler sonradan değiştiğinde o hücre eski
   saatte donar ve kimse nedenini bilemezdi. *"Bu Günü Varsayılana Döndür"*
-  düğmesi günün tüm istisnalarını tek hamlede siler.
+  düğmesi **o haftanın** o günündeki tüm istisnaları tek hamlede siler.
 - Bir alanı doldurup diğerini boş bırakmak **reddedilir** — girilen saatin
   kaydedilmediğini fark etmemek en kötü sonuç olurdu. Bitiş başlangıçtan sonra
   olmalı (veritabanı `CHECK`'i de aynı kuralı tutar).
@@ -1777,7 +1794,7 @@ yalnızca gelecek yeniden düzenlenir.*
 | Bir günün zil saatleri elle girilir | Yalnızca o günün o ders saatleri değişir; diğer günler ve sonraki saatler yerinde kalır. Görev açıklamaları bir sonraki aktarımda tazelenir | ✅ Cuma değişti, Pazartesi aynı kaldı |
 | Admin bir görev durumunu düzeltir | Satır değişir ama **izi kalır** (`corrected_by` / `corrected_at` / `previous_status` / gerekçe); öğrenci tarafı hâlâ kilitli | ✅ yeniden açılışta mühürleyici ezmedi |
 | Admin bir rutin kaydını elle yazar | Satır değişir ama **izi kalır** (+ `previous_time`); değerlendirme kaydın kendi hedef/aralık kopyasına göre yapılır | ✅ mühürleyici ezmedi, öğrencinin basışı reddedildi |
-| Bir hafta özelleştirilir / varsayılana döndürülür | Yalnızca o haftanın `class_schedule` satırları değişir; **işlenen konular silinmez** (ders/sınıf adı kaydın içinde) | ✅ döndürme sonrası defter satırları durdu |
+| Bir haftanın çizelgesi/zil saati girilir ya da boşaltılır | Yalnızca o haftanın `class_schedule` + `period_times` satırları değişir; diğer haftalar ve **işlenen konular etkilenmez** (ders/sınıf adı kaydın içinde) | ✅ boşaltma sonrası defter satırları durdu, komşu hafta değişmedi |
 
 > Tek istisna bilinçli: aylık hedefte "Başarılamadı" işaretlerken kanıt alanı
 > boş gönderilirse eski kanıt silinir (bkz. Aylık hedefler).

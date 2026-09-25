@@ -209,7 +209,7 @@ async function initDb() {
       start_time TIME NOT NULL DEFAULT '08:00',
       lesson_minutes INTEGER NOT NULL DEFAULT 40 CHECK (lesson_minutes BETWEEN 10 AND 120),
       break_minutes INTEGER NOT NULL DEFAULT 10 CHECK (break_minutes BETWEEN 0 AND 60),
-      period_count INTEGER NOT NULL DEFAULT 10 CHECK (period_count BETWEEN 1 AND 16),
+      period_count INTEGER NOT NULL DEFAULT 13 CHECK (period_count BETWEEN 1 AND 16),
       lunch_after_period INTEGER NULL CHECK (lunch_after_period IS NULL OR lunch_after_period >= 1),
       lunch_minutes INTEGER NOT NULL DEFAULT 40 CHECK (lunch_minutes BETWEEN 0 AND 180),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -228,12 +228,13 @@ async function initDb() {
   // demektir; bu yuzden "varsayilana esit" bir satir tutulmaz.
   await query(`
     CREATE TABLE IF NOT EXISTS period_times (
+      week_start DATE NOT NULL DEFAULT DATE '1900-01-01',
       day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
       period INTEGER NOT NULL CHECK (period BETWEEN 1 AND 16),
       start_time TIME NOT NULL,
       end_time TIME NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (day_of_week, period),
+      PRIMARY KEY (week_start, day_of_week, period),
       CHECK (end_time > start_time)
     )
   `);
@@ -664,6 +665,42 @@ async function initDb() {
   );
   if (kategoriAdi.rowCount > 0) {
     console.log('"Ders Programı" kategorisi "GAP MTAL" olarak yeniden adlandırıldı.');
+  }
+
+  // --- Zil saatleri HAFTAYA OZEL -----------------------------------------
+  //
+  // period_times artik (week_start, day_of_week, period) anahtarli: her hafta
+  // kendi zil saatlerini tasiyabilir. Eski tabloda week_start kolonu yoktu ve
+  // birincil anahtar (day_of_week, period) idi. Idempotent goc: kolonu ekle,
+  // eski birincil anahtari dusur, yenisini kur. Var olan (global) satirlar
+  // week_start = 1900-01-01 alir; bu hafta hicbir yerde gosterilmediginden
+  // eski elle saatler artik uygulanmaz (kullanici zil saatlerini haftaya ozel
+  // yeniden girer). CREATE TABLE IF NOT EXISTS mevcut tabloyu degistirmez, o
+  // yuzden burada elle yapilir.
+  await query(`ALTER TABLE period_times ADD COLUMN IF NOT EXISTS week_start DATE NOT NULL DEFAULT DATE '1900-01-01'`);
+  const ptPk = await query(`
+    SELECT a.attname AS col
+    FROM pg_index i
+    JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+    WHERE i.indrelid = 'period_times'::regclass AND i.indisprimary
+  `);
+  const ptCols = ptPk.rows.map((r) => r.col);
+  if (!ptCols.includes('week_start')) {
+    await query(`ALTER TABLE period_times DROP CONSTRAINT IF EXISTS period_times_pkey`);
+    await query(`ALTER TABLE period_times ADD PRIMARY KEY (week_start, day_of_week, period)`);
+    console.log('period_times birincil anahtarı (week_start, day_of_week, period) olarak güncellendi.');
+  }
+
+  // --- Gunluk ders saati sayisi varsayilani 13 ---------------------------
+  //
+  // Kullanici gunun aksam 20:20'ye kadar uzamasi icin period_count'u 13 istedi.
+  // Yalnizca ESKI varsayilan (10) degeri 13'e cekilir; kullanici sonradan
+  // baska bir deger ayarladiysa (10 disinda) dokunulmaz. Idempotent.
+  const periodCountGoc = await query(
+    `UPDATE school_settings SET period_count = 13, updated_at = NOW() WHERE period_count = 10`
+  );
+  if (periodCountGoc.rowCount > 0) {
+    console.log('school_settings.period_count 10 -> 13 güncellendi.');
   }
 
   // --- Puan sistemi kaldirildi -------------------------------------------
