@@ -6738,6 +6738,69 @@ function buildRoutineWeekRows(config, view, haftaGunleri, today) {
     const r = logByDay.get(gun) || null;
     const durum = r ? r.status : null;
 
+    // Namaz: gunde TEK OZET satir (5 vakit). r = buildPrayerView gun ozeti
+    // (onTime/qada/missed/pending). Satir ici isaretlenmez (5 vakit x 3 durum);
+    // bugun bekleyen varsa / gecmiste kilinmayan varsa kendi sayfasina baglanir.
+    if (tip === 'prayer') {
+      const onTime = r ? r.onTime : 0;
+      const qada = r ? r.qada : 0;
+      const missed = r ? r.missed : 0;
+      const pending = r ? r.pending : 5;
+      const settled = pending === 0;
+      let pHref = null;
+      let pLabel = null;
+      if (bugun && pending > 0) {
+        pHref = page;
+        pLabel = 'İşaretle';
+      } else if (gecmis && missed > 0) {
+        pHref = page;
+        pLabel = 'Kaza';
+      }
+      const parcalar = [`${onTime}/5 vaktinde`];
+      if (qada) parcalar.push(`${qada} kaza`);
+      if (missed) parcalar.push(`${missed} kılınmadı`);
+      if (pending && !gecmis) parcalar.push(`${pending} bekleyen`);
+      const ozet = parcalar.join(' · ');
+      satirlar.push({
+        id: `routine-prayer-${gun}`,
+        isRoutine: true,
+        routineTur: 'prayer',
+        routineEndpoint: null,
+        routineMarkInline: false,
+        routineActionHref: pHref,
+        routineActionLabel: pLabel,
+        routinePage: page,
+        cellEndpoint: null,
+        title: baslik,
+        categoryName: 'Rutin',
+        scheduleText: bugun ? `${gun} · Bugün` : gun,
+        singleDate: gun,
+        estimatedTime: '',
+        routineSaatAna: '5 vakit',
+        routineSaatAlt: '',
+        description: '',
+        canEditDescription: false,
+        canEditTime: false,
+        canManage: false,
+        // Kilit = gun kapanmis ve yapilacak islem yok (tam gun / kaza gerekmez).
+        isMarked: !pHref && settled,
+        isLocked: !pHref && settled,
+        routineDoneAt: null,
+        routineStatus: null,
+        routineStatusText: ozet,
+        // Durum hucresinde gosterilecek gun ozeti (2/5 vaktinde · 1 kaza · ...).
+        routinePrayerSummary: ozet,
+        routineDelay: 0,
+        // Yalnizca BES vaktin de VAKTINDE kilindigi gun "tamamlandi" sayilir
+        // (seri olcusuyle ayni); aksi halde notr (kirmizi yapilmaz).
+        displayStatus: onTime === 5 ? { status: 'done', day: gun } : null,
+        displayStatusIsToday: bugun,
+        displayStatusDay: gun,
+        todayStatus: null
+      });
+      continue;
+    }
+
     // "isaretli" = o gun icin kapanmis/gercek bir durum var mi.
     const isaretli =
       tip === 'time'
@@ -7033,7 +7096,7 @@ async function getStudentViewModel(req, currentPage) {
   // hesaplanir — uyanma/spor ile ayni desen.
   const prayer =
     currentPage === 'prayer' || currentPage === 'dashboard'
-      ? await buildPrayerView(req.currentUser.id, currentPage === 'prayer' ? 14 : 1)
+      ? await buildPrayerView(req.currentUser.id, currentPage === 'prayer' ? 14 : 7)
       : null;
 
   // Acik sayfa hangi planli rutinse onun gorunumu (pano her ikisini de
@@ -7053,12 +7116,12 @@ async function getStudentViewModel(req, currentPage) {
       ? [aiWeek, ydsWeek].filter((v) => v && v.routine && v.routine.isActive)
       : [];
 
-  // Rutinler "Gorevlerim" tablosunda da gorunur: uyanma, spor, yapay zeka ve
-  // YDS — ICINDE BULUNULAN HAFTANIN her gunu icin birer satir. Namaz HARIC
-  // (gunde 5 vakit, listeyi bogar; kendi seridinde kalir — bkz. CLAUDE.md).
-  // Gecmis gunler durumlariyla, bugun islem yapilabilir, gelecek gunler
-  // "Bekliyor". Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu
-  // oldugu icin kendi sayfasina baglanti.
+  // Rutinler "Gorevlerim" tablosunda da gorunur: uyanma, spor, yapay zeka, YDS
+  // ve NAMAZ — ICINDE BULUNULAN HAFTANIN her gunu icin. Gecmis gunler
+  // durumlariyla, bugun islem yapilabilir, gelecek gunler "Bekliyor".
+  // Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu oldugu icin
+  // kendi sayfasina baglanti; NAMAZ gunde 5 vakit oldugu icin TEK OZET satir
+  // ("2/5 vaktinde · 1 kaza · ...") ve isaretleme kendi sayfasinda.
   const haftaGunleri = [];
   for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) haftaGunleri.push(g);
   const rutinSatirlari =
@@ -7085,6 +7148,12 @@ async function getStudentViewModel(req, currentPage) {
           ...buildRoutineWeekRows(
             { tur: 'yds', baslik: 'YDS Rutini', page: '/student/yds', tip: 'study' },
             ydsWeek,
+            haftaGunleri,
+            today
+          ),
+          ...buildRoutineWeekRows(
+            { tur: 'prayer', baslik: 'Namaz Rutini', page: '/student/prayer', tip: 'prayer' },
+            prayer,
             haftaGunleri,
             today
           )
@@ -7128,7 +7197,7 @@ async function getStudentViewModel(req, currentPage) {
   // once tarih, ayni gun icinde once rutinler (sabah), sonra ders saatleri.
   // Ders saati sirasi baslik metninden degil source_key'deki sayidan gelir —
   // "10. ders" metinsel siralamada "2. ders"in onune duserdi.
-  const RUTIN_SIRA = { wake: 0, sport: 1, ai: 2, yds: 3 };
+  const RUTIN_SIRA = { wake: 0, sport: 1, ai: 2, yds: 3, prayer: 4 };
   const satirSirasi = (satir) => {
     if (satir.isRoutine) return RUTIN_SIRA[satir.routineTur] ?? 4;
     if (isLessonTask(satir.sourceKey)) {

@@ -16,16 +16,17 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
 | **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
 
-> **Rutinler (uyanma, spor, namaz, yapay zeka, YDS) bu tabloda yok —
-> bilinçli.** Çalışma rutinleri görev üretmez: günde tek bir işaret, kendi sayfasında ve pano
-> şeridinde. (19 Eylül'de kaldırılan **YZ programı** görev üreten bir
-> müfredat aktarımıydı; bu onun yerine geçmez, bir rutindir.)
+> **Rutinler (uyanma, spor, namaz, yapay zeka, YDS) görev ÜRETMEZ —
+> bilinçli.** `tasks` kaydı açmazlar; işaretleme kendi sayfalarında olur.
+> (19 Eylül'de kaldırılan **YZ programı** görev üreten bir müfredat
+> aktarımıydı; bu onun yerine geçmez, bir rutindir.)
 >
-> **Namaz için ayrıca:** Günde beş vakit, görev listesine
-> beş satır daha eklemek demekti ve ders görevlerini boğardı. Rutin kendi
-> sayfasında ve panonun tepesindeki şeritte **özet** olarak durur
-> (*"Vaktinde 3 · Kaza 1 · Bekleyen 1"*); işaretleme kendi sayfasında yapılır.
-> Aynı sebeple "Tamamlanan" sayacına da girmez.
+> **Ama Görevlerim tablosunda GÖRÜNÜRLER:** görünüm modeli, rutinlerin günlük
+> kayıtlarından **sahte satırlar** üretir (hafta hafta; bkz. *Rutinler görev
+> listesinde de görünür*). Namaz günde 5 vakit olduğu için **günde tek özet
+> satır** olur (*"2/5 vaktinde · 1 kaza · …"*); işaretleme yine kendi
+> sayfasında. Namaz "Tamamlandı" sayacına yalnızca **beş vaktin de vaktinde
+> kılındığı** günde girer.
 
 Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
 
@@ -1133,9 +1134,8 @@ değişmedi. Dört genişlikte (1440 / 1180 / 1024 / 390px) **sayfa taşması 0*
 
 ### Rutinler görev listesinde de görünür (hafta hafta)
 
-Uyanma, spor, **yapay zeka ve YDS**, panonun tepesindeki şeride **ek olarak**
-"Görevlerim" tablosunda da satır olur. **Namaz hariç** — günde 5 vakit tutar,
-listeyi boğardı; kendi şeridinde/sayfasında kalır.
+Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
+**ek olarak** "Görevlerim" tablosunda da satır olur.
 
 - Satırlar `tasks` kaydı **değildir**; görünüm modelinde üretilen sahte
   satırlardır (`isRoutine: true`, id `routine-<tür>-<gün>`). Tümü
@@ -1143,9 +1143,10 @@ listeyi boğardı; kendi şeridinde/sayfasında kalır.
 - **İçinde bulunulan haftanın (Pzt-Paz) her günü** için bir satır; rutinin
   kurulduğu günden (`createdDay`) ve `SYSTEM_START_DATE`'ten öncesine inmez.
   > Önce yalnızca **bugün** ve yalnızca uyanma/spor gösteriliyordu ("geçmiş
-  > günleri doldurmak listeyi boğar" kaygısıyla). Kullanıcı tüm rutinleri
-  > tarihe göre istedi; hafta penceresi ders görevleriyle aynı, gün gün
-  > başlıklarla okunur, namaz dışarıda tutularak liste yönetilebilir kaldı.
+  > günleri doldurmak listeyi boğar" kaygısıyla). Kullanıcı önce tüm rutinleri
+  > tarihe göre istedi (hafta penceresi, ders görevleriyle aynı, gün gün
+  > başlıklarla); namaz ilk turda dışarıda tutuldu, sonra **günde tek özet
+  > satır** olarak eklendi.
 - **Gün durumuna göre davranır:**
   - **Geçmiş gün:** kilitli, kendi durumuyla (uyanma/spor: Zamanında/Geç/
     Kaçırıldı; YZ/YDS: Yapıldı/Yapılmadı/Telafi). YZ/YDS'de *yapılmadı* günde
@@ -1153,6 +1154,14 @@ listeyi boğardı; kendi şeridinde/sayfasında kalır.
   - **Bugün:** uyanma/spor **satır içi tek dokunuş** ("İşaretle" düğmesi, ilk
     basış geçerli); YZ/YDS üç durumlu olduğu için **"İşaretle →"** bağlantısı.
   - **Gelecek gün:** **"Bekliyor"**, işlem yok.
+- **Namaz `tip: 'prayer'`** ile özel: günde 5 vakit tuttuğu için **tek özet
+  satır**. Durum hücresinde gün kırılımı yazar (*"2/5 vaktinde · 1 kaza ·
+  2 kılınmadı"*, `buildPrayerView` gün özetinden). Satır içi işaretlenmez;
+  **bugün bekleyen vakit varsa "İşaretle →"**, **geçmişte kılınmayan varsa
+  "Kaza →"** kendi sayfasına gider. "Son Saat" sütununda saat yerine
+  *"5 vakit"* (namazın hedef saati yok). **"Tamamlandı" sayılması yalnızca
+  beş vaktin de vaktinde kılındığı günde** olur (seri ölçüsüyle aynı); aksi
+  hâlde nötr (kırmızı yapılmaz).
 - **"Bugünün Özeti" KPI'si (Toplam/Tamamlanan/Bekleyen) yalnızca BUGÜNÜ sayar**
   (`bugunOzet`). Liste artık tüm haftayı gösterdiği için tüm listeyi saymak
   "bugün" etiketiyle çelişirdi; gün bazlı sayaç zaten her gün başlığında.

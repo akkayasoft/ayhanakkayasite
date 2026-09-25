@@ -288,7 +288,9 @@
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.displayStatus?.status === 'done' ? '✓' : task.displayStatus?.status === 'not_done' ? '✕' : '○' %>
                     </span>
-                    <% if (task.isRoutine && task.routineDoneAt) { %>
+                    <% if (task.routinePrayerSummary) { %>
+                    <small class="muted"><%= task.routinePrayerSummary %></small>
+                    <% } else if (task.isRoutine && task.routineDoneAt) { %>
                     <small class="muted"><%= task.routineDoneAt %><% if (task.routineDelay) { %> · <%= task.routineDelay %> dk gecikme<% } %></small>
                     <% } else if (task.displayStatus && !task.displayStatusIsToday) { %>
                     <small class="muted"><%= task.displayStatusDay %></small>
