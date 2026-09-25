@@ -488,6 +488,17 @@ a:hover {
   margin-right: auto;
 }
 
+/* Ayar formlari (tek sutun .stack) icin kontrol genisligini sinirla. Panel
+   760px kalir - ustundeki aciklama metni ve "kayit yok" bos durum kartlari o
+   genislikte iyi okunur - ama tek bir "Ogrenci / Durum" acilir menusunun 700px
+   uzamasi olcekli laptop genisliginde ( or. %125 olcekte ~1093px) dengesiz
+   duruyordu. Kontroller panelin sol kenariyla (baslik + aciklama ile ayni
+   hizada) baslar, sagdan makul bir genislikte biter. Cok sutunlu formlar
+   (.grid) etkilenmez. */
+.panel.narrow form.stack {
+  max-width: 460px;
+}
+
 /* --------------------------------------------------------------------------
    Paneller ve izgara
    -------------------------------------------------------------------------- */
@@ -930,7 +941,51 @@ button.ghost:hover {
   overflow-x: auto;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
+  /* Yatay kaydirma isareti: genis bir tablo (haftalik analiz, namaz gunluk
+     kayitlari) kapsayicisina sigmayinca eskiden sagdan sessizce KESILIYOR ve
+     "tasarim bozuk / kaymis" gibi okunuyordu. Dort katmanli arka plan (Lea
+     Verou tekni gi) kenarlarda yumusak bir golge basar: sol/sag "ortuculer"
+     (yuzey rengi, background-attachment: local) icerikle kayar ve uca gelince
+     golgeyi kapatir; golge katmanlari (scroll) kapsayicinin ucunda sabit
+     durur. Boylece golge YALNIZCA o yonde gizli sutun varken gorunur. Tablonun
+     kendi opak arka plani (asagida) golgenin govdeye tasmasini onler. */
+  background:
+    linear-gradient(to right, var(--surface), rgba(255, 255, 255, 0)) 0 0 / 28px 100% no-repeat,
+    linear-gradient(to left, var(--surface), rgba(255, 255, 255, 0)) 100% 0 / 28px 100% no-repeat,
+    linear-gradient(to right, rgba(13, 30, 69, 0.12), rgba(13, 30, 69, 0)) 0 0 / 12px 100% no-repeat,
+    linear-gradient(to left, rgba(13, 30, 69, 0.12), rgba(13, 30, 69, 0)) 100% 0 / 12px 100% no-repeat,
+    var(--surface);
+  background-attachment: local, local, scroll, scroll;
+  /* Kaydirma cubugu ince ve gorunur olsun (Firefox); WebKit asagida. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Tablo (ve ders cizelgesi panosu) opak arka plan tasir ki kenar golgeleri
+   hucrelerin ARDINA degil yalnizca kaydirilabilir uclara dussun. */
+.table-wrap > table,
+.table-wrap > .board {
   background: var(--surface);
+}
+
+/* WebKit/Blink (Chrome, Edge, Safari): ince, yuvarlak, yuzeyle cerceveli
+   yatay kaydirma cubugu. Windows'ta zaten gorunur; burada inceltilir. */
+.table-wrap::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-pill);
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
 }
 
 /* Tablolar kapsayicilarina SIGAR. Onceden her tabloda min-width: 640px vardi;
@@ -2541,9 +2596,11 @@ tr.day-off td {
     width: auto;
   }
 
-  /* Kart duzeninde tablo zaten sigar; kaydirma cercevesi gereksiz. */
+  /* Kart duzeninde tablo zaten sigar; kaydirma cercevesi ve kenar golgesi
+     gereksiz - golge katmanlari yerine duz yuzey. */
   .table-wrap:has(> .stack-mobile) {
     overflow-x: visible;
+    background: var(--surface);
   }
 }
 
