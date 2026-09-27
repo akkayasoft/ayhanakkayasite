@@ -709,6 +709,58 @@ async function buildWakeView(studentId, gunSayisi = 14) {
   };
 }
 
+/**
+ * HAFTA SERIDI — gorev listelerinin ustunde kayan "Hafta 1 · Hafta 2 …"
+ * seridi ve ileri/geri gezinme icin tek kaynak.
+ *
+ * Numaralar ogretim yilinin BASINDAN sayilir (donem ici degil): kullanici
+ * "Hafta 12"yi arayacaksa yil boyunca tek bir sayi dizisi ariyor.
+ * `academicCalendar.describeWeek` donem ici numara verir ve yarıyıldan sonra
+ * 1'e doner — serit icin yaniltici olurdu, ama etiketin altindaki donem
+ * bilgisi yine oradan gelir.
+ *
+ * Secili hafta ogretim yiline KIRPILIR; parametre yoksa icinde bulunulan
+ * hafta (yil disindaysak yilin ilk/son haftasi). Boylece `?hafta=` ile gelen
+ * gecersiz/uzak bir deger listeyi bos birakmaz.
+ */
+function buildWeekStrip(requestedWeek, today) {
+  const yil = academicCalendar.ACADEMIC_YEAR;
+  const ilkHafta = startOfWeek(yil.start);
+  const sonHafta = startOfWeek(yil.end);
+  const buHafta = startOfWeek(today);
+  const sinirla = (h) => (h < ilkHafta ? ilkHafta : h > sonHafta ? sonHafta : h);
+  const secilen = sinirla(normalizeWeekStart(requestedWeek, null) || buHafta);
+
+  const haftalar = [];
+  let no = 0;
+  for (let hafta = ilkHafta; hafta <= sonHafta; hafta = shiftDate(hafta, 7)) {
+    no += 1;
+    const bitis = shiftDate(hafta, 6);
+    haftalar.push({
+      no,
+      label: `Hafta ${no}`,
+      weekStart: hafta,
+      weekEnd: bitis,
+      academic: academicCalendar.describeWeek(hafta, bitis),
+      isCurrent: hafta === buHafta,
+      isSelected: hafta === secilen,
+      isPast: bitis < today
+    });
+  }
+
+  const sira = haftalar.findIndex((h) => h.isSelected);
+  return {
+    weeks: haftalar,
+    selected: haftalar[sira] || null,
+    weekStart: secilen,
+    weekEnd: shiftDate(secilen, 6),
+    isCurrentWeek: secilen === buHafta,
+    thisWeek: sinirla(buHafta),
+    prevWeek: sira > 0 ? haftalar[sira - 1].weekStart : '',
+    nextWeek: sira >= 0 && sira < haftalar.length - 1 ? haftalar[sira + 1].weekStart : ''
+  };
+}
+
 function normalizeWeekStart(value, fallbackDate = null) {
   if (isDateOnly(value)) return startOfWeek(value);
   if (fallbackDate && isDateOnly(fallbackDate)) return startOfWeek(fallbackDate);
@@ -3327,13 +3379,54 @@ async function getAdminViewModel(req, currentPage) {
   // YALNIZCA BUGUNE KADAR (ileri tarihler gizli — cizelge hafta hafta kurulur)
   // gorunur. Tarihi olmayan (tekrarli) gorevler elenmez. Not: gizlenen ileri
   // ders gorevleri DB'de durur; hepsini "Tum Ders Gorevlerini Sil" temizler.
-  const okulGunu = (t) =>
+  // Liste artik HAFTA HAFTA gezilir: serit ustte, secili haftanin okul
+  // gunleri (Sal/Per/Cum) gosterilir.
+  //
+  // Onceki kural "yalnizca bugune kadar" idi; hafta gezinmesi gelince bu,
+  // ileri bir haftaya gidince listeyi BOS birakiyordu — ozellik bozuk
+  // gorunurdu. Secili hafta artik TAM gosterilir; rutin satirlari yine
+  // bugunu asmaz (yarinin rutini heniz yapilamaz).
+  const weekStrip = buildWeekStrip(normalizeText(req.query.hafta), today);
+  const haftaGunleri = [];
+  const haftaGunleriGecmis = [];
+  for (let g = weekStrip.weekStart; g <= weekStrip.weekEnd; g = shiftDate(g, 1)) {
+    if (!schedule.GUNLER.includes(schedule.dayOfWeek(g))) continue;
+    haftaGunleri.push(g);
+    if (g <= today) haftaGunleriGecmis.push(g);
+  }
+  const haftaIcinde = (t) =>
     !t.singleDate ||
-    (schedule.GUNLER.includes(schedule.dayOfWeek(t.singleDate)) && t.singleDate <= today);
-  const taskTableTasks = (activeTaskStudentId
-    ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
-    : sortedAllTasks
-  ).filter(okulGunu);
+    (t.singleDate >= weekStrip.weekStart &&
+      t.singleDate <= weekStrip.weekEnd &&
+      schedule.GUNLER.includes(schedule.dayOfWeek(t.singleDate)));
+  const kapsamdakiOgrenciler = activeTaskStudentId
+    ? students.filter((st) => st.id === activeTaskStudentId)
+    : students;
+  const adminRutinSatirlari = ['tasks', 'tasks-active'].includes(currentPage)
+    ? await buildAdminRoutineWeekRows(kapsamdakiOgrenciler, haftaGunleriGecmis, today)
+    : [];
+  const RUTIN_SIRA_ADMIN = { wake: 0, sport: 1, ai: 2, yds: 3, prayer: 4 };
+  const adminSatirSirasi = (t) => {
+    if (t.isRoutine) return RUTIN_SIRA_ADMIN[t.routineTur] ?? 4;
+    if (isLessonTask(t.sourceKey)) {
+      const saat = Number(String(t.sourceKey).split(':')[2]);
+      return Number.isFinite(saat) ? 100 + saat : 900;
+    }
+    return 900;
+  };
+  const taskTableTasks = [
+    ...(activeTaskStudentId
+      ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
+      : sortedAllTasks
+    ).filter(haftaIcinde),
+    ...adminRutinSatirlari
+  ].sort(
+    (a, b) =>
+      String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
+      adminSatirSirasi(a) - adminSatirSirasi(b) ||
+      String(a.student ? a.student.name : '').localeCompare(String(b.student ? b.student.name : ''), 'tr') ||
+      String(a.title || '').localeCompare(String(b.title || ''), 'tr')
+  );
   const activeTasks = sortedAllTasks.filter((t) => !t.isArchived);
   const archivedTasks = sortedAllTasks.filter((t) => t.isArchived);
 
@@ -3466,6 +3559,7 @@ async function getAdminViewModel(req, currentPage) {
     activeTasks,
     archivedTasks,
     taskTableTasks,
+    weekStrip,
     taskStatusFixView,
     activeTaskFilters: {
       studentId: activeTaskStudentId
@@ -6838,6 +6932,180 @@ app.post(
  * `view` = buildWakeView / buildSportView / buildStudyView sonucu (rows: en yeni
  * ustte, son N gun). `haftaGunleri` = Pzt..Paz tarih dizisi.
  */
+/**
+ * ADMIN gorev listesi icin rutin satirlari.
+ *
+ * Ogrenci tarafindaki `buildRoutineWeekRows` tek ogrencinin hazir gorunumunu
+ * kullanir; admin listesi ise BIRDEN COK ogrenciyi gosterir. Ogrenci basina
+ * bes gorunum kurmak (5 x N sorgu) yerine her rutin turu icin SECILI HAFTAYA
+ * ve ogrenci kumesine daraltilmis TEK sorgu calisir — toplam bes sorgu,
+ * ogrenci sayisindan bagimsiz.
+ *
+ * Satirlar admin tablosunun sutunlarina gore uretilir (Tarih · Baslik ·
+ * Islenen Konu · Ogrenci · Kategori · Son Saat · Islem) ve satir ici
+ * isaretleme YOKTUR: adminin duzeltmesi kendi "Gunluk Kayitlar" alaninda
+ * yapilir, satir oraya baglanir.
+ */
+async function buildAdminRoutineWeekRows(students, haftaGunleri, today) {
+  if (!students.length || !haftaGunleri.length) return [];
+  const ogrIdler = students.map((st) => st.id);
+  const adById = new Map(students.map((st) => [st.id, st.name]));
+  const ilk = haftaGunleri[0];
+  const son = haftaGunleri[haftaGunleri.length - 1];
+
+  const [wakeR, sportR, aiR, ydsR, prayerR] = await Promise.all([
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.target_time AS "targetTime",
+               r.tolerance_minutes AS "toleranceMinutes", r.created_at AS "createdAt",
+               l.day, l.woke_at AS "at", l.status, l.delay_minutes AS "delay", l.note
+        FROM wake_routines r
+        LEFT JOIN wake_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+      `,
+      [ogrIdler, ilk, son]
+    ),
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.start_time AS "startTime",
+               r.end_time AS "endTime", r.created_at AS "createdAt",
+               l.day, l.done_at AS "at", l.status, l.delay_minutes AS "delay", l.note
+        FROM sport_routines r
+        LEFT JOIN sport_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+      `,
+      [ogrIdler, ilk, son]
+    ),
+    ...['ai', 'yds'].map((k) =>
+      query(
+        `
+          SELECT r.student_id AS "studentId", r.start_time AS "startTime",
+                 r.minutes, r.created_at AS "createdAt",
+                 l.day, l.status, l.actual_minutes AS "actualMinutes",
+                 l.done_at AS "doneAt", l.makeup_at AS "makeupAt"
+          FROM ${STUDY_KINDS[k].routinesTable} r
+          LEFT JOIN ${STUDY_KINDS[k].logsTable} l
+            ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+          WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+        `,
+        [ogrIdler, ilk, son]
+      )
+    ),
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.created_at AS "createdAt",
+               l.day,
+               count(l.id)::int AS tracked,
+               count(l.id) FILTER (WHERE l.status = 'on_time')::int AS "onTime",
+               count(l.id) FILTER (WHERE l.status = 'qada')::int AS qada,
+               count(l.id) FILTER (WHERE l.status = 'missed')::int AS missed
+        FROM prayer_routines r
+        LEFT JOIN prayer_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+        GROUP BY r.student_id, r.created_at, l.day
+      `,
+      [ogrIdler, ilk, son]
+    )
+  ]);
+
+  // Rutinin kuruldugu gun: o gunden oncesi hic takip edilmedi, satir da
+  // uretilmez (ogrenci tarafindaki kuralin aynisi).
+  const tabanlar = new Map();
+  const kayitlar = new Map();
+  const topla = (tur, rows) => {
+    for (const row of rows) {
+      const kuruldu = toDateOnly(row.createdAt) || SYSTEM_START_DATE;
+      const taban = [kuruldu, SYSTEM_START_DATE].sort().pop();
+      tabanlar.set(`${tur}:${row.studentId}`, { taban, ayar: row });
+      const gun = toDateOnly(row.day);
+      if (gun) kayitlar.set(`${tur}:${row.studentId}:${gun}`, row);
+    }
+  };
+  topla('wake', wakeR.rows);
+  topla('sport', sportR.rows);
+  topla('ai', aiR.rows);
+  topla('yds', ydsR.rows);
+  topla('prayer', prayerR.rows);
+
+  const TURLER = [
+    { tur: 'wake', baslik: 'Uyanma Rutini', sira: 0, yol: (id) => `/admin/wake?bolum=kayitlar&wakeStudentId=${id}` },
+    { tur: 'sport', baslik: 'Spor Rutini', sira: 1, yol: (id) => `/admin/sport?bolum=kayitlar&sportStudentId=${id}` },
+    { tur: 'ai', baslik: 'Yapay Zeka Rutini', sira: 2, yol: (id) => `/admin/ai?bolum=kayitlar&aiStudentId=${id}` },
+    { tur: 'yds', baslik: 'YDS Rutini', sira: 3, yol: (id) => `/admin/yds?bolum=kayitlar&ydsStudentId=${id}` },
+    { tur: 'prayer', baslik: 'Namaz Rutini', sira: 4, yol: (id) => `/admin/prayer?bolum=kayitlar&prayerStudentId=${id}` }
+  ];
+
+  const satirlar = [];
+  for (const st of students) {
+    for (const t of TURLER) {
+      const kayit = tabanlar.get(`${t.tur}:${st.id}`);
+      if (!kayit) continue; // o ogrencide bu rutin yok / pasif
+      for (const gun of haftaGunleri) {
+        if (gun < kayit.taban) continue;
+        const r = kayitlar.get(`${t.tur}:${st.id}:${gun}`) || null;
+        const ayar = kayit.ayar;
+
+        let saat = '';
+        let durumMetni = 'Bekliyor';
+        let ayrinti = '';
+        if (t.tur === 'prayer') {
+          const onTime = r ? r.onTime : 0;
+          const qada = r ? r.qada : 0;
+          const missed = r ? r.missed : 0;
+          saat = '5 vakit';
+          const p = [`${onTime}/5 vaktinde`];
+          if (qada) p.push(`${qada} kaza`);
+          if (missed) p.push(`${missed} kılınmadı`);
+          durumMetni = p.join(' · ');
+        } else if (t.tur === 'wake') {
+          const hedef = normalizeEstimatedTimeForDisplay(ayar.targetTime);
+          const tol = Number(ayar.toleranceMinutes) || 0;
+          saat = tol ? `${hedef} (+${tol} dk)` : hedef;
+          durumMetni = r && r.status ? wakeStatusText(r.status) : 'Bekliyor';
+          const basilan = r ? normalizeEstimatedTimeForDisplay(r.at) : null;
+          ayrinti = basilan ? `${basilan}${r.delay ? ` · ${r.delay} dk gecikme` : ''}` : '';
+        } else if (t.tur === 'sport') {
+          saat = `${normalizeEstimatedTimeForDisplay(ayar.startTime)} - ${normalizeEstimatedTimeForDisplay(ayar.endTime)}`;
+          durumMetni = r && r.status ? sportStatusText(r.status) : 'Bekliyor';
+          const basilan = r ? normalizeEstimatedTimeForDisplay(r.at) : null;
+          ayrinti = basilan ? `${basilan}${r.delay ? ` · ${r.delay} dk gecikme` : ''}` : '';
+        } else {
+          const bas = normalizeEstimatedTimeForDisplay(ayar.startTime);
+          const dk = Number(ayar.minutes) || 60;
+          saat = `${bas} - ${studyWindowEnd(bas, dk)}`;
+          durumMetni = r && r.status ? studyStatusText(r.status) : 'Bekliyor';
+          if (r && (r.status === 'done' || r.status === 'makeup')) {
+            // Gercek sure girilmediyse plandan sayildigini soyler.
+            ayrinti = r.actualMinutes === null ? `${dk} dk (plan)` : `${r.actualMinutes} dk`;
+          }
+        }
+
+        const bugun = gun === today;
+        satirlar.push({
+          id: `adm-routine-${t.tur}-${st.id}-${gun}`,
+          isRoutine: true,
+          routineTur: t.tur,
+          routineSira: t.sira,
+          routineHref: t.yol(st.id),
+          singleDate: gun,
+          dateText: bugun ? `${gun} · Bugün` : gun,
+          title: t.baslik,
+          // Admin tablosunda "Islenen Konu" sutunu rutinde DURUMU yazar.
+          description: ayrinti ? `${durumMetni} · ${ayrinti}` : durumMetni,
+          student: { id: st.id, name: adById.get(st.id) || '' },
+          studentId: st.id,
+          category: { name: 'Rutin' },
+          estimatedTime: saat
+        });
+      }
+    }
+  }
+  return satirlar;
+}
+
 function buildRoutineWeekRows(config, view, haftaGunleri, today) {
   const { tur, baslik, endpoint, page, tip } = config;
   if (!view || !view.routine || view.routine.isActive === false) return [];
@@ -7101,8 +7369,11 @@ async function getStudentViewModel(req, currentPage) {
   // penceresi hem o sorunu cozer hem de "bu hafta hangi dersin konusunu
   // yazmadim" sorusunu yanitlar. Digerleri silinmez: takvimde kendi gununde,
   // haftalik analizde ve raporlarda aynen gorunur.
-  const buHaftaBaslangic = startOfWeek(today);
-  const buHaftaBitis = shiftDate(buHaftaBaslangic, 6);
+  // Hafta hafta gezinme (serit ustte). Parametre yoksa icinde bulunulan
+  // hafta; ogretim yili disina kirpilir.
+  const weekStrip = buildWeekStrip(normalizeText(req.query.hafta), today);
+  const buHaftaBaslangic = weekStrip.weekStart;
+  const buHaftaBitis = weekStrip.weekEnd;
 
   // Bu haftanin yazilmis konulari: gorev satirinda YAZILAN KONU gorunsun.
   // Liste yalnizca "1. ders · Matematik" gosteriyordu; ogretmen konuyu
@@ -7252,6 +7523,9 @@ async function getStudentViewModel(req, currentPage) {
   for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) {
     if (g <= today && schedule.GUNLER.includes(schedule.dayOfWeek(g))) haftaGunleri.push(g);
   }
+  // Not: rutin satirlari bugunu asmaz (yukaridaki `g <= today`), ama DERS
+  // satirlari secili haftanin tamaminda gorunur — ileri haftaya bakan
+  // kullanici bos liste gormemeli.
   const rutinSatirlari =
     currentPage === 'dashboard'
       ? [
@@ -7334,11 +7608,16 @@ async function getStudentViewModel(req, currentPage) {
     }
     return 900;
   };
-  // Yalnizca okul gunu (Sal/Per/Cum) ve bugune kadar; ileri tarihli ve okul
-  // disi gunlerdeki gorevler listede gizlenir. Tarihi olmayan satirlar kalir.
+  // SECILI HAFTANIN okul gunleri (Sal/Per/Cum). Tarihi olmayan satirlar
+  // kalir. Onceki kural "yalnizca bugune kadar" idi; hafta gezinmesi gelince
+  // ileri bir haftaya gidince liste BOS kaliyordu. Rutin satirlari zaten
+  // uretilirken bugunle sinirlandi — burada ders satirlarinin haftasi
+  // kirpiliyor.
   const okulGunuSatir = (s) =>
     !s.singleDate ||
-    (schedule.GUNLER.includes(schedule.dayOfWeek(s.singleDate)) && s.singleDate <= today);
+    (schedule.GUNLER.includes(schedule.dayOfWeek(s.singleDate)) &&
+      s.singleDate >= buHaftaBaslangic &&
+      s.singleDate <= buHaftaBitis);
   const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(okulGunuSatir).sort(
     (a, b) =>
       String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
@@ -7371,13 +7650,17 @@ async function getStudentViewModel(req, currentPage) {
     (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
   ).length;
 
-  // "Bugunun Ozeti" KPI'si YALNIZCA BUGUNU sayar: liste artik tum haftayi
-  // (ders gorevleri + rutinler) gosterdigi icin tum listeyi saymak "bugun"
-  // etiketiyle celisirdi. Gun bazli sayac (gunOzeti) zaten her gun basliginda.
-  const bugunSatirlari = listeSatirlari.filter((satir) => (satir.singleDate || today) === today);
-  const bugunOzet = {
-    toplam: bugunSatirlari.length,
-    tamamlanan: bugunSatirlari.filter(
+  // Ozet KPI'si SECILI HAFTAYI sayar. Bir donem yalnizca bugunu sayiyordu;
+  // liste hafta hafta gezilir hale gelince bu iki sekilde de yanlis oldu:
+  // baska bir haftaya bakarken sayac hala bugunu gosteriyordu, bugun okul
+  // gunu degilse (liste yalnizca Sal/Per/Cum) 22 satirin ustunde "0 / 0 / 0"
+  // yaziyordu. Sayac artik ekranda GORUNENI sayar; gun bazli kirilim zaten
+  // her gun basliginda (gunOzeti).
+  const haftaOzet = {
+    label: weekStrip.selected ? weekStrip.selected.label : 'Hafta',
+    buHafta: weekStrip.isCurrentWeek,
+    toplam: listeSatirlari.length,
+    tamamlanan: listeSatirlari.filter(
       (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
     ).length
   };
@@ -7398,9 +7681,10 @@ async function getStudentViewModel(req, currentPage) {
     menuIcons,
     categories,
     activeTasks: listeSatirlari,
+    weekStrip,
     dersGorevBilgi,
     doneCount,
-    bugunOzet,
+    haftaOzet,
     questionEntry: null,
     questionHistory,
     calendar,

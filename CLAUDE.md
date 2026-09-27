@@ -1230,6 +1230,77 @@ değişmedi. Dört genişlikte (1440 / 1180 / 1024 / 390px) **sayfa taşması 0*
 > o sayfalardaki formlar `next="/admin/sport"` göndermesine rağmen kayıttan
 > sonra panoya dönüyordu. Liste tamamlandı.
 
+## Hafta şeridi (görev listeleri hafta hafta gezilir)
+
+Hem **admin Görev Yönetimi** (`/admin/tasks/active`) hem **öğrenci
+Görevlerim** (`/student/dashboard`) listesi artık tek bir haftayı gösterir ve
+hafta hafta ileri/geri gezilir. Seçim `?hafta=YYYY-MM-DD` ile gelir.
+
+- **Tek kaynak `buildWeekStrip(requestedWeek, today)`**: öğretim yılının
+  bütün haftalarını (41) üretir, seçimi **yıla kırpar** ve
+  `{weeks, selected, weekStart, weekEnd, isCurrentWeek, prevWeek, nextWeek}`
+  döner. Geçersiz/eksik/aralık dışı parametre kırılmaz — ölçüldü:
+  `uydurma` → Hafta 2 (içinde bulunulan), `2020-01-01` → Hafta 1,
+  `2030-01-01` → Hafta 41.
+- **Hafta adları SIRALI** (*Hafta 1 … Hafta 41*), `describeWeek`'in
+  **dönem içi** numarası değil: o numara yarıyıl tatilinden sonra 1'e dönüyor
+  ve şeritte iki ayrı "Hafta 1" çıkıyordu. Dönem etiketi chip'in `title`'ında
+  durur.
+- **Şerit yatay kayar** (`.week-strip-track`, `overflow-x: auto`); 41 chip'i
+  sarmak ekranın yarısını içerikten önce harcardı (menü şeridindeki kararın
+  aynısı). Yanlarda önceki/sonraki okları (`.week-nav`), uçlarda `disabled`.
+- **Seçili hafta açılışta görünüme kaydırılır** (`[data-week-selected]`).
+
+> ⚠️ **`offsetLeft` KONUMLANDIRILMIŞ ataya göre ölçer.** Şerit `static`
+> olduğu için dışarıdaki kapsayıcının payı da hesaba giriyordu ve seçili
+> hafta görünümün **dışında** kalıyordu (ölçüldü: öğrenci panosunda 49px
+> sola taştı; admin'de tesadüfen doğru görünüyordu). Kaydırma artık kutu
+> dikdörtgenlerinden hesaplanır (`getBoundingClientRect`), ataya bağlı değil.
+> Ölçüldü: Hafta 27'de chip **tam ortada** (merkez farkı 0px).
+
+> ⚠️ **Ölçüm notu:** chip'in sarıp sarmadığını `getClientRects().length` ile
+> saymak yanıltır — chip metin düğümü + `<small>` taşıdığı için sarmayan bir
+> chip de 3 dikdörtgen döndürür. Yükseklik de yanıltır (hücre dolgusu).
+> Doğru ölçü: chip yüksekliklerinin **tekdüzeliği** ve `scrollWidth >
+> clientWidth`.
+
+- **Admin tarafında rutinler de listeye girer** (`buildAdminRoutineWeekRows`):
+  beş rutin (uyanma, spor, YZ, YDS, namaz) için **toplam beş sorgu**; her biri
+  rutin→kayıt LEFT JOIN'i ile haftaya ve öğrenci kümesine daraltılır, yani
+  **öğrenci sayısından bağımsızdır**. Satırlar admin tablosunun şeklinde
+  üretilir (kategori *"Rutin"*), öğrenci tarafındaki `buildRoutineWeekRows`
+  ile karıştırılmamalı — o listeye değil panoya çalışır.
+- **Sıralama:** tarih → rutin/ders sırası (`RUTIN_SIRA_ADMIN`, sabah rutinleri
+  önce) → öğrenci adı → başlık.
+- **Admin'de rutin satırı düzenlenemez**: toplu seçim kutusu yok, satır içi
+  düzenleme kapalı, *İşlem* sütununda "Sil" yerine **"Kayıtlar"** bağlantısı
+  (rutinin kendi Günlük Kayıtlar paneline gider — düzeltmenin doğru yeri
+  orası). Rutin satırı bir `tasks` kaydı değil; silinecek bir şey yok.
+- Bağlantılar seçili haftayı korur; admin'de `activeTaskStudentId` filtresi de
+  şeritte taşınır.
+
+> ⚠️ **Tarih ve İşlem sütunları `nowrap` olmalı** — sarınca *"Kayıtla / r"* ve
+> *"2026-09- / 22"* gibi anlamsız kırılmalar çıkıyordu. Rutin satırları gelince
+> satır sayısı arttı ve bu her ekranda görünür hale geldi.
+>
+> ⚠️ Ama o iki `nowrap` **metin sütunlarını sıkıştırdı**: 1024px'te Başlık
+> 80px'e düşüp *"Uyan / ma Rutini"*, Öğrenci *"Muham / med"* diye dikey
+> dilimlere bölünüyordu (hücre taşması 0 olduğu için sayılar bunu
+> göstermiyordu — **ekrana bakmak gerekti**). Çözüm analiz ve rutin
+> tablolarındaki kabul edilen desen: `.task-table { min-width: 1080px }`,
+> sarmak yerine kapsayıcı kaydırsın. Telefonda `.stack-mobile` min-width'i
+> zaten 0'a çeker.
+
+Doğrulandı: şeritte 41 chip, *Hafta 2* aktif ve görünüme kaydırılmış; admin
+listesi 29 satır (21 rutin + ders görevleri) tarihe göre sıralı, rutinler
+günün başında; öğrenci listesi 19 satır ve özet *"Hafta 2 Özeti · Bu hafta ·
+19 / 3 / 16"*; Hafta 27'ye gidince özetten *"Bu hafta"* düşüyor. Geçersiz ve
+aralık dışı `?hafta=` kırpılıyor (26 adres **200**). Yetki değişmedi: öğrenci
+→ `/admin/tasks/active` **403**, admin → `/student/dashboard` **403**,
+oturumsuz **302**. 1440 / 1024 / 375px'te **sayfa taşması 0**, hücre taşması
+**0**; 1440'ta admin tablosu (1084px) kapsayıcıya sığar, 1024'te 388px
+kaydırır, telefonda karta döner (kart etiketleri doğru).
+
 ### Rutinler görev listesinde de görünür (hafta hafta)
 
 Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
@@ -1260,9 +1331,14 @@ Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
   *"5 vakit"* (namazın hedef saati yok). **"Tamamlandı" sayılması yalnızca
   beş vaktin de vaktinde kılındığı günde** olur (seri ölçüsüyle aynı); aksi
   hâlde nötr (kırmızı yapılmaz).
-- **"Bugünün Özeti" KPI'si (Toplam/Tamamlanan/Bekleyen) yalnızca BUGÜNÜ sayar**
-  (`bugunOzet`). Liste artık tüm haftayı gösterdiği için tüm listeyi saymak
-  "bugün" etiketiyle çelişirdi; gün bazlı sayaç zaten her gün başlığında.
+- **Özet KPI'si (Toplam/Tamamlanan/Bekleyen) SEÇİLİ HAFTAYI sayar**
+  (`haftaOzet`) ve başlığı da öyle yazar: *"Hafta 2 Özeti · Bu hafta"*.
+  Bir dönem yalnızca bugünü sayıyordu (`bugunOzet`); hafta gezinmesi gelince
+  bu iki şekilde birden yanlış oldu: **başka bir haftaya bakarken sayaç hâlâ
+  bugünü gösteriyordu**, ve bugün okul günü değilse (liste yalnızca
+  Sal/Per/Cum) **19 satırın üstünde "0 / 0 / 0"** yazıyordu — ölçüldü,
+  27 Eylül Pazar. Sayaç artık ekranda göreneni sayar; gün bazlı kırılım zaten
+  her gün başlığında (`gunOzeti`).
 - **Açıklama (not)** yalnızca **uyanma/spor'da ve yalnızca bugün** (kayıt varsa)
   satır içi düzenlenir; `wake_logs.note` / `sport_logs.note`, rota
   `POST /student/routines/:tur/note`. YZ/YDS satırında not düzenlenmez.
@@ -1285,8 +1361,8 @@ geçerli olmaması:
   yanında basılan saat + gecikme (`07:00 · 60 dk gecikme`) var.
 - *Son Saat* sütunu 72px sabit; yatay dolgu düşülünce içeriye **39px** kalıyor.
 
-Çözüm yalnızca **rutin satırlarına** (`.student-task-row.routine-row`)
-kapsandı — normal görev satırlarının `nowrap`'ine dokunulmadı:
+Çözüm önce yalnızca **rutin satırlarına** (`.student-task-row.routine-row`)
+kapsanmıştı — normal görev satırlarının `nowrap`'ine dokunulmadı:
 
 1. İki hücrede `white-space: normal`, ayrıntı (`<small>`) alt satıra.
 2. *Son Saat* değeri **anlamlı yerden** ikiye bölünür: üst satır asıl saat
@@ -1296,6 +1372,13 @@ kapsandı — normal görev satırlarının `nowrap`'ine dokunulmadı:
 3. O hücrenin **sağ dolgusu** 4px'e iner (içerik 39px → 52px) ve ayrıntı
    satırı 12px'e küçülür; böylece `→ 06:30` (49px) tek satırda durur. Sol
    dolgu korunur — saat, görev satırlarındaki saatle aynı hizada başlar.
+
+> ⚠️ **Sonra *Durum* sütununda aynı kural TÜM satırlara açıldı.** Liste
+> haftaya açılınca geçmiş günler de listeleniyor ve görev satırı rozetin
+> yanında durumun yazıldığı günü basıyor (*"✕ 2026-09-22"*). O dal daha önce
+> hiç çalışmıyordu (yalnızca bugün gösteriliyordu), `nowrap` kalınca sütun
+> **11px taşıyordu**. Kural artık `.student-task-table .status-cell`;
+> `.single-line-cell[data-field='estimatedTime']` rutine özel kaldı.
 
 Doğrulandı (1440 / 1180 / 390px, işaretli ve işaretsiz durumda, görev
 satırlarıyla birlikte): hücre taşması **0**, sayfa taşması **0**; görev

@@ -164,9 +164,13 @@
         </section>
         <% } %>
 
-        <p class="section-label">Bugünün Özeti</p>
+        <%# Ozet SECILI HAFTAYA aittir: liste hafta hafta geziliyor, "bugun"
+            etiketi hem baska haftada yaniltiyor hem de bugun okul gunu
+            degilken (liste yalnizca Sal/Per/Cum) dolu listenin ustunde
+            "0 / 0 / 0" yaziyordu. %>
+        <% const _bo = (typeof haftaOzet !== 'undefined' && haftaOzet) ? haftaOzet : { label: 'Hafta', buHafta: false, toplam: activeTasks.length, tamamlanan: doneCount }; %>
+        <p class="section-label"><%= _bo.label %> Özeti<% if (_bo.buHafta) { %> · Bu hafta<% } %></p>
         <section class="kpi-grid">
-          <% const _bo = (typeof bugunOzet !== 'undefined' && bugunOzet) ? bugunOzet : { toplam: activeTasks.length, tamamlanan: doneCount }; %>
           <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.tasks %></span><p class="kpi-label">Toplam Görev</p><p class="kpi-value"><%= _bo.toplam %></p></article>
           <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.check %></span><p class="kpi-label">Tamamlanan</p><p class="kpi-value"><%= _bo.tamamlanan %></p></article>
           <article class="kpi"><span class="kpi-icon" aria-hidden="true"><%- menuIcons.analysis %></span><p class="kpi-label">Bekleyen</p><p class="kpi-value"><%= Math.max(_bo.toplam - _bo.tamamlanan, 0) %></p></article>
@@ -182,6 +186,30 @@
 
         <section class="panel">
           <% if (activeTasks.length) { %>
+          <%# HAFTA SERIDI: ogretim yilinin butun haftalari tek satirda yatay
+              kayar; secili hafta sayfa acilinca gorunume kaydirilir. %>
+          <nav class="week-strip" aria-label="Hafta seçimi">
+            <a class="week-nav <%= weekStrip.prevWeek ? '' : 'disabled' %>" href="/student/dashboard?hafta=<%= weekStrip.prevWeek %>" title="Önceki hafta" aria-label="Önceki hafta">‹</a>
+            <div class="week-strip-track" data-week-track>
+              <% weekStrip.weeks.forEach((h) => { %>
+              <a
+                class="week-chip <%= h.isSelected ? 'active' : '' %> <%= h.isCurrent ? 'current' : '' %>"
+                href="/student/dashboard?hafta=<%= h.weekStart %>"
+                <%= h.isSelected ? 'data-week-selected' : '' %>
+                title="<%= h.weekStart %> - <%= h.weekEnd %><%= h.academic.termLabel ? ' · ' + h.academic.termLabel : '' %>"
+              ><%= h.label %><small><%= h.weekStart.slice(5) %></small></a>
+              <% }) %>
+            </div>
+            <a class="week-nav <%= weekStrip.nextWeek ? '' : 'disabled' %>" href="/student/dashboard?hafta=<%= weekStrip.nextWeek %>" title="Sonraki hafta" aria-label="Sonraki hafta">›</a>
+          </nav>
+          <p class="muted">
+            <strong><%= weekStrip.selected ? weekStrip.selected.label : '' %></strong> ·
+            <%= weekStrip.weekStart %> - <%= weekStrip.weekEnd %><% if (weekStrip.isCurrentWeek) { %> · <span class="day-badge">Bu hafta</span><% } %>
+            <% if (!weekStrip.isCurrentWeek) { %>
+            &nbsp;<a href="/student/dashboard?hafta=<%= weekStrip.thisWeek %>">Bu haftaya dön</a>
+            <% } %>
+          </p>
+
           <div class="datatable-filter-row">
             <div class="datatable-search">
               <label for="studentTaskTitleFilter">Başlık</label>
@@ -1806,6 +1834,30 @@
               }
             });
           }
+        }
+      })();
+    </script>
+
+    <%# Secili hafta seridin gorunmeyen kisminda kalabilir (40+ hafta tek
+        satirda kayiyor). Sayfa acilinca ortaya kaydirilir; betik
+        calismazsa serit yine kullanilir, yalnizca elle kaydirmak gerekir. %>
+    <script>
+      (() => {
+        for (const track of document.querySelectorAll('[data-week-track]')) {
+          const secili = track.querySelector('[data-week-selected]');
+          if (!secili) continue;
+          // scroll-behavior: smooth acik; ilk konumlandirmanin animasyonlu
+          // olmasi gereksiz, o yuzden kapatilip geri aciliyor.
+          const eski = track.style.scrollBehavior;
+          track.style.scrollBehavior = 'auto';
+          // offsetLeft KONUMLANDIRILMIS ataya gore olcer; serit static oldugu
+          // icin disaridaki kapsayicinin payi da iceriye giriyordu ve secili
+          // hafta gorunumun disinda kaliyordu (olculdu: 49px sola tasti).
+          // Kutu dikdortgenleri ataya bagli degil.
+          const tr = track.getBoundingClientRect();
+          const sr = secili.getBoundingClientRect();
+          track.scrollLeft += sr.left - tr.left - (tr.width - sr.width) / 2;
+          track.style.scrollBehavior = eski;
         }
       })();
     </script>

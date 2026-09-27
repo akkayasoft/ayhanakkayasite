@@ -1435,6 +1435,18 @@ td, th {
   padding-right: 0;
 }
 
+/* Tarih ve islem sutunlari kisa ve sabit bicimli; sarmak "2026-09- / 22" ve
+   "Kayitla / r" gibi anlamsiz kirilmalar uretiyordu. Rutin satirlari
+   eklenince satir sayisi artti ve bu her ekranda gorunur hale geldi. */
+.task-table td:nth-child(1),
+.task-table.has-bulk-select td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.task-table td:last-child {
+  white-space: nowrap;
+}
+
 .editable-cell {
   border-radius: var(--radius-sm);
   cursor: text;
@@ -1484,13 +1496,21 @@ td, th {
    sutunu tasiriyordu (olculdu: Son Saat +36px, Durum +55px). Icerik artik
    kisa/sabit bicimli olmadigi icin sarmasi gerekiyor — nowrap kurali zaten
    yalnizca kisa alanlar icindi. */
-.student-task-row.routine-row .single-line-cell[data-field='estimatedTime'],
-.student-task-row.routine-row .status-cell {
+.student-task-row.routine-row .single-line-cell[data-field='estimatedTime'] {
+  white-space: normal;
+}
+
+/* Ayni gerekce DURUM sutununda artik TUM satirlar icin gecerli: liste haftaya
+   acilinca gecmis gunler de listeleniyor ve gorev satiri rozetin yaninda
+   durumun yazildigi gunu basiyor ("✕ 2026-09-22"). Once yalnizca bugun
+   gosterildigi icin bu dal hic calismiyordu; nowrap kalinca sutun 11px
+   tasiyordu. */
+.student-task-table .status-cell {
   white-space: normal;
 }
 
 /* Rozet ile ayrinti alt alta: yan yana dizmek 116px sutuna sigmiyor. */
-.student-task-row.routine-row .status-cell small {
+.student-task-table .status-cell small {
   display: block;
   margin-top: 2px;
 }
@@ -2495,6 +2515,16 @@ tr.day-off td {
   min-width: 820px;
 }
 
+/* Admin gorev tablosu 8 sutun: rutin satirlari eklenince Tarih nowrap oldu ve
+   islem sutununa "Kayitlar" baglantisi girdi; kalan genislik metin sutunlarina
+   yetmeyince 1024px'te Baslik 80px'e dusup "Uyan / ma Rutini", Ogrenci de
+   "Muham / med" diye dikey dilimlere boluniyordu. Analiz ve rutin
+   tablolarindaki kabul edilen desen: sarmak yerine kapsayici kaydirsin.
+   Telefonda .stack-mobile karta cevirir (min-width orada 0). */
+.task-table {
+  min-width: 1080px;
+}
+
 /* Tarih, gun adi ve saat sutunlari kisa ve sabit bicimli; dar masaustunde
    sarmak "202 6-0 9-1 9" / "Cum artes i" gibi dikey dilimler uretiyordu.
    Sarmak yerine kapsayici kaydirsin (analiz tablolarindaki karar). Durum ve
@@ -3021,4 +3051,109 @@ tr.day-off td {
 /* Hero kartinda girdi ve dugme ortalanir (kartin geri kalani gibi). */
 .wake-hero .minute-form {
   justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   Hafta seridi (gorev listelerinin ustunde)
+
+   Ogretim yilinin 40+ haftasi tek satirda YATAY KAYDIRILIR; sarmak
+   listenin ustunu bes satir doldururdu. Secili hafta sayfa acilinca
+   gorunume kaydirilir (asagidaki kucuk betik) — yoksa Mart'taki bir hafta
+   seridin disinda kalip bulunamazdi.
+   -------------------------------------------------------------------------- */
+
+.week-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: var(--sp-4);
+}
+
+.week-strip-track {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+  /* minmax(0) yerine: flex cocugu varsayilan min-width:auto ile tasar ve
+     kaydirma hic devreye girmezdi. */
+  min-width: 0;
+  flex: 1 1 auto;
+  scroll-behavior: smooth;
+}
+
+.week-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.week-chip:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.week-chip small {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Icinde bulunulan hafta, secili olmasa da isaretli: serit icinde "bugun
+   nerede" sorusu tek bakista yanitlanmali. */
+.week-chip.current {
+  border-color: var(--primary);
+}
+
+.week-chip.active,
+.week-chip.active:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.week-chip.active small {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.week-nav {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 11px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.week-nav:hover { background: var(--surface-hover); color: var(--text); text-decoration: none; }
+.week-nav.disabled { opacity: 0.4; pointer-events: none; }
+
+@media (max-width: 640px) {
+  .week-chip { padding: 5px 10px; font-size: 0.75rem; }
+  .week-nav { padding: 0 9px; }
+}
+
+/* Rutin satirinda islem bir baglantidir; dar sutunda kirilmamali. */
+.routine-open {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
