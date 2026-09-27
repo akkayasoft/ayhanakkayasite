@@ -7054,6 +7054,12 @@ async function buildAdminRoutineWeekRows(students, haftaGunleri, today) {
           const p = [`${onTime}/5 vaktinde`];
           if (qada) p.push(`${qada} kaza`);
           if (missed) p.push(`${missed} kılınmadı`);
+          // Bekleyen vakitler SOYLENIR (gecmemis gunde): gun bitmeden
+          // "0/5 vaktinde" yazmak basarisizlik gibi okunuyordu, oysa
+          // vakitler henuz gelmemis olabilir. Ogrenci tarafindaki ozetin
+          // aynisi (buildRoutineWeekRows, tip === 'prayer').
+          const pending = Math.max(5 - onTime - qada - missed, 0);
+          if (pending && gun >= today) p.push(`${pending} bekleyen`);
           durumMetni = p.join(' · ');
         } else if (t.tur === 'wake') {
           const hedef = normalizeEstimatedTimeForDisplay(ayar.targetTime);
@@ -7218,6 +7224,26 @@ function buildRoutineWeekRows(config, view, haftaGunleri, today) {
     // Kapanmis (kilit rozeti gosterilecek) durum: isaretli ve baska islem yok.
     const kilitli = isaretli && !actionHref;
 
+    // DURUM sutununun ayrintisi — admin listesindeki `ayrinti` ile AYNI
+    // bilgi: uyanma/spor'da basilan saat + gecikme, YZ/YDS'de calisilan
+    // dakika (gercek sure girilmediyse plandan sayildigi soylenir).
+    // Onceden ogrenci tarafi bunu hic basmiyordu: sablon yalnizca
+    // `routineDoneAt` varsa saati yaziyor, yoksa genel gorev dalina dusup
+    // TARIHI yaziyordu — "Kacirildi" yerine "2026-09-21", "Telafi edildi ·
+    // 99 dk" yerine "21:03" gorunuyordu.
+    let routineDetay = '';
+    if (tip === 'time') {
+      const basilan = r ? normalizeEstimatedTimeForDisplay(tur === 'wake' ? r.wokeAt : r.doneAt) : null;
+      if (basilan) {
+        routineDetay = `${basilan}${r.delayMinutes ? ` · ${r.delayMinutes} dk gecikme` : ''}`;
+      }
+    } else if (tip === 'study' && r && (durum === 'done' || durum === 'makeup')) {
+      routineDetay =
+        r.actualMinutes === null || r.actualMinutes === undefined
+          ? `${Number(routine.minutes) || 60} dk (plan)`
+          : `${r.actualMinutes} dk`;
+    }
+
     satirlar.push({
       id: `routine-${tur}-${gun}`,
       isRoutine: true,
@@ -7245,6 +7271,7 @@ function buildRoutineWeekRows(config, view, haftaGunleri, today) {
       routineDoneAt: r ? (tur === 'wake' ? r.wokeAt : r.doneAt) || (r.makeupAt || null) : null,
       routineStatus: durum,
       routineStatusText: r && r.statusText ? r.statusText : 'Bekliyor',
+      routineDetay,
       routineDelay: r && r.delayMinutes ? r.delayMinutes : 0,
       displayStatus: displayDurum ? { status: displayDurum, day: gun } : null,
       displayStatusIsToday: bugun,

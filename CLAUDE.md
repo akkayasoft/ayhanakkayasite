@@ -1289,6 +1289,12 @@ hafta hafta ileri/geri gezilir. Seçim `?hafta=YYYY-MM-DD` ile gelir.
   ile karıştırılmamalı — o listeye değil panoya çalışır.
 - **Sıralama:** tarih → rutin/ders sırası (`RUTIN_SIRA_ADMIN`, sabah rutinleri
   önce) → öğrenci adı → başlık.
+- **İki taraf aynı metni göstermeli.** Admin satırını `buildAdminRoutineWeekRows`,
+  öğrenci satırını `buildRoutineWeekRows` üretir — ayrı kodlar, aynı tablolar.
+  Biri değişirse diğeri de değişmeli; ikisinin ayrıldığı her yer kullanıcıya
+  *"yansımıyor"* diye görünür. (Namaz özetindeki *"N bekleyen"* parçası da bu
+  yüzden admine eklendi: gün bitmeden *"0/5 vaktinde"* yazmak başarısızlık
+  gibi okunuyordu, oysa vakitler henüz gelmemişti.)
 - **Admin'de rutin satırı düzenlenemez**: toplu seçim kutusu yok, satır içi
   düzenleme kapalı, *İşlem* sütununda "Sil" yerine **"Kayıtlar"** bağlantısı
   (rutinin kendi Günlük Kayıtlar paneline gider — düzeltmenin doğru yeri
@@ -1388,6 +1394,24 @@ Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
   - **Bugün:** uyanma/spor **satır içi tek dokunuş** ("İşaretle" düğmesi, ilk
     basış geçerli); YZ/YDS üç durumlu olduğu için **"İşaretle →"** bağlantısı.
   - **Gelecek gün:** **"Bekliyor"**, işlem yok.
+- **Durum sütunu rutinin KENDİ rozetidir** (*"Kaçırıldı"*, *"Geç · 09:12 ·
+  192 dk gecikme"*, *"Telafi edildi · 99 dk"*) — admin listesindeki metnin
+  aynısı. Ayrıntı `routineDetay` alanında üretilir: uyanma/spor'da basılan
+  saat + gecikme, YZ/YDS'de çalışılan dakika (gerçek süre girilmediyse
+  *"N dk (plan)"*).
+
+  > ⚠️ **Öğrenci tarafı bunu bir süre hiç basmadı.** Şablon yalnızca
+  > `routineDoneAt` varsa saati yazıyor, yoksa **genel görev dalına** düşüp
+  > durumun yazıldığı **TARİHİ** basıyordu: *"Kaçırıldı"* yerine
+  > *"2026-09-21"*, *"Telafi edildi · 99 dk"* yerine yalnız *"21:03"*.
+  > Kullanıcı bunu *"admin panelinde seçilen öğrencinin yaptığı rutinler
+  > öğrencinin görevlerim listesine yansımıyor"* diye bildirdi — satırlar
+  > aslında oradaydı, **yansımayan şey durum metniydi**. Veri (`statusText`,
+  > `actualMinutes`) iki tarafta da zaten vardı; eksik olan şablondu.
+  > Doğrulandı: iki panelin 35 rutin satırı da **birebir aynı** metni
+  > gösteriyor (FARKLI=0), hem öğrenci yeni işaretlediğinde hem admin elle
+  > yazdığında.
+
 - **Namaz `tip: 'prayer'`** ile özel: günde 5 vakit tuttuğu için **tek özet
   satır**. Durum hücresinde gün kırılımı yazar (*"2/5 vaktinde · 1 kaza ·
   2 kılınmadı"*, `buildPrayerView` gün özetinden). Satır içi işaretlenmez;

@@ -316,10 +316,15 @@
                     <span class="task-state-icon <%= task.displayStatus?.status === 'done' ? 'ok' : task.displayStatus?.status === 'not_done' ? 'bad' : 'idle' %>">
                       <%= task.displayStatus?.status === 'done' ? '✓' : task.displayStatus?.status === 'not_done' ? '✕' : '○' %>
                     </span>
+                    <%# Rutin satirinda DURUM, rutinin KENDI rozetidir
+                        (Kacirildi / Gec / Telafi edildi ...) — admin
+                        listesindeki metnin aynisi. Onceden yalnizca basilan
+                        saat yaziliyordu; basilmamis gunler genel gorev dalina
+                        dusup durum yerine TARIHI basiyordu. %>
                     <% if (task.routinePrayerSummary) { %>
                     <small class="muted"><%= task.routinePrayerSummary %></small>
-                    <% } else if (task.isRoutine && task.routineDoneAt) { %>
-                    <small class="muted"><%= task.routineDoneAt %><% if (task.routineDelay) { %> · <%= task.routineDelay %> dk gecikme<% } %></small>
+                    <% } else if (task.isRoutine) { %>
+                    <small class="muted"><%= task.routineStatusText %><% if (task.routineDetay) { %> · <%= task.routineDetay %><% } %></small>
                     <% } else if (task.displayStatus && !task.displayStatusIsToday) { %>
                     <small class="muted"><%= task.displayStatusDay %></small>
                     <% } %>
