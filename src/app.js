@@ -3543,7 +3543,16 @@ async function getAdminViewModel(req, currentPage) {
     user: req.currentUser,
     currentPage,
     currentSection,
-    menuTree: menu.buildMenuTree(menu.ADMIN_MENU, currentPage, currentSection),
+    // Cizelge sayfasinda secili HAFTA bolum baglantilarinda tasinir; yoksa
+    // bolum degistirmek kullaniciyi icinde bulunulan haftaya geri atiyordu.
+    menuTree: menu.buildMenuTree(
+      menu.ADMIN_MENU,
+      currentPage,
+      currentSection,
+      currentPage === 'schedule' && scheduleView && scheduleView.hafta
+        ? `hafta=${scheduleView.hafta}`
+        : ''
+    ),
     currentSectionLabel: menu.sectionLabel(menu.ADMIN_MENU, currentPage, currentSection),
     menuIcons,
     users,
@@ -7721,7 +7730,14 @@ async function getStudentViewModel(req, currentPage) {
     user: req.currentUser,
     currentPage,
     currentSection,
-    menuTree: menu.buildMenuTree(menu.STUDENT_MENU, currentPage, currentSection),
+    menuTree: menu.buildMenuTree(
+      menu.STUDENT_MENU,
+      currentPage,
+      currentSection,
+      currentPage === 'schedule' && scheduleView && scheduleView.hafta
+        ? `hafta=${scheduleView.hafta}`
+        : ''
+    ),
     currentSectionLabel: menu.sectionLabel(menu.STUDENT_MENU, currentPage, currentSection),
     today,
     menuIcons,

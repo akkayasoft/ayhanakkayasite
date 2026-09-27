@@ -94,7 +94,9 @@ alan görmek istiyorum"*). Sayfanın diğer alanları iki yerden açılır:
    *"hangi alandayım"* sorusunu sayfanın kendi içinde yanıtlar.
 
 - **Tek kaynak `src/menu.js`**: menü satırları, ikonları ve her sayfanın alan
-  listesi orada. Şablon karar vermez — görünüm modeline `menuTree` (aktiflik ve
+  listesi orada. `buildMenuTree(menu, sayfa, bolum, ekSorgu)` — `ekSorgu`
+  sayfa bağlamını (ör. çizelgede `hafta=…`) **aktif sayfanın** bölüm
+  bağlantılarına ekler; bölüm değiştirmek bağlamı düşürmemeli. Şablon karar vermez — görünüm modeline `menuTree` (aktiflik ve
   bağlantılar hesaplanmış), `currentSection` ve `currentSectionLabel` geçer.
 - Alan seçimi **`?bolum=<anahtar>`** ile gelir. Tanımsız ya da geçersiz değer
   **ilk alana düşer**; yani bölümsüz eski bağlantılar (`/admin/wake`) kırılmaz.
@@ -699,10 +701,33 @@ haftalar önceden belli değildir.
   **yalnızca o haftanın** satırlarını döner, artık şablona düşmez; hafta
   verilmezse boş.
 - `/admin/schedule?hafta=YYYY-MM-DD` → o haftanın ızgarası. **Parametre yoksa
-  içinde bulunulan hafta** açılır (eski "şablon modu" gitti). Panelde hafta
-  gezinmesi (Bu hafta / ← Önceki / Sonraki → / tarih seçici); *"Bu Haftayı
+  içinde bulunulan hafta** açılır (eski "şablon modu" gitti). *"Bu Haftayı
   Boşalt"* o haftanın derslerini **ve o haftaya özel zil saatlerini** siler.
-  Öğrenci tarafında da hafta gezinmesi var; varsayılan **bu haftadır**.
+
+> ⚠️ **Hafta seçici SAYFA BAĞLAMIDIR, alan değil** — çizelge sayfasının
+> **her alanında** görünür (Bu hafta / ← Önceki / Sonraki → / tarih seçici),
+> tıpkı öğrenci ve ay seçicisi gibi. Bir dönem yalnızca *"Hafta Seçimi"*
+> alanındaydı: **Haftalık Çizelge, Gün Özeti ve Ders Ekle alanlarında hafta
+> değiştirmenin hiçbir yolu yoktu.** Kullanıcı bunu *"mevcut hafta dışındaki
+> çizelgeleri göremiyorum ve oluşturamıyorum"* diye bildirdi.
+>
+> ⚠️ **İkinci yarısı: bölüm bağlantıları haftayı DÜŞÜRÜYORDU.** `buildMenuTree`
+> bölüm yollarını `?bolum=<anahtar>` olarak üretiyordu; *Hafta Seçimi*'nden
+> başka bir haftaya geçip *Ders Ekle*'ye tıklayan kullanıcı sessizce içinde
+> bulunulan haftaya dönüyordu. `buildMenuTree` artık dördüncü bir `ekSorgu`
+> parametresi alır ve **yalnızca aktif sayfanın** bölüm bağlantılarına ekler
+> (başka menü satırları başka sayfalardır — `/admin/wake?hafta=…` anlamsız
+> olurdu). Aynı sorgu hem kenar çubuğundaki uçan listeye hem içerik
+> sekmelerine işler, çünkü ikisi de `menuTree`'den beslenir.
+>
+> **Sunucu tarafı hep doğruydu**: rota `hafta`yı okuyup o haftaya yazıyor,
+> form da `hafta` + kaçışlı `next` gönderiyordu. Eksik olan tek şey o haftaya
+> **gidebilmekti** — doğrulandı: URL elle yazıldığında ders hep doğru haftaya
+> düşüyordu.
+
+  Öğrenci tarafında da aynısı: hafta gezinmesi önce yalnızca **boş hafta
+  kartında** vardı, yani dersi olan bir haftaya gelince hafta değiştirmek
+  imkânsızdı. O da sayfa bağlamına taşındı; varsayılan **bu haftadır**.
 - Yazma rotalarının hedef haftası (`hedefHafta`) `hafta` gelmezse **içinde
   bulunulan haftadır**. Ders ekleme/yapıştırma o haftaya yazar; kopyalanacak
   şablon olmadığı için `ensureWeekCustomized` yalnızca **işaret** koyar

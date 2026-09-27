@@ -2109,8 +2109,13 @@
             alanda ve ayni haftada kalmali. %>
         <% const haftaSorgu = `?bolum=${currentSection}&hafta=${hf}`; %>
         <% const cizelgeYolu = `/admin/schedule${haftaSorgu}`; %>
-        <% if (currentSection === 'hafta') { %>
-        <section class="panel">
+
+        <%# HAFTA SECICI SAYFA BAGLAMIDIR, ALAN DEGIL — her alanda gorunur.
+            Once yalnizca "Hafta Seçimi" alanindaydi: Haftalık Çizelge, Ders
+            Ekle ve Gün Özeti alanlarinda hafta degistirmenin hicbir yolu
+            yoktu, yani baska bir haftanin cizelgesi ne gorulebiliyor ne de
+            olusturulabiliyordu. (Ogrenci/ay secicisiyle ayni kural.) %>
+        <section class="panel compact-panel">
           <div class="datatable-toolbar">
             <div class="row center">
               <a class="button-link <%= hf === scheduleView.buHafta ? 'active' : '' %>" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
@@ -2124,7 +2129,18 @@
               <button type="submit">Git</button>
             </form>
           </div>
+          <p class="muted">
+            <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong>
+            <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
+              · <%= scheduleView.haftaAkademik.termLabel %><% } %><%
+              if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.weekNo) { %>
+              · <%= scheduleView.haftaAkademik.weekNo %>. hafta<% } %>
+            <% if (hf === scheduleView.buHafta) { %> · <span class="day-badge">Bu hafta</span><% } %>
+          </p>
+        </section>
 
+        <% if (currentSection === 'hafta') { %>
+        <section class="panel">
           <p class="muted">
             <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong>
             <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
@@ -2536,7 +2552,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <section class="panel narrow">
           <h3>Çizelge boş</h3>
           <p class="muted">
-            Önce <a href="/admin/schedule?bolum=cizelge">Çizelge</a> sekmesinden ders programını gir;
+            Önce <a href="/admin/schedule?bolum=cizelge&hafta=<%= tw.weekStart %>">Çizelge</a> sekmesinden ders programını gir;
             konu yazılacak ders saatleri oradan gelir.
           </p>
         </section>

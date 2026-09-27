@@ -1529,10 +1529,32 @@
 
         </header>
 
+        <%# HAFTA SECICI SAYFA BAGLAMIDIR, ALAN DEGIL — her alanda gorunur.
+            Once yalnizca BOS hafta kartinda vardi: dersi olan bir haftaya
+            gelindiginde hafta degistirmenin hicbir yolu kalmiyordu. %>
+        <section class="panel compact-panel">
+          <div class="datatable-toolbar">
+            <div class="row center">
+              <a class="button-link <%= scheduleView.hafta === scheduleView.buHafta ? 'active' : '' %>" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.oncekiHafta %>">← Önceki</a>
+              <a class="button-link" href="/student/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.sonrakiHafta %>">Sonraki →</a>
+            </div>
+            <form method="get" action="/student/schedule" class="row center">
+              <input type="hidden" name="bolum" value="<%= currentSection %>" />
+              <label for="studentScheduleWeek">Hafta</label>
+              <input id="studentScheduleWeek" type="date" name="hafta" value="<%= scheduleView.hafta %>" />
+              <button type="submit">Git</button>
+            </form>
+          </div>
+          <p class="muted">
+            <strong><%= scheduleView.hafta %> - <%= scheduleView.haftaSonu %></strong>
+            <% if (scheduleView.hafta === scheduleView.buHafta) { %> · <span class="day-badge">Bu hafta</span><% } %>
+          </p>
+        </section>
+
         <%# Bos hafta ile "hic program yok" ayni sey degil: cizelge haftadan
             haftaya degisebildigi icin bir hafta bilerek bos birakilmis
-            olabilir. Ikisini ayri soyluyoruz ve her durumda hafta gezinmesi
-            duruyor — yoksa bos bir haftada kullanici sikisip kalirdi. %>
+            olabilir. Ikisini ayri soyluyoruz. %>
         <% if (!scheduleView.varMi) { %>
         <section class="panel">
           <div class="datatable-toolbar">
