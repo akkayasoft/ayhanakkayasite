@@ -2491,8 +2491,32 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               senkron();
             })();
           </script>
+
+          <%# BASKA BIR HAFTADAN KOPYALA. Varsayilan sablon kaldirilinca her
+              hafta bostan basliyor; ayni cizelgeyi her hafta elle girmek
+              gerekiyordu. Kopyalama kurali bozmaz — hicbir hafta kendiliginden
+              dolmaz, admin acikca "su haftadan kopyala" der. %>
+          <% if (scheduleView.kopyalanabilirHaftalar && scheduleView.kopyalanabilirHaftalar.length) { %>
+          <form method="post" action="/admin/schedule/copy" class="row center wrap">
+            <input type="hidden" name="next" value="<%= cizelgeYolu %>" />
+            <input type="hidden" name="hafta" value="<%= hf %>" />
+            <label for="kopyaKaynak">Bu haftaya kopyala:</label>
+            <select id="kopyaKaynak" name="kaynak" required>
+              <% scheduleView.kopyalanabilirHaftalar.forEach((k) => { %>
+              <option value="<%= k.weekStart %>"><%= k.weekStart %> (<%= k.ders %> ders)</option>
+              <% }) %>
+            </select>
+            <button type="submit">Çizelgeyi Kopyala</button>
+          </form>
+          <p class="muted">
+            Seçilen haftanın dersleri ve zil saatleri bu haftaya eklenir.
+            <strong>Dolu hücrelere dokunulmaz</strong> — haftanın tamamını
+            değiştirmek istersen önce <em>Bu Haftayı Boşalt</em>.
+          </p>
+          <% } %>
         </section>
         <% } %>
+
 
         <% if (currentSection === 'ozet') { %>
         <section class="panel">

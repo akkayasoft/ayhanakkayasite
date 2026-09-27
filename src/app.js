@@ -1975,6 +1975,26 @@ async function getScheduleEntries(weekStart = null) {
 }
 
 /**
+ * Icinde DERS olan haftalar (eskiden kalma sablon satirlari HARIC), yeniden
+ * kullanilabilsin diye: "bu haftaya su haftanin cizelgesini kopyala".
+ * En yeniden eskiye siralanir — kullanici cogu zaman en son girdigi haftayi
+ * kopyalar.
+ */
+async function getWeeksWithSchedule() {
+  const res = await query(
+    `
+      SELECT week_start AS "weekStart", count(*)::int AS ders
+      FROM class_schedule
+      WHERE week_start <> $1
+      GROUP BY week_start
+      ORDER BY week_start DESC
+    `,
+    [SABLON_HAFTA]
+  );
+  return res.rows.map((r) => ({ weekStart: toDateOnly(r.weekStart), ders: r.ders }));
+}
+
+/**
  * Ogretim yilindaki TUM ozellestirilmis haftalar: weekStart -> kayitlar.
  * Bos ozel haftalar da haritaya BOS DIZI olarak girer — yoksa defter
  * hesabinda sablona duserlerdi.
@@ -2761,6 +2781,12 @@ async function buildScheduleView(req) {
     `SELECT id, name, is_teacher AS "isTeacher" FROM users WHERE role = 'student' ORDER BY name`
   );
 
+  // "Bu haftaya su haftanin cizelgesini kopyala" listesi: icinde ders olan
+  // haftalar, bu haftanin kendisi HARIC (kendine kopyalamak anlamsiz).
+  const kopyalanabilirHaftalar = (await getWeeksWithSchedule()).filter(
+    (h) => h.weekStart !== hafta
+  );
+
   return {
     gorunum,
     topicWeek,
@@ -2781,6 +2807,7 @@ async function buildScheduleView(req) {
     sonrakiHafta: shiftDate(hafta, 7),
     buHafta: startOfWeek(bugun),
     ozelHafta: haftaBilgi.ozel,
+    kopyalanabilirHaftalar,
     haftaAkademik: academicCalendar.describeWeek(hafta, shiftDate(hafta, 6)),
     ogrenciler: ogrenciler.rows,
     bitisSaati: schedule.endOfDay(ayar),
@@ -4856,6 +4883,120 @@ app.post(
       [toDateOnly(r.weekStart), r.dayOfWeek, r.period]
     );
     return adminRedirect(req, res, { message: 'Ders kaydı silindi.' });
+  })
+);
+
+// BASKA BIR HAFTADAN KOPYALA.
+//
+// Varsayilan sablon kaldirilinca her hafta bostan basliyor ve ayni 29 dersi
+// her hafta elle girmek gerekiyordu. Kopyalama kurali BOZMAZ — hicbir hafta
+// kendiliginden dolmaz, admin acikca "su haftadan kopyala" der.
+//
+// DOLU HUCRELER KORUNUR (uzerine yazilmaz) ve kac tanesinin atlandigi
+// soylenir; toplu gorev eklemedeki kararin aynisi. Haftanin tamamini
+// degistirmek isteyen once "Bu Haftayi Bosalt" der — iki islem birlesir,
+// tek bir islem ikisini birden yapmaz.
+app.post(
+  '/admin/schedule/copy',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const hedef = hedefHafta(req.body);
+    const ham = normalizeText(req.body.kaynak);
+    const kaynak = isDateOnly(ham) ? startOfWeek(ham) : null;
+
+    if (!kaynak) {
+      return adminRedirect(req, res, { error: 'Kopyalanacak hafta seçilmedi.' });
+    }
+    if (kaynak === hedef) {
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta aynı.' });
+    }
+    // Eskiden kalma sablon satirlari kopyalanamaz: 7 gunluk ve artik
+    // gecersiz bir duzen tasiyorlar (bkz. SABLON_HAFTA).
+    //
+    // ⚠️ HAM degerle karsilastirilir: startOfWeek('1900-01-01') pazartesiye
+    // kaydirip '1899-12-31' yapiyor, yani `kaynak` ile karsilastirmak hic
+    // tutmuyordu (olculdu: koruma yerine "1899-12-31 haftasinda ders yok"
+    // mesaji cikiyordu — sonuc yine rettti ama gerekce yanlisti).
+    if (ham === SABLON_HAFTA || kaynak === startOfWeek(SABLON_HAFTA)) {
+      return adminRedirect(req, res, { error: 'Eski şablon haftası kopyalanamaz.' });
+    }
+
+    const client = await pool.connect();
+    let eklenen = 0;
+    let atlanan = 0;
+    let saat = 0;
+    try {
+      await client.query('BEGIN');
+      const kaynakSatirlar = await client.query(
+        `
+          SELECT day_of_week, period, subject, class_name, room, kind, term
+          FROM class_schedule
+          WHERE week_start = $1
+          ORDER BY day_of_week, period
+        `,
+        [kaynak]
+      );
+      if (!kaynakSatirlar.rowCount) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: `${kaynak} haftasında ders yok.` });
+      }
+
+      // Hedef hafta "girildi" olarak isaretlenir; yoksa bos birakilan bir
+      // hafta ile hic girilmemis hafta ayirt edilemezdi.
+      await ensureWeekCustomized(client, hedef);
+
+      for (const r of kaynakSatirlar.rows) {
+        const ekle = await client.query(
+          `
+            INSERT INTO class_schedule
+              (id, week_start, term, day_of_week, period, subject, class_name, room, kind)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            ON CONFLICT (week_start, term, day_of_week, period) DO NOTHING
+          `,
+          [
+            makeId('sch'),
+            hedef,
+            r.term,
+            r.day_of_week,
+            r.period,
+            r.subject,
+            r.class_name,
+            r.room,
+            r.kind
+          ]
+        );
+        if (ekle.rowCount) {
+          eklenen += 1;
+          // O hucrenin ZIL SAATI de gelir: Ders Ekle saati zorunlu kildigi
+          // icin saatsiz kopyalanan hucre hesaplanan varsayilana duserdi,
+          // yani yanlis saat gosterirdi.
+          const zil = await client.query(
+            `
+              INSERT INTO period_times (week_start, day_of_week, period, start_time, end_time)
+              SELECT $1, day_of_week, period, start_time, end_time
+              FROM period_times
+              WHERE week_start = $2 AND day_of_week = $3 AND period = $4
+              ON CONFLICT (week_start, day_of_week, period) DO NOTHING
+            `,
+            [hedef, kaynak, r.day_of_week, r.period]
+          );
+          saat += zil.rowCount || 0;
+        } else {
+          atlanan += 1;
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const parcalar = [`${kaynak} → ${hedef}: ${eklenen} ders kopyalandı`];
+    if (saat) parcalar.push(`${saat} zil saati`);
+    if (atlanan) parcalar.push(`${atlanan} hücre zaten doluydu, atlandı`);
+    return adminRedirect(req, res, { message: `${parcalar.join(' · ')}.` });
   })
 );
 

@@ -733,6 +733,48 @@ haftalar önceden belli değildir.
   şablon olmadığı için `ensureWeekCustomized` yalnızca **işaret** koyar
   (`schedule_week_overrides`), kopya yapmaz.
 
+### Başka bir haftadan kopyala
+
+Şablon kalkınca her hafta **boştan başlıyor** ve aynı çizelgeyi her hafta elle
+girmek gerekiyordu (canlıda 29 ders). `POST /admin/schedule/copy` — GAP MTAL →
+**Haftalık Çizelge** alanının altında, ızgaranın hemen ardında: *"Bu haftaya
+kopyala: &lt;hafta&gt; (N ders)"*.
+
+- **Kural bozulmaz:** hiçbir hafta kendiliğinden dolmaz; admin açıkça *"şu
+  haftadan kopyala"* der. Gelecek haftalar yine önceden belli değildir.
+- **Dolu hücreler KORUNUR** (`ON CONFLICT DO NOTHING`) ve kaç tanesinin
+  atlandığı söylenir — toplu görev eklemedeki kararın aynısı. Haftanın
+  tamamını değiştirmek isteyen önce *"Bu Haftayı Boşalt"* der; **tek işlem
+  ikisini birden yapmaz** (sessizce üzerine yazmak veri kaybı olurdu).
+- **Zil saatleri de gelir**: Ders Ekle saati zorunlu kıldığı için saatsiz
+  kopyalanan hücre hesaplanan varsayılana düşer, yani **yanlış saat**
+  gösterirdi. Yalnızca gerçekten kopyalanan hücrelerin saati yazılır.
+- Hedef hafta `ensureWeekCustomized` ile **"girildi"** işaretlenir.
+- Kaynak listesi `getWeeksWithSchedule()` — içinde ders olan haftalar, eski
+  şablon (`SABLON_HAFTA`) **hariç**, yeniden eskiye. Hedef haftanın kendisi
+  listeden çıkarılır.
+- Reddedilenler: kaynak seçilmemiş, kaynak = hedef, eski şablon haftası,
+  içinde ders olmayan hafta.
+
+> ⚠️ **Eski şablon koruması HAM değerle karşılaştırılır.**
+> `startOfWeek('1900-01-01')` pazartesiye kaydırıp `1899-12-31` yapıyor, yani
+> `kaynak === SABLON_HAFTA` hiç tutmuyordu — ölçüldü: koruma yerine
+> *"1899-12-31 haftasında ders yok"* çıkıyordu (sonuç yine retti ama gerekçe
+> yanlıştı, koruma ölü koddu).
+
+> ⚠️ **Form yalnızca `cizelge` alanında.** İlk denemede *Gün Özeti*'nin içine
+> düştü (orada görünmedi bile), ikinci denemede üç alanda birden çıktı —
+> *"her sayfa TEK ALAN gösterir"* kuralına aykırı. Yeri, boş ızgaranın
+> görüldüğü alandır.
+
+Doğrulandı (tarayıcıda, Hafta 1 boşken): *"2026-09-21 → 2026-09-14: 3 ders
+kopyalandı · 2 zil saati."* — ızgara doldu, **kaynak hafta değişmedi**.
+İkinci basış *"0 ders kopyalandı · 3 hücre zaten doluydu, atlandı"* dedi.
+Kaynak = hedef, eski şablon (`1900-01-01`), boş hafta ve geçersiz kaynak
+**reddedildi**; hiçbiri veritabanına yazmadı. Nöbet satırı `kind='duty'`
+olarak, sınıfsız hücre boş sınıfla kopyalandı. Öğrenci **403**, oturumsuz
+**302**. 1440 / 375px'te taşma 0.
+
 > ⚠️ **"Girildi" işareti hâlâ ders satırlarından AYRI** (`schedule_week_overrides`).
 > Şablon kalksa da işaret **"bu hafta bilerek boş (ders yok)"** ile **"hiç
 > girilmedi"** ayrımını korur: öğrenci sayfası işaretli boş haftada *"Bu hafta
