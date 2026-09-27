@@ -160,6 +160,7 @@ const ADMIN_MENU = [
 
 const STUDENT_MENU = [
   { key: 'dashboard', label: 'Görevlerim', icon: 'tasks', href: '/student/dashboard' },
+  { key: 'new-task', label: 'Görev Ekle', icon: 'newTask', href: '/student/new-task' },
   { key: 'calendar', label: 'Haftalık Takvim', icon: 'schedule', href: '/student/calendar' },
   {
     key: 'program',

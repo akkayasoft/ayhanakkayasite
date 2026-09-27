@@ -15,6 +15,7 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 | **Uyanma rutini** | günlük tek dokunuş, basılan saat | sahte satır (`tasks` kaydı değil) |
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
 | **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
+| **Öğrencinin kendi açtığı görev** | *Görev Ekle* sayfası; tek gün ya da N güne birden | `tasks`, `created_by = student_id`, `source_key` yok |
 
 > **Rutinler (uyanma, spor, namaz, yapay zeka, YDS) görev ÜRETMEZ —
 > bilinçli.** `tasks` kaydı açmazlar; işaretleme kendi sayfalarında olur.
@@ -35,9 +36,13 @@ Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
 - **YDS çalışma programı** (`ydsp:` görevleri) ve **yds.obs ilerleme aynası**
   (senkron, `yds_days` / `yds_sync` / `yds_program_settings` tabloları,
   `yds:` kaynaklı soru kayıtları, YDS Takibi sayfası).
-- **Elle görev açma**: admin "Görev Oluştur" / "Görev Güncelle" (toplu) /
-  "Haftayı Kopyala" sayfaları ve öğrenci "Görev Ekle" sayfası; ilgili rotalar.
-  Görev Yönetimi'nde **Tüm Görevler** ve **Durum Düzelt** sekmeleri kaldı.
+- **Elle görev açma — ADMİN tarafı**: "Görev Oluştur" / "Görev Güncelle"
+  (toplu) / "Haftayı Kopyala" sayfaları ve ilgili rotalar. Görev
+  Yönetimi'nde **Tüm Görevler** ve **Durum Düzelt** sekmeleri kaldı.
+
+  > ⚠️ **Öğrenci tarafı GERİ GELDİ** (27 Eylül): kullanıcı *"elle görev
+  > ekleyebilmeyi aktif et tekrardan öğrenci için"* dedi. Bkz. *Görev Ekle
+  > (öğrenci)*. Admin tarafı hâlâ kapalı.
 
 > Temizlik `db.js` içinde **idempotent** bir migration olarak duruyor: her
 > açılışta `yz:` / `ydsp:` görevlerini, `yds:` ayna soru kayıtlarını ve boşalan
@@ -135,7 +140,8 @@ düşüyor; zil saatleri / ders ekleme / zil çizelgesi kayıtları kendi alanla
 dönüyor; uçan liste 11 alanı ekran içinde açıyor (y 106-514, taşma yok);
 1440 ve 390px'te sayfa taşması **0**, konsol hatası yok.
 
-Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `calendar`,
+Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle),
+`calendar`,
 `program` (Yıllık Plan — hafta hafta), `questions`, `wake` (Uyanma Rutini),
 `sport` (Spor Rutini), `schedule` (Ders Programı — **salt okunur**),
 `goals` (Aylık Hedefler). Yeni bir öğrenci sayfası eklerken `/student/:page`
@@ -988,18 +994,29 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
   açılır; hepsi listede dursaydı sayfa kullanılamazdı.)
 
-  > ⚠️ **Görev listeleri yalnızca Sal/Per/Cum ve YALNIZCA BUGÜNE KADAR
-  > gösterir.** Hem admin **Tüm Görevler** (`taskTableTasks`, `okulGunu`) hem
-  > öğrenci **Görevlerim** (`listeSatirlari` + `haftaGunleri`, `okulGunuSatir`)
-  > tarihli satırları `schedule.GUNLER.includes(dayOfWeek) && singleDate <=
-  > today` ile süzer; **ileri tarihli** ve **okul dışı gün** (Pzt/Çar/hafta
-  > sonu) görevleri **listede gizlenir** (silinmez — DB'de durur, diğer
-  > görünümlerde çıkar). Öğrenci tarafında rutin sahte satırları da yalnızca bu
-  > günler için üretilir (`haftaGunleri` filtresi). Tarihi olmayan (tekrarlı)
-  > görevler elenmez. Kullanıcı çizelgeyi **hafta hafta** kurup ileriyi
-  > doldurmak istediği için gelecek görünmemeli; geçmiş okul günleri kalır.
-  > Doğrulandı: 09-21 Pzt ve 09-29 (gelecek Sal) gizli, 09-22/24/25
-  > (Sal/Per/Cum, bugüne kadar) görünür; 1440/390px taşma 0.
+  > ⚠️ **Görev listeleri SEÇİLİ HAFTANIN TÜM GÜNLERİNİ gösterir** (Pzt-Paz).
+  > Bir dönem `schedule.GUNLER` (Sal/Per/Cum) listelere de dayatılıyordu ve
+  > kullanıcı *"görev listesinde sadece salı perşembe ve cuma görünüyor, tüm
+  > günler görünmeli"* dedi. Filtre **kaldırıldı**: `GUNLER` *ders
+  > çizelgesinin* kuralıdır, oysa görev listesinde rutinler, öğrencinin elle
+  > açtığı görevler ve tekrarlı görevler de var — onların haftanın her günü
+  > olması normal. `GUNLER` çizelge/defter/ders görevi tarafında **aynen
+  > duruyor**.
+  >
+  > Kalan tek kırpma **hafta**dır (`haftaIcinde` / `haftaIcindeSatir`);
+  > tarihi olmayan (tekrarlı) görevler elenmez. **Rutin satırları bugünü
+  > aşmaz** (`g <= today`) — yarının rutini henüz yapılamaz; ders ve elle
+  > açılan görevler seçili haftanın tamamında görünür.
+  > Doğrulandı: liste 09-21 Pazartesi'den 09-27 Pazar'a **yedi gün başlığı**
+  > gösteriyor (önce üç gündü); 1440/375px taşma 0.
+
+  > ⚠️ **Bu değişiklik gizli bir kusuru açtı:** *Tarih* sütunu 124px sabit ve
+  > `nowrap` (tarih kısa/sabit biçimli), ama bugünün satırında metin
+  > *"2026-09-27 · Bugün"* olup hücreyi **16px taşırıyordu**. Bugün çoğu gün
+  > listede hiç olmadığı için görünmüyordu. Rozet artık tarih metninden
+  > **ayrılıp** alt satıra iniyor (`scheduleText`ten söküldü, şablon
+  > `task.gunBugun` ile basıyor) — rutin *Son Saat* hücresindeki kararın
+  > aynısı.
 
   > **Tüm Ders Görevlerini Sil** (`POST /admin/schedule/tasks/delete-all`,
   > `requireRole('admin')`): tarih/öğrenci ayrımı yapmadan bütün `ders:%`
@@ -1300,6 +1317,54 @@ aralık dışı `?hafta=` kırpılıyor (26 adres **200**). Yetki değişmedi: �
 oturumsuz **302**. 1440 / 1024 / 375px'te **sayfa taşması 0**, hücre taşması
 **0**; 1440'ta admin tablosu (1084px) kapsayıcıya sığar, 1024'te 388px
 kaydırır, telefonda karta döner (kart etiketleri doğru).
+
+### Görev Ekle (öğrenci)
+
+`/student/new-task` → **Görev Ekle**. Öğrenci kendi görevini açar; `tasks`
+kaydı gerçek, `created_by = student_id` ve `repeat_type = 'once'`.
+
+- **İki plan tipi:** *tek gün*, ya da *birden çok gün* — aynı başlık N güne
+  (1-180) her güne bir görev olarak açılır. Toplu ekleme **tek
+  transaction**tır ve zaten var olan günleri **atlar** (aralık tek sorguda
+  okunur), form ikinci kez gönderilirse kopya açılmaz; mesaj kaç tanesinin
+  atlandığını söyler.
+- **Son saat opsiyoneldir** ve anlamı görevlerdekiyle aynı: girilirse o saatte
+  kilitlenir ve işaretlenmemişse kalıcı olarak `not_done` olur; boşsa son
+  teslim gün sonudur (23:59). Form bunu yazıyor.
+- **Sistem taban tarihinden önceye açılamaz** — `purgeBeforeSystemStart` o
+  kayıtları her açılışta silerdi, yani görev sessizce kaybolurdu.
+- Kayıttan sonra `hafta` parametresiyle listeye dönülür: eklenen görev
+  **kendi haftasında** açılır, kullanıcı onu aramak zorunda kalmaz.
+- Plan tipine göre alan gösterme **ilerlemeli**: betik çalışmazsa iki blok da
+  görünür ve form yine çalışır — sunucu `planningMode`'a bakar, gizleme
+  yalnızca görseldir.
+
+**Listede farkı `canManage`:** kendi açtığı görevde başlık, kategori ve tarih
+satır içi düzenlenebilir ve **silinebilir**; ders görevlerinde (created_by =
+admin) bunlar kapalıdır. Kilit kuralı aynen geçerli — işaretlenmiş ya da
+süresi dolmuş görev ne düzenlenir ne silinir.
+
+> ⚠️ **Silme rotası da geri getirildi** (`POST /student/tasks/:taskId/delete`).
+> Yalnızca ekleme geri gelseydi yanlış açılan bir görev silinemez ve gün
+> sonunda kalıcı olarak *"Yapılmadı"* mühürlenirdi. `DELETE` koşulu
+> `canManage` ile aynı: `created_by = student_id AND repeat_type = 'once' AND
+> is_archived = false`.
+
+> Sayfa **iki yerde birden** tanımlanır: `/student/:page` içindeki
+> `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi. İkisi birlikte
+> güncellenmezse ya sayfa açılmaz ya da form kayıttan sonra panoya fırlar.
+> Menü ikonu `newTask` (daire + artı) `menuIcons.js`'e geri eklendi — puan
+> sistemiyle birlikte silinmişti.
+
+Doğrulandı: tek gün ve 3 günlük toplu ekleme **kaydediliyor**
+(`created_by = student_id`); aynı gün aynı başlık, boş başlık, boş/olmayan
+kategori, geçersiz tarih, taban öncesi gün (**2026-09-14**), geçersiz plan
+tipi, gün sayısı 0 ve 999, geçersiz saat **reddedildi** ve hiçbiri DB'ye
+sızmadı (0 kayıt). Kendi bugünkü görevinde başlık/açıklama düzenleme **200**,
+silme **"Görev silindi"**; kilitli geçmiş görevde düzenleme **403** ve silme
+reddedildi; ders görevi ve olmayan görev silinemedi; ikinci silme reddedildi.
+Admin → `/student/new-task` ve silme **403**, oturumsuz **302**. 27 adres
+**200**; 1440 / 375px'te taşma 0, plan tipi geçişi çalışıyor.
 
 ### Rutinler görev listesinde de görünür (hafta hafta)
 

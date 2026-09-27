@@ -178,7 +178,7 @@ function normalizeEstimatedTimeForStorage(value) {
   const timeValue = normalizeText(value);
   if (!timeValue) return { ok: true, value: null };
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) {
-    return { ok: false, error: 'Tahmini saat HH:MM formatında olmalı.' };
+    return { ok: false, error: 'Son saat HH:MM formatında olmalı.' };
   }
   return { ok: true, value: timeValue };
 }
@@ -2838,7 +2838,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport|prayer|ai|yds)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|program|wake|schedule|goals|sport|prayer|ai|yds)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -3375,30 +3375,25 @@ async function getAdminViewModel(req, currentPage) {
   const sortedAllTasks = [...tasks]
     .sort(compareTasksBySchedule)
     .map((task) => ({ ...task, ...dersGorevAyrinti(task) }));
-  // Gorev listesinde YALNIZCA okul gunleri (Sal/Per/Cum — schedule.GUNLER) ve
-  // YALNIZCA BUGUNE KADAR (ileri tarihler gizli — cizelge hafta hafta kurulur)
-  // gorunur. Tarihi olmayan (tekrarli) gorevler elenmez. Not: gizlenen ileri
-  // ders gorevleri DB'de durur; hepsini "Tum Ders Gorevlerini Sil" temizler.
-  // Liste artik HAFTA HAFTA gezilir: serit ustte, secili haftanin okul
-  // gunleri (Sal/Per/Cum) gosterilir.
+  // Liste HAFTA HAFTA gezilir: serit ustte, SECILI HAFTANIN TUM GUNLERI
+  // (Pzt-Paz) gosterilir. Tarihi olmayan (tekrarli) gorevler elenmez.
   //
-  // Onceki kural "yalnizca bugune kadar" idi; hafta gezinmesi gelince bu,
-  // ileri bir haftaya gidince listeyi BOS birakiyordu — ozellik bozuk
-  // gorunurdu. Secili hafta artik TAM gosterilir; rutin satirlari yine
-  // bugunu asmaz (yarinin rutini heniz yapilamaz).
+  // ⚠️ Bir donem liste yalnizca schedule.GUNLER (Sal/Per/Cum) gunlerini
+  // gosteriyordu — cizelgenin ders gunleri listeye de dayatiliyordu. Ama
+  // GUNLER *ders cizelgesinin* kurali; gorev listesinde rutinler, elle
+  // acilan gorevler ve tekrarli gorevler de var ve onlarin haftanin her
+  // gunu olmasi normal. Filtre kaldirildi; GUNLER cizelge/defter tarafinda
+  // aynen duruyor.
   const weekStrip = buildWeekStrip(normalizeText(req.query.hafta), today);
   const haftaGunleri = [];
   const haftaGunleriGecmis = [];
   for (let g = weekStrip.weekStart; g <= weekStrip.weekEnd; g = shiftDate(g, 1)) {
-    if (!schedule.GUNLER.includes(schedule.dayOfWeek(g))) continue;
     haftaGunleri.push(g);
     if (g <= today) haftaGunleriGecmis.push(g);
   }
   const haftaIcinde = (t) =>
     !t.singleDate ||
-    (t.singleDate >= weekStrip.weekStart &&
-      t.singleDate <= weekStrip.weekEnd &&
-      schedule.GUNLER.includes(schedule.dayOfWeek(t.singleDate)));
+    (t.singleDate >= weekStrip.weekStart && t.singleDate <= weekStrip.weekEnd);
   const kapsamdakiOgrenciler = activeTaskStudentId
     ? students.filter((st) => st.id === activeTaskStudentId)
     : students;
@@ -7516,12 +7511,12 @@ async function getStudentViewModel(req, currentPage) {
   // Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu oldugu icin
   // kendi sayfasina baglanti; NAMAZ gunde 5 vakit oldugu icin TEK OZET satir
   // ("2/5 vaktinde · 1 kaza · ...") ve isaretleme kendi sayfasinda.
-  // Gorevlerim listesi YALNIZCA okul gunlerini (Sal/Per/Cum — schedule.GUNLER)
-  // ve YALNIZCA BUGUNE KADAR gosterir (ileri tarihler gizli); rutin satirlari
-  // da yalnizca bu gunler icin uretilir.
+  // Rutin satirlari secili haftanin TUM gunleri icin uretilir (rutin gunluk;
+  // ders cizelgesinin Sal/Per/Cum kurali buraya dayatilmaz), ama bugunu
+  // asmaz — yarinin rutini henuz yapilamaz.
   const haftaGunleri = [];
   for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) {
-    if (g <= today && schedule.GUNLER.includes(schedule.dayOfWeek(g))) haftaGunleri.push(g);
+    if (g <= today) haftaGunleri.push(g);
   }
   // Not: rutin satirlari bugunu asmaz (yukaridaki `g <= today`), ama DERS
   // satirlari secili haftanin tamaminda gorunur — ileri haftaya bakan
@@ -7608,17 +7603,13 @@ async function getStudentViewModel(req, currentPage) {
     }
     return 900;
   };
-  // SECILI HAFTANIN okul gunleri (Sal/Per/Cum). Tarihi olmayan satirlar
-  // kalir. Onceki kural "yalnizca bugune kadar" idi; hafta gezinmesi gelince
-  // ileri bir haftaya gidince liste BOS kaliyordu. Rutin satirlari zaten
-  // uretilirken bugunle sinirlandi — burada ders satirlarinin haftasi
-  // kirpiliyor.
-  const okulGunuSatir = (s) =>
+  // SECILI HAFTANIN TUM gunleri; tarihi olmayan satirlar kalir. Rutin
+  // satirlari zaten uretilirken bugunle sinirlandi — burada gorevlerin
+  // haftasi kirpiliyor.
+  const haftaIcindeSatir = (s) =>
     !s.singleDate ||
-    (schedule.GUNLER.includes(schedule.dayOfWeek(s.singleDate)) &&
-      s.singleDate >= buHaftaBaslangic &&
-      s.singleDate <= buHaftaBitis);
-  const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(okulGunuSatir).sort(
+    (s.singleDate >= buHaftaBaslangic && s.singleDate <= buHaftaBitis);
+  const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(haftaIcindeSatir).sort(
     (a, b) =>
       String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
       satirSirasi(a) - satirSirasi(b) ||
@@ -7640,6 +7631,13 @@ async function getStudentViewModel(req, currentPage) {
     satir.gunAdi = getDayName(gun);
     satir.gunBugun = gun === today;
     satir.gunOzeti = gunOzeti.get(gun);
+    // "Bugün" rozeti tarih metninden AYRILIR: Tarih sutunu 124px sabit ve
+    // nowrap (tarih kisa/sabit bicimli), "2026-09-27 · Bugün" ise 140px
+    // istiyor ve hucreyi 16px tasiriyordu. Rozet sablonda alt satira iner —
+    // rutin "Son Saat" hucresindeki karar. (Kusur bugune kadar gizliydi:
+    // liste yalnizca Sal/Per/Cum gosterdigi icin bugun cogu gun listede
+    // hic yoktu.)
+    satir.scheduleText = String(satir.scheduleText || '').replace(/ · Bugün$/, '');
   }
   // "Tamamlanan" sayaci EKRANDA GORUNENI saymali. Once yalnizca gorev
   // satirlarinin BUGUNKU durumuna bakiyordu: rutinler hic sayilmiyordu ve
@@ -7707,7 +7705,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai', 'yds']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai', 'yds']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -7915,6 +7913,169 @@ app.get(
   })
 );
 
+// Ogrenci kendi gorevini elle acabilir. Bir donem kaldirilmisti (gorevler
+// yalnizca ders programindan uretiliyordu); kullanici geri istedi.
+// Acilan gorev OGRENCININ KENDISININ: created_by = student_id, repeat_type
+// 'once'. Bu yuzden listede canManage acik olur (baslik/kategori/tarih
+// duzenlenebilir, silinebilir) — ders gorevlerinden farki bu. Isaretlenince
+// ya da suresi dolunca yine kilitlenir (findStudentTaskIfEditable).
+app.post(
+  '/student/tasks',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const titleValidation = validateTaskTitle(req.body.title);
+    if (!titleValidation.ok) {
+      return studentRedirect(req, res, { error: titleValidation.error });
+    }
+    const descriptionValidation = validateTaskDescription(req.body.description);
+    if (!descriptionValidation.ok) {
+      return studentRedirect(req, res, { error: descriptionValidation.error });
+    }
+    const title = titleValidation.value;
+    const description = descriptionValidation.value;
+    const categoryId = normalizeText(req.body.categoryId);
+    const planningMode = normalizeText(req.body.planningMode) || 'single';
+    const singleDate = normalizeText(req.body.singleDate) || todayDateString();
+    const rangeStartDate = normalizeText(req.body.rangeStartDate) || singleDate;
+    const rangeDayCount = Number(req.body.rangeDayCount);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(
+      normalizeText(req.body.estimatedTime)
+    );
+    if (!estimatedTimeValidation.ok) {
+      return studentRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
+
+    if (!categoryId) {
+      return studentRedirect(req, res, { error: 'Kategori zorunlu.' });
+    }
+    if (!['single', 'multi_daily'].includes(planningMode)) {
+      return studentRedirect(req, res, { error: 'Plan tipi geçersiz.' });
+    }
+    if (planningMode === 'single' && !isDateOnly(singleDate)) {
+      return studentRedirect(req, res, { error: 'Görev tarihi geçersiz.' });
+    }
+    if (planningMode === 'multi_daily') {
+      if (!isDateOnly(rangeStartDate)) {
+        return studentRedirect(req, res, { error: 'Başlangıç tarihi geçersiz.' });
+      }
+      if (!Number.isInteger(rangeDayCount) || rangeDayCount < 1 || rangeDayCount > 180) {
+        return studentRedirect(req, res, { error: 'Gün sayısı 1 ile 180 arasında olmalı.' });
+      }
+    }
+
+    // Sistem taban tarihinden onceye yazilmaz: purgeBeforeSystemStart o
+    // kayitlari her acilista silerdi, yani gorev sessizce kaybolurdu.
+    const ilkGun = planningMode === 'single' ? singleDate : rangeStartDate;
+    if (ilkGun < SYSTEM_START_DATE) {
+      return studentRedirect(req, res, {
+        error: `${SYSTEM_START_DATE} tarihinden önceye görev eklenemez.`
+      });
+    }
+
+    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+    if (categoryRes.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Kategori bulunamadı.' });
+    }
+
+    const EKLE = `
+      INSERT INTO tasks (
+        id, title, description, category_id, student_id, repeat_type,
+        single_date, weekly_day, monthly_day, custom_dates,
+        start_date, end_date, estimated_time, is_archived, created_by
+      )
+      VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
+    `;
+
+    if (planningMode === 'single') {
+      const varMi = await query(
+        `
+          SELECT id FROM tasks
+          WHERE student_id = $1 AND category_id = $2 AND title = $3
+            AND repeat_type = 'once' AND single_date = $4 AND is_archived = false
+          LIMIT 1
+        `,
+        [req.currentUser.id, categoryId, title, singleDate]
+      );
+      if (varMi.rowCount > 0) {
+        return studentRedirect(req, res, {
+          error: 'Aynı gün için aynı başlıkta görev zaten mevcut.'
+        });
+      }
+      await query(EKLE, [
+        makeId('task'),
+        title,
+        description,
+        categoryId,
+        req.currentUser.id,
+        singleDate,
+        estimatedTime,
+        req.currentUser.id
+      ]);
+      return studentRedirect(req, res, {
+        message: 'Görev eklendi.',
+        hafta: startOfWeek(singleDate)
+      });
+    }
+
+    const rangeEndDate = shiftDate(rangeStartDate, rangeDayCount - 1);
+    const gunler = getDateRangeInclusive(rangeStartDate, rangeEndDate, 200);
+    if (!gunler || !gunler.length) {
+      return studentRedirect(req, res, { error: 'Toplu plan tarih aralığı geçersiz.' });
+    }
+
+    // Var olan gunler ATLANIR (hepsi tek sorguda okunur): form ikinci kez
+    // gonderilirse kopya gorev acilmasin.
+    const mevcutRes = await query(
+      `
+        SELECT single_date::text AS day FROM tasks
+        WHERE student_id = $1 AND category_id = $2 AND title = $3
+          AND repeat_type = 'once' AND is_archived = false
+          AND single_date BETWEEN $4 AND $5
+      `,
+      [req.currentUser.id, categoryId, title, rangeStartDate, rangeEndDate]
+    );
+    const mevcut = new Set(mevcutRes.rows.map((row) => row.day));
+    const eklenecek = gunler.filter((gun) => !mevcut.has(gun));
+    if (!eklenecek.length) {
+      return studentRedirect(req, res, {
+        error: 'Seçilen aralıktaki görevlerin tamamı zaten mevcut.'
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const gun of eklenecek) {
+        await client.query(EKLE, [
+          makeId('task'),
+          title,
+          description,
+          categoryId,
+          req.currentUser.id,
+          gun,
+          estimatedTime,
+          req.currentUser.id
+        ]);
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const atlanan = gunler.length - eklenecek.length;
+    return studentRedirect(req, res, {
+      message: atlanan
+        ? `${eklenecek.length} görev eklendi, ${atlanan} görev zaten mevcuttu.`
+        : `${eklenecek.length} görev eklendi.`,
+      hafta: startOfWeek(rangeStartDate)
+    });
+  })
+);
+
 app.post(
   '/student/tasks/:taskId/cell-update',
   requireRole('student'),
@@ -8018,6 +8179,44 @@ app.post(
     }
 
     return res.status(400).json({ ok: false, error: 'Güncellenebilir alan bulunamadı.' });
+  })
+);
+
+// Elle acilan gorev silinebilmeli: yanlis acilan bir gorev silinemezse gun
+// sonunda kalici olarak "Yapilmadi" muhurlenirdi. Kosullar `canManage` ile
+// ayni — YALNIZCA ogrencinin KENDI actigi tek seferlik gorev; ders gorevleri
+// (created_by = admin) ve isaretlenmis/suresi dolmus gorevler disarida.
+app.post(
+  '/student/tasks/:taskId/delete',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const { locked, marked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    if (locked) {
+      return studentRedirect(req, res, {
+        error: marked
+          ? 'Bu görev işaretlendi; silinemez.'
+          : 'Bu görevin süresi doldu; silinemez.'
+      });
+    }
+
+    const silindi = await query(
+      `
+        DELETE FROM tasks
+        WHERE id = $1
+          AND student_id = $2
+          AND created_by = $2
+          AND repeat_type = 'once'
+          AND is_archived = false
+      `,
+      [taskId, req.currentUser.id]
+    );
+    if (silindi.rowCount === 0) {
+      return studentRedirect(req, res, {
+        error: 'Bu görev silinemedi (yalnızca kendi eklediğin görevler silinebilir).'
+      });
+    }
+    return studentRedirect(req, res, { message: 'Görev silindi.' });
   })
 );
 

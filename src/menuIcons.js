@@ -69,6 +69,7 @@ const menuIcons = {
   duration: svg('<path d="M8 3h8M8 21h8"/><path d="M9 3v3.2c0 1.6 3 2.6 3 5.8s-3 4.2-3 5.8V21"/><path d="M15 3v3.2c0 1.6-3 2.6-3 5.8s3 4.2 3 5.8V21"/>'),
 
   // Soru takibi
+  newTask: svg('<circle cx="12" cy="12" r="8.2"/><path d="M12 8.4v7.2M8.4 12h7.2"/>'),
   questions: svg('<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4.5v1H9z"/><path d="M10.2 11.2a1.9 1.9 0 1 1 2.4 1.8c-.5.2-.8.6-.8 1.1v.3"/><circle cx="11.9" cy="17" r="0.7" fill="currentColor" stroke="none"/>')
 };
 

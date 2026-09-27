@@ -1552,6 +1552,13 @@ td, th {
   font-size: 0.75rem;
 }
 
+/* "Bugün" rozeti alt satirda: tarihin kendisi kisa ve sabit bicimli oldugu
+   icin nowrap dogru, ama rozetle birlikte 124px'lik sutunu 16px tasiyordu. */
+.student-task-table .task-meta small {
+  display: block;
+  font-size: 0.7rem;
+}
+
 .student-task-table .task-detail-form,
 .task-detail-form {
   display: flex;

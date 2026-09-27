@@ -305,7 +305,7 @@
                   data-category="<%= (task.categoryName || '').toLowerCase() %>"
                   data-date="<%= (task.scheduleText || '').toLowerCase() %>"
                 >
-                  <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %></td>
+                  <td data-label="Tarih" class="task-meta <%= task.canManage ? 'editable-cell' : '' %>" data-field="singleDate" data-value="<%= task.singleDate || today %>"><%= task.scheduleText %><% if (task.gunBugun) { %><small class="muted">Bugün</small><% } %></td>
                   <td data-label="Kategori" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= task.categoryId || '' %>"><%= task.categoryName %></td>
                   <td data-label="Konu" class="single-line-cell <%= task.canManage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= task.title || '' %>"><strong><%= task.title %></strong><% if (task.lessonMeta) { %><small class="muted lesson-topic"><%= task.lessonMeta %></small><% } %></td>
                   <td data-label="Son Saat" class="single-line-cell <%= task.canEditTime ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= task.estimatedTime || '' %>"><% if (task.isRoutine) { %><%= task.routineSaatAna %><% if (task.routineSaatAlt) { %><small class="muted"><%= task.routineSaatAlt %></small><% } %><% } else { %><%= task.estimatedTime || '-' %><% } %></td>
@@ -380,6 +380,22 @@
                           </svg>
                         </button>
                       </form>
+                      <%# Silme YALNIZCA ogrencinin kendi actigi gorevde (canManage).
+                          Ders gorevleri programdan gelir, silinemez. %>
+                      <% if (task.canManage) { %>
+                      <form
+                        method="post"
+                        action="/student/tasks/<%= task.id %>/delete"
+                        onsubmit="return confirm('Bu görev silinsin mi?');"
+                      >
+                        <input type="hidden" name="next" value="/student/dashboard?hafta=<%= weekStrip.weekStart %>" />
+                        <button type="submit" class="icon-btn bad" title="Sil" aria-label="Sil">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M4 7h16M9 7V5h6v2m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                          </svg>
+                        </button>
+                      </form>
+                      <% } %>
                       <% } %>
                     </div>
                   </td>
@@ -1728,6 +1744,72 @@
         <% } %>
         <% } %>
 
+        <%# GOREV EKLE — ogrencinin kendi actigi gorev. Bir donem kaldirilmisti
+            (gorevler yalnizca ders programindan uretiliyordu); kullanici geri
+            istedi. Iki plan tipi: tek gun, ya da ayni gorevi N gun boyunca
+            her gune ac. %>
+        <% if (currentPage === 'new-task') { %>
+        <header class="content-header">
+          <h2>Görev Ekle</h2>
+          <p class="muted"><%= today %></p>
+        </header>
+
+        <section class="panel">
+          <% if (!categories.length) { %>
+          <p class="muted">
+            Henüz kategori tanımlı değil; görev eklemek için önce yöneticinin
+            kategori açması gerekir.
+          </p>
+          <% } else { %>
+          <form method="post" action="/student/tasks" class="stack" id="newTaskForm">
+            <input type="hidden" name="next" value="/student/dashboard" />
+
+            <label for="ntTitle">Başlık</label>
+            <input type="text" id="ntTitle" name="title" maxlength="200" required />
+
+            <label for="ntCategory">Kategori</label>
+            <select id="ntCategory" name="categoryId" required>
+              <option value="">Seçiniz</option>
+              <% categories.forEach((c) => { %>
+              <option value="<%= c.id %>"><%= c.name %></option>
+              <% }) %>
+            </select>
+
+            <label for="ntPlan">Plan Tipi</label>
+            <select id="ntPlan" name="planningMode" data-plan-select>
+              <option value="single">Tek gün</option>
+              <option value="multi_daily">Birden çok gün (her güne bir görev)</option>
+            </select>
+
+            <div data-plan-single>
+              <label for="ntDate">Tarih</label>
+              <input type="date" id="ntDate" name="singleDate" value="<%= today %>" />
+            </div>
+
+            <div data-plan-multi hidden>
+              <label for="ntStart">Başlangıç Tarihi</label>
+              <input type="date" id="ntStart" name="rangeStartDate" value="<%= today %>" />
+              <label for="ntCount">Gün Sayısı (1-180)</label>
+              <input type="number" id="ntCount" name="rangeDayCount" min="1" max="180" value="7" />
+            </div>
+
+            <label for="ntTime">Son Saat (opsiyonel)</label>
+            <input type="time" id="ntTime" name="estimatedTime" />
+            <p class="muted">
+              Son saat girilirse görev o saatte kilitlenir ve işaretlenmemişse
+              kalıcı olarak «Yapılmadı» olur. Boş bırakılırsa son teslim gün
+              sonudur (23:59).
+            </p>
+
+            <label for="ntDesc">Açıklama (opsiyonel)</label>
+            <textarea id="ntDesc" name="description" rows="3" maxlength="1000"></textarea>
+
+            <button type="submit">Görevi Ekle</button>
+          </form>
+          <% } %>
+        </section>
+        <% } %>
+
         <% if (currentPage === 'questions') { %>
         <header class="content-header">
           <h2>Günlük Soru Takibi</h2>
@@ -1843,6 +1925,23 @@
         calismazsa serit yine kullanilir, yalnizca elle kaydirmak gerekir. %>
     <script>
       (() => {
+        // Gorev Ekle: plan tipine gore alanlari goster/gizle. Betik
+        // calismazsa iki blok da gorunur kalir ve form yine calisir —
+        // sunucu hangi alanlari okuyacagina planningMode'a bakarak karar
+        // verir, gizleme yalnizca gorsel.
+        const planSelect = document.querySelector('[data-plan-select]');
+        if (planSelect) {
+          const tekGun = document.querySelector('[data-plan-single]');
+          const cokGun = document.querySelector('[data-plan-multi]');
+          const uygula = () => {
+            const coklu = planSelect.value === 'multi_daily';
+            if (tekGun) tekGun.hidden = coklu;
+            if (cokGun) cokGun.hidden = !coklu;
+          };
+          planSelect.addEventListener('change', uygula);
+          uygula();
+        }
+
         for (const track of document.querySelectorAll('[data-week-track]')) {
           const secili = track.querySelector('[data-week-selected]');
           if (!secili) continue;
