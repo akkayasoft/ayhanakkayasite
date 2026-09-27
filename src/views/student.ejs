@@ -255,6 +255,17 @@
           </p>
           <% } %>
 
+          <%# Tanimlanmamis rutin listede SESSIZCE eksilmesin — "neden
+              gorunmuyor" sorusunu sayfanin kendisi yanitlasin. Ogrenci rutini
+              kendisi acamaz, o yuzden baglanti degil aciklama veriyoruz. %>
+          <% if (typeof tanimsizRutinler !== 'undefined' && tanimsizRutinler.length) { %>
+          <p class="muted">
+            Şu rutinler bu hesapta tanımlı değil, bu yüzden listede yok:
+            <strong><%= tanimsizRutinler.join(', ') %></strong>.
+            Rutini yöneticin kendi panelinden tanımlar.
+          </p>
+          <% } %>
+
           <% if (activeTasks.length) { %>
           <div class="table-wrap">
             <table class="task-table student-task-table stack-mobile">

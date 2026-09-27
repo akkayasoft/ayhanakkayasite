@@ -7584,6 +7584,27 @@ async function getStudentViewModel(req, currentPage) {
         ]
       : [];
 
+  // Tanimlanmamis rutinler SESSIZCE eksilmesin. buildRoutineWeekRows, rutin
+  // yoksa (ya da pasifse) bos donuyor; liste de hicbir sey demiyordu.
+  // Kullanici "YDS ve yapay zeka rutinleri neden gorunmuyor" diye sordu —
+  // cevap "o ogrenci icin hic tanimlanmamis"ti, ama bunu ancak veritabanina
+  // bakarak anlamak mumkundu. Ders gorevlerindeki "liste bossa nedeni
+  // yazilir" kuralinin rutin karsiligi.
+  //
+  // Ogrenciye "git tanimla" DENMEZ: rutini yalnizca admin acar.
+  const tanimsizRutinler =
+    currentPage === 'dashboard'
+      ? [
+          { label: 'Uyanma Rutini', view: wake },
+          { label: 'Spor Rutini', view: sport },
+          { label: 'Yapay Zeka Rutini', view: aiWeek },
+          { label: 'YDS Rutini', view: ydsWeek },
+          { label: 'Namaz Rutini', view: prayer }
+        ]
+          .filter((r) => !r.view || !r.view.routine || r.view.routine.isActive === false)
+          .map((r) => r.label)
+      : [];
+
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
 
   // Ogrenci hedefleri yalnizca GORUR; koyma ve degerlendirme adminde.
@@ -7707,6 +7728,7 @@ async function getStudentViewModel(req, currentPage) {
     categories,
     activeTasks: listeSatirlari,
     weekStrip,
+    tanimsizRutinler,
     dersGorevBilgi,
     doneCount,
     haftaOzet,

@@ -1428,6 +1428,21 @@ Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
   Sal/Per/Cum) **19 satırın üstünde "0 / 0 / 0"** yazıyordu — ölçüldü,
   27 Eylül Pazar. Sayaç artık ekranda göreneni sayar; gün bazlı kırılım zaten
   her gün başlığında (`gunOzeti`).
+- **Tanımlanmamış rutin listede görünmez** — `buildRoutineWeekRows` rutin yoksa
+  (ya da `isActive === false` ise) boş döner. Bu **sessiz** olmamalı: liste
+  artık altında *"Şu rutinler bu hesapta tanımlı değil, bu yüzden listede yok:
+  …"* yazar (`tanimsizRutinler`).
+
+  > ⚠️ Kullanıcı *"öğrencinin görevlerim listesinde YDS ve yapay zeka rutinleri
+  > neden görünmüyor"* diye sordu. Cevap **hata değil, yapılandırmaydı**: o
+  > öğrenci için `ai_routines` / `yds_routines` satırı hiç açılmamıştı
+  > (ölçüldü: iki öğrenciden birinde uyanma+spor var, diğer üçü yok). Ama bunu
+  > ancak veritabanına bakarak anlamak mümkündü — ders görevlerindeki *"liste
+  > boşsa nedeni yazılır"* kuralının rutin karşılığı eksikti.
+  >
+  > Metin öğrenciyi bir sayfaya **yönlendirmez**: rutini yalnızca admin açar
+  > (`/admin/ai`, `/admin/yds`, `/admin/prayer` → *Rutin Ayarla*).
+
 - **Açıklama (not)** yalnızca **uyanma/spor'da ve yalnızca bugün** (kayıt varsa)
   satır içi düzenlenir; `wake_logs.note` / `sport_logs.note`, rota
   `POST /student/routines/:tur/note`. YZ/YDS satırında not düzenlenmez.
