@@ -835,6 +835,17 @@
           </form>
           <p class="muted">Süreyi boş bırakırsan rapor bu gün için plandaki <%= ai.routine.minutes %> dakikayı sayar.</p>
           <% } %>
+
+          <%# CALISILAN KONU: sure gibi durumdan bagimsiz, sonradan yazilir. %>
+          <% if (ai.bugun.konuYazilabilir) { %>
+          <form method="post" action="<%= ai.studentPath %>/note" class="stack" style="margin-top: var(--sp-3)">
+            <input type="hidden" name="next" value="<%= ai.studentPath %>?bolum=durum" />
+            <input type="hidden" name="gun" value="<%= ai.bugun.day %>" />
+            <label>Çalışılan konu</label>
+            <textarea name="konu" rows="2" placeholder="Örn. transformer dikkat mekanizması, 20 kelime tekrarı"><%= ai.bugun.note %></textarea>
+            <button type="submit" class="ghost"><%= ai.bugun.note ? 'Konuyu Güncelle' : 'Konuyu Yaz' %></button>
+          </form>
+          <% } %>
         </section>
 
         <p class="muted">
@@ -885,7 +896,7 @@
           <div class="table-wrap">
             <table class="stack-mobile">
               <thead>
-                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Çalışılan Süre</th><th>İşlem</th></tr>
+                <tr><th>Gün</th><th>Plan</th><th>Durum</th><th>Çalışılan Süre</th><th>Çalışılan Konu</th><th>İşlem</th></tr>
               </thead>
               <tbody>
                 <% ai.rows.forEach((g) => { %>
@@ -915,6 +926,20 @@
                     <% if (g.actualMinutes === null) { %>
                     <small class="muted">girilmedi · plandan <%= g.minutes %> dk sayılıyor</small>
                     <% } %>
+                    <% } else { %>
+                    <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (g.konuYazilabilir) { %>
+                    <form method="post" action="<%= ai.studentPath %>/note" class="stack">
+                      <input type="hidden" name="next" value="<%= ai.studentPath %>?bolum=gecmis" />
+                      <input type="hidden" name="gun" value="<%= g.day %>" />
+                      <textarea name="konu" rows="2" placeholder="konu / not" aria-label="<%= g.day %> çalışılan konu"><%= g.note %></textarea>
+                      <button type="submit" class="ghost">Yaz</button>
+                    </form>
+                    <% } else if (g.note) { %>
+                    <%= g.note %>
                     <% } else { %>
                     <span class="muted">-</span>
                     <% } %>

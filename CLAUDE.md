@@ -1450,6 +1450,27 @@ kadar yaptım"*.
   **temizlenir** (yazılacak süre kalmadı).
 - Sınır **1-1440 dakika** (veritabanı `CHECK`'i de aynı kuralı tutar).
 
+### Çalışılan konu (`<tür>_logs.note`)
+
+Öğrenci **"bugün ne çalıştığını"** yazabilir. Süre (`actual_minutes`) ile aynı
+desen — durumdan bağımsız, sonradan yazılabilir/değiştirilebilir/temizlenebilir:
+
+- `<tür>_logs.note` (uyanma/spordan miras şablonla zaten vardı, artık YZ/YDS'de
+  **kullanılıyor**). Rota `POST /student/<tür>/note` (`konu` alanı); yalnızca
+  `done` / `makeup` günlerine yazılır (*"yapılmadı"* günde çalışılan konu yok),
+  boş göndermek temizler. İşaretleme formunda da `konu` opsiyonel alanı var
+  (mark anında yazılır; `not_done` + dolu konu **reddedilir**).
+- Öğrenci sayfasında (`buildStudyView`): *Bugün* kartında "Çalışılan konu"
+  textarea'sı (`konuYazilabilir`), *Son Günler* tablosunda **Çalışılan Konu**
+  sütunu (done/makeup satırında düzenlenebilir, diğerinde salt metin/`-`).
+- `validateTaskDescription` ile doğrulanır (≤300 karakter). Admin log formu ve
+  analiz **değişmedi** — bu alan yalnızca öğrencinin serbest notudur.
+
+Doğrulandı (temiz DB, 28 Eylül): mark anında konu yazıldı (`note` doldu);
+`/note` ile güncellendi ve boşla temizlendi; işaretlenmemiş güne konu yazma ve
+`not_done`+konu **reddedildi**; YZ ve YDS'de ayrı ayrı çalıştı; durum/geçmiş
+alanları konu alanını gösteriyor, 1440/390px **taşma 0**, konsol hatası yok.
+
 > ⚠️ **Bu iş sırasında bulunan tutarsızlık: bayat düzeltme izi.** Düzeltme
 > alanları (`corrected_by` / `previous_status` / …) *"bu satır şu anki
 > durumunu nasıl aldı"*yı anlatır ve **yalnızca admin** yazar. Admin bir günü

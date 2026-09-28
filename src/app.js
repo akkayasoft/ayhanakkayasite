@@ -5838,7 +5838,9 @@ async function buildStudyView(kind, studentId, gunSayisi = 14) {
     yapildiYazilabilir: canChangeStudyStatus(todayLog ? todayLog.status : null, 'done'),
     yapilmadiYazilabilir: canChangeStudyStatus(todayLog ? todayLog.status : null, 'not_done'),
     telafiYazilabilir: canChangeStudyStatus(todayLog ? todayLog.status : null, 'makeup'),
-    dakikaYazilabilir: bugunSatir.status === 'done' || bugunSatir.status === 'makeup'
+    dakikaYazilabilir: bugunSatir.status === 'done' || bugunSatir.status === 'makeup',
+    // Calisilan konu da (dakika gibi) DURUM'dan bagimsiz sonradan yazilabilir.
+    konuYazilabilir: bugunSatir.status === 'done' || bugunSatir.status === 'makeup'
   };
 
   // Liste rutinin kuruldugu gunde biter: oncesi hic takip edilmedi.
@@ -5859,7 +5861,8 @@ async function buildStudyView(kind, studentId, gunSayisi = 14) {
       // Dakika DURUM gibi kilitlenmez: uyanma/spor notundaki kararin aynisi
       // — is sabah isaretlenir, suresi cogu zaman sonra yazilir. Yapilmamis
       // bir gunde yazilacak dakika yoktur.
-      dakikaYazilabilir: satir.status === 'done' || satir.status === 'makeup'
+      dakikaYazilabilir: satir.status === 'done' || satir.status === 'makeup',
+      konuYazilabilir: satir.status === 'done' || satir.status === 'makeup'
     });
   }
 
@@ -6063,6 +6066,18 @@ for (const kind of Object.values(STUDY_KINDS)) {
         });
       }
 
+      // Isaretlerken calisilan konu girmek de OPSIYONEL; yapilmayan gune konu
+      // yazilmaz (calisilan bir sey yok).
+      const konu = validateTaskDescription(req.body.konu);
+      if (!konu.ok) {
+        return studentRedirect(req, res, { error: konu.error });
+      }
+      if (konu.value && durum === 'not_done') {
+        return studentRedirect(req, res, {
+          error: 'Yapılmamış bir güne çalışılan konu yazılamaz.'
+        });
+      }
+
       const nowHm = timeStringInTimeZone();
       const mevcutRes = await query(
         `SELECT status FROM ${kind.logsTable} WHERE student_id = $1 AND day = $2`,
@@ -6092,9 +6107,9 @@ for (const kind of Object.values(STUDY_KINDS)) {
           `
             INSERT INTO ${kind.logsTable} (
               id, student_id, day, status, start_time, minutes, actual_minutes,
-              done_at, makeup_day, makeup_at
+              note, done_at, makeup_day, makeup_at
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             ON CONFLICT (student_id, day) DO NOTHING
           `,
           [
@@ -6105,6 +6120,7 @@ for (const kind of Object.values(STUDY_KINDS)) {
             routine.startTime,
             routine.minutes,
             dakika.value,
+            konu.value,
             durum === 'makeup' ? null : nowHm,
             durum === 'makeup' ? today : null,
             durum === 'makeup' ? nowHm : null
@@ -6123,11 +6139,12 @@ for (const kind of Object.values(STUDY_KINDS)) {
             UPDATE ${kind.logsTable}
             SET status = 'makeup', makeup_day = $3, makeup_at = $4,
                 actual_minutes = COALESCE($5, actual_minutes),
+                note = $6,
                 corrected_by = NULL, corrected_at = NULL,
                 previous_status = NULL, correction_note = ''
             WHERE student_id = $1 AND day = $2 AND status = 'not_done'
           `,
-          [req.currentUser.id, gun, today, nowHm, dakika.value]
+          [req.currentUser.id, gun, today, nowHm, dakika.value, konu.value]
         );
         if (guncelle.rowCount === 0) {
           return studentRedirect(req, res, { error: 'Kayıt değişmedi.' });
@@ -6189,6 +6206,58 @@ for (const kind of Object.values(STUDY_KINDS)) {
           dakika.value === null
             ? `${gun} için çalışma süresi temizlendi; rapor plana düşer.`
             : `${gun} için çalışma süresi ${dakika.value} dk olarak kaydedildi.`
+      });
+    })
+  );
+
+  /**
+   * CALISILAN KONU / NOT — ogrenci "bugun ne calistigini" yazar.
+   *
+   * Suredeki (minutes) kararin aynisi: DURUM kilitlidir ama not degildir; is
+   * sabah isaretlenir, konu cogu zaman sonra yazilir. Yalnizca calisilan
+   * (done/makeup) gune yazilir — yapilmayan gunde yazilacak konu yok. Bos
+   * gondermek temizler.
+   */
+  app.post(
+    `${kind.studentPath}/note`,
+    requireRole('student'),
+    asyncHandler(async (req, res) => {
+      const routine = await getStudyRoutine(kind, req.currentUser.id);
+      if (!routine || !routine.isActive) {
+        return studentRedirect(req, res, { error: `${kind.label} rutini tanımlı değil.` });
+      }
+
+      const today = dateStringInTimeZone(process.env.APP_TIMEZONE || 'Europe/Istanbul');
+      const gunGirdi = normalizeText(req.body.gun);
+      const gun = isDateOnly(gunGirdi) ? gunGirdi : today;
+      if (gun > today) {
+        return studentRedirect(req, res, { error: 'Gelecek bir güne kayıt yazılamaz.' });
+      }
+
+      const notDogrulama = validateTaskDescription(req.body.konu);
+      if (!notDogrulama.ok) {
+        return studentRedirect(req, res, { error: notDogrulama.error });
+      }
+
+      const guncelle = await query(
+        `
+          UPDATE ${kind.logsTable}
+          SET note = $3
+          WHERE student_id = $1 AND day = $2 AND status IN ('done', 'makeup')
+        `,
+        [req.currentUser.id, gun, notDogrulama.value]
+      );
+
+      if (guncelle.rowCount === 0) {
+        return studentRedirect(req, res, {
+          error: 'Konu yazmak için gün önce "Yapıldı" ya da "Telafi edildi" işaretlenmeli.'
+        });
+      }
+
+      return studentRedirect(req, res, {
+        message: notDogrulama.value
+          ? `${gun} için çalışılan konu kaydedildi.`
+          : `${gun} için çalışılan konu temizlendi.`
       });
     })
   );
