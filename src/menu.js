@@ -160,6 +160,7 @@ const ADMIN_MENU = [
 
 const STUDENT_MENU = [
   { key: 'dashboard', label: 'Görevlerim', icon: 'tasks', href: '/student/dashboard' },
+  { key: 'new-task', label: 'Görev Ekle', icon: 'newTask', href: '/student/new-task' },
   { key: 'calendar', label: 'Haftalık Takvim', icon: 'schedule', href: '/student/calendar' },
   {
     key: 'program',
@@ -283,12 +284,20 @@ function resolveSection(menu, currentPage, requested) {
 /**
  * Sablonun bastigi menu agaci: her satirda aktiflik ve (varsa) bolum
  * baglantilari hazir gelir, sablon karar vermez.
+ *
+ * `ekSorgu` (or. "hafta=2026-10-05") YALNIZCA AKTIF sayfanin bolum
+ * baglantilarina eklenir. Bolum degistirmek sayfa BAGLAMINI (secili hafta,
+ * secili ogrenci) dusurmemeli: cizelgede baska bir haftaya gecip "Ders Ekle"ye
+ * tiklayinca kullanici sessizce ICINDE BULUNULAN haftaya donuyordu ve baska
+ * bir haftaya ders ekleyemiyordu. Diger menu satirlari BASKA sayfalardir;
+ * oraya tasimak anlamsiz (ornegin /admin/wake?hafta=...).
  */
-function buildMenuTree(menu, currentPage, currentSection) {
+function buildMenuTree(menu, currentPage, currentSection, ekSorgu = '') {
   return menu.map((item) => {
     const aktif = Array.isArray(item.pages)
       ? item.pages.includes(currentPage)
       : item.key === currentPage;
+    const ek = aktif && ekSorgu ? `&${ekSorgu}` : '';
     return {
       key: item.key,
       label: item.label,
@@ -298,7 +307,9 @@ function buildMenuTree(menu, currentPage, currentSection) {
       sections: (item.sections || []).map((s) => ({
         key: s.key,
         label: s.label,
-        href: s.href || `${item.href}?bolum=${s.key}`,
+        // Kendi rotasi olan bolum (Gorevler) kendi href'ini tasir; ona
+        // dokunulmaz.
+        href: s.href || `${item.href}?bolum=${s.key}${ek}`,
         aktif: aktif && s.key === currentSection
       }))
     };

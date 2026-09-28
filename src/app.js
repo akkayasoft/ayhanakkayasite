@@ -178,7 +178,7 @@ function normalizeEstimatedTimeForStorage(value) {
   const timeValue = normalizeText(value);
   if (!timeValue) return { ok: true, value: null };
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) {
-    return { ok: false, error: 'Tahmini saat HH:MM formatında olmalı.' };
+    return { ok: false, error: 'Son saat HH:MM formatında olmalı.' };
   }
   return { ok: true, value: timeValue };
 }
@@ -706,6 +706,58 @@ async function buildWakeView(studentId, gunSayisi = 14) {
         ? Math.round(kalkilan.reduce((t, l) => t + l.delayMinutes, 0) / kalkilan.length)
         : null
     }
+  };
+}
+
+/**
+ * HAFTA SERIDI — gorev listelerinin ustunde kayan "Hafta 1 · Hafta 2 …"
+ * seridi ve ileri/geri gezinme icin tek kaynak.
+ *
+ * Numaralar ogretim yilinin BASINDAN sayilir (donem ici degil): kullanici
+ * "Hafta 12"yi arayacaksa yil boyunca tek bir sayi dizisi ariyor.
+ * `academicCalendar.describeWeek` donem ici numara verir ve yarıyıldan sonra
+ * 1'e doner — serit icin yaniltici olurdu, ama etiketin altindaki donem
+ * bilgisi yine oradan gelir.
+ *
+ * Secili hafta ogretim yiline KIRPILIR; parametre yoksa icinde bulunulan
+ * hafta (yil disindaysak yilin ilk/son haftasi). Boylece `?hafta=` ile gelen
+ * gecersiz/uzak bir deger listeyi bos birakmaz.
+ */
+function buildWeekStrip(requestedWeek, today) {
+  const yil = academicCalendar.ACADEMIC_YEAR;
+  const ilkHafta = startOfWeek(yil.start);
+  const sonHafta = startOfWeek(yil.end);
+  const buHafta = startOfWeek(today);
+  const sinirla = (h) => (h < ilkHafta ? ilkHafta : h > sonHafta ? sonHafta : h);
+  const secilen = sinirla(normalizeWeekStart(requestedWeek, null) || buHafta);
+
+  const haftalar = [];
+  let no = 0;
+  for (let hafta = ilkHafta; hafta <= sonHafta; hafta = shiftDate(hafta, 7)) {
+    no += 1;
+    const bitis = shiftDate(hafta, 6);
+    haftalar.push({
+      no,
+      label: `Hafta ${no}`,
+      weekStart: hafta,
+      weekEnd: bitis,
+      academic: academicCalendar.describeWeek(hafta, bitis),
+      isCurrent: hafta === buHafta,
+      isSelected: hafta === secilen,
+      isPast: bitis < today
+    });
+  }
+
+  const sira = haftalar.findIndex((h) => h.isSelected);
+  return {
+    weeks: haftalar,
+    selected: haftalar[sira] || null,
+    weekStart: secilen,
+    weekEnd: shiftDate(secilen, 6),
+    isCurrentWeek: secilen === buHafta,
+    thisWeek: sinirla(buHafta),
+    prevWeek: sira > 0 ? haftalar[sira - 1].weekStart : '',
+    nextWeek: sira >= 0 && sira < haftalar.length - 1 ? haftalar[sira + 1].weekStart : ''
   };
 }
 
@@ -1923,6 +1975,26 @@ async function getScheduleEntries(weekStart = null) {
 }
 
 /**
+ * Icinde DERS olan haftalar (eskiden kalma sablon satirlari HARIC), yeniden
+ * kullanilabilsin diye: "bu haftaya su haftanin cizelgesini kopyala".
+ * En yeniden eskiye siralanir — kullanici cogu zaman en son girdigi haftayi
+ * kopyalar.
+ */
+async function getWeeksWithSchedule() {
+  const res = await query(
+    `
+      SELECT week_start AS "weekStart", count(*)::int AS ders
+      FROM class_schedule
+      WHERE week_start <> $1
+      GROUP BY week_start
+      ORDER BY week_start DESC
+    `,
+    [SABLON_HAFTA]
+  );
+  return res.rows.map((r) => ({ weekStart: toDateOnly(r.weekStart), ders: r.ders }));
+}
+
+/**
  * Ogretim yilindaki TUM ozellestirilmis haftalar: weekStart -> kayitlar.
  * Bos ozel haftalar da haritaya BOS DIZI olarak girer — yoksa defter
  * hesabinda sablona duserlerdi.
@@ -2709,6 +2781,12 @@ async function buildScheduleView(req) {
     `SELECT id, name, is_teacher AS "isTeacher" FROM users WHERE role = 'student' ORDER BY name`
   );
 
+  // "Bu haftaya su haftanin cizelgesini kopyala" listesi: icinde ders olan
+  // haftalar, bu haftanin kendisi HARIC (kendine kopyalamak anlamsiz).
+  const kopyalanabilirHaftalar = (await getWeeksWithSchedule()).filter(
+    (h) => h.weekStart !== hafta
+  );
+
   return {
     gorunum,
     topicWeek,
@@ -2729,6 +2807,7 @@ async function buildScheduleView(req) {
     sonrakiHafta: shiftDate(hafta, 7),
     buHafta: startOfWeek(bugun),
     ozelHafta: haftaBilgi.ozel,
+    kopyalanabilirHaftalar,
     haftaAkademik: academicCalendar.describeWeek(hafta, shiftDate(hafta, 6)),
     ogrenciler: ogrenciler.rows,
     bitisSaati: schedule.endOfDay(ayar),
@@ -2786,7 +2865,7 @@ function adminRedirect(req, res, queryParams) {
 function studentRedirect(req, res, queryParams) {
   const params = new URLSearchParams(queryParams);
   const requestedNext = normalizeText((req.body && req.body.next) || req.query.next);
-  const nextPath = /^\/student\/(dashboard|questions|calendar|program|wake|schedule|goals|sport|prayer|ai|yds)(\?.*)?$/.test(requestedNext)
+  const nextPath = /^\/student\/(dashboard|new-task|questions|calendar|program|wake|schedule|goals|sport|prayer|ai|yds)(\?.*)?$/.test(requestedNext)
     ? requestedNext
     : '/student/dashboard';
   const queryString = params.toString();
@@ -3323,17 +3402,53 @@ async function getAdminViewModel(req, currentPage) {
   const sortedAllTasks = [...tasks]
     .sort(compareTasksBySchedule)
     .map((task) => ({ ...task, ...dersGorevAyrinti(task) }));
-  // Gorev listesinde YALNIZCA okul gunleri (Sal/Per/Cum — schedule.GUNLER) ve
-  // YALNIZCA BUGUNE KADAR (ileri tarihler gizli — cizelge hafta hafta kurulur)
-  // gorunur. Tarihi olmayan (tekrarli) gorevler elenmez. Not: gizlenen ileri
-  // ders gorevleri DB'de durur; hepsini "Tum Ders Gorevlerini Sil" temizler.
-  const okulGunu = (t) =>
+  // Liste HAFTA HAFTA gezilir: serit ustte, SECILI HAFTANIN TUM GUNLERI
+  // (Pzt-Paz) gosterilir. Tarihi olmayan (tekrarli) gorevler elenmez.
+  //
+  // ⚠️ Bir donem liste yalnizca schedule.GUNLER (Sal/Per/Cum) gunlerini
+  // gosteriyordu — cizelgenin ders gunleri listeye de dayatiliyordu. Ama
+  // GUNLER *ders cizelgesinin* kurali; gorev listesinde rutinler, elle
+  // acilan gorevler ve tekrarli gorevler de var ve onlarin haftanin her
+  // gunu olmasi normal. Filtre kaldirildi; GUNLER cizelge/defter tarafinda
+  // aynen duruyor.
+  const weekStrip = buildWeekStrip(normalizeText(req.query.hafta), today);
+  const haftaGunleri = [];
+  const haftaGunleriGecmis = [];
+  for (let g = weekStrip.weekStart; g <= weekStrip.weekEnd; g = shiftDate(g, 1)) {
+    haftaGunleri.push(g);
+    if (g <= today) haftaGunleriGecmis.push(g);
+  }
+  const haftaIcinde = (t) =>
     !t.singleDate ||
-    (schedule.GUNLER.includes(schedule.dayOfWeek(t.singleDate)) && t.singleDate <= today);
-  const taskTableTasks = (activeTaskStudentId
-    ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
-    : sortedAllTasks
-  ).filter(okulGunu);
+    (t.singleDate >= weekStrip.weekStart && t.singleDate <= weekStrip.weekEnd);
+  const kapsamdakiOgrenciler = activeTaskStudentId
+    ? students.filter((st) => st.id === activeTaskStudentId)
+    : students;
+  const adminRutinSatirlari = ['tasks', 'tasks-active'].includes(currentPage)
+    ? await buildAdminRoutineWeekRows(kapsamdakiOgrenciler, haftaGunleriGecmis, today)
+    : [];
+  const RUTIN_SIRA_ADMIN = { wake: 0, sport: 1, ai: 2, yds: 3, prayer: 4 };
+  const adminSatirSirasi = (t) => {
+    if (t.isRoutine) return RUTIN_SIRA_ADMIN[t.routineTur] ?? 4;
+    if (isLessonTask(t.sourceKey)) {
+      const saat = Number(String(t.sourceKey).split(':')[2]);
+      return Number.isFinite(saat) ? 100 + saat : 900;
+    }
+    return 900;
+  };
+  const taskTableTasks = [
+    ...(activeTaskStudentId
+      ? sortedAllTasks.filter((t) => t.studentId === activeTaskStudentId)
+      : sortedAllTasks
+    ).filter(haftaIcinde),
+    ...adminRutinSatirlari
+  ].sort(
+    (a, b) =>
+      String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
+      adminSatirSirasi(a) - adminSatirSirasi(b) ||
+      String(a.student ? a.student.name : '').localeCompare(String(b.student ? b.student.name : ''), 'tr') ||
+      String(a.title || '').localeCompare(String(b.title || ''), 'tr')
+  );
   const activeTasks = sortedAllTasks.filter((t) => !t.isArchived);
   const archivedTasks = sortedAllTasks.filter((t) => t.isArchived);
 
@@ -3455,7 +3570,16 @@ async function getAdminViewModel(req, currentPage) {
     user: req.currentUser,
     currentPage,
     currentSection,
-    menuTree: menu.buildMenuTree(menu.ADMIN_MENU, currentPage, currentSection),
+    // Cizelge sayfasinda secili HAFTA bolum baglantilarinda tasinir; yoksa
+    // bolum degistirmek kullaniciyi icinde bulunulan haftaya geri atiyordu.
+    menuTree: menu.buildMenuTree(
+      menu.ADMIN_MENU,
+      currentPage,
+      currentSection,
+      currentPage === 'schedule' && scheduleView && scheduleView.hafta
+        ? `hafta=${scheduleView.hafta}`
+        : ''
+    ),
     currentSectionLabel: menu.sectionLabel(menu.ADMIN_MENU, currentPage, currentSection),
     menuIcons,
     users,
@@ -3466,6 +3590,7 @@ async function getAdminViewModel(req, currentPage) {
     activeTasks,
     archivedTasks,
     taskTableTasks,
+    weekStrip,
     taskStatusFixView,
     activeTaskFilters: {
       studentId: activeTaskStudentId
@@ -4758,6 +4883,120 @@ app.post(
       [toDateOnly(r.weekStart), r.dayOfWeek, r.period]
     );
     return adminRedirect(req, res, { message: 'Ders kaydı silindi.' });
+  })
+);
+
+// BASKA BIR HAFTADAN KOPYALA.
+//
+// Varsayilan sablon kaldirilinca her hafta bostan basliyor ve ayni 29 dersi
+// her hafta elle girmek gerekiyordu. Kopyalama kurali BOZMAZ — hicbir hafta
+// kendiliginden dolmaz, admin acikca "su haftadan kopyala" der.
+//
+// DOLU HUCRELER KORUNUR (uzerine yazilmaz) ve kac tanesinin atlandigi
+// soylenir; toplu gorev eklemedeki kararin aynisi. Haftanin tamamini
+// degistirmek isteyen once "Bu Haftayi Bosalt" der — iki islem birlesir,
+// tek bir islem ikisini birden yapmaz.
+app.post(
+  '/admin/schedule/copy',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const hedef = hedefHafta(req.body);
+    const ham = normalizeText(req.body.kaynak);
+    const kaynak = isDateOnly(ham) ? startOfWeek(ham) : null;
+
+    if (!kaynak) {
+      return adminRedirect(req, res, { error: 'Kopyalanacak hafta seçilmedi.' });
+    }
+    if (kaynak === hedef) {
+      return adminRedirect(req, res, { error: 'Kaynak ve hedef hafta aynı.' });
+    }
+    // Eskiden kalma sablon satirlari kopyalanamaz: 7 gunluk ve artik
+    // gecersiz bir duzen tasiyorlar (bkz. SABLON_HAFTA).
+    //
+    // ⚠️ HAM degerle karsilastirilir: startOfWeek('1900-01-01') pazartesiye
+    // kaydirip '1899-12-31' yapiyor, yani `kaynak` ile karsilastirmak hic
+    // tutmuyordu (olculdu: koruma yerine "1899-12-31 haftasinda ders yok"
+    // mesaji cikiyordu — sonuc yine rettti ama gerekce yanlisti).
+    if (ham === SABLON_HAFTA || kaynak === startOfWeek(SABLON_HAFTA)) {
+      return adminRedirect(req, res, { error: 'Eski şablon haftası kopyalanamaz.' });
+    }
+
+    const client = await pool.connect();
+    let eklenen = 0;
+    let atlanan = 0;
+    let saat = 0;
+    try {
+      await client.query('BEGIN');
+      const kaynakSatirlar = await client.query(
+        `
+          SELECT day_of_week, period, subject, class_name, room, kind, term
+          FROM class_schedule
+          WHERE week_start = $1
+          ORDER BY day_of_week, period
+        `,
+        [kaynak]
+      );
+      if (!kaynakSatirlar.rowCount) {
+        await client.query('ROLLBACK');
+        return adminRedirect(req, res, { error: `${kaynak} haftasında ders yok.` });
+      }
+
+      // Hedef hafta "girildi" olarak isaretlenir; yoksa bos birakilan bir
+      // hafta ile hic girilmemis hafta ayirt edilemezdi.
+      await ensureWeekCustomized(client, hedef);
+
+      for (const r of kaynakSatirlar.rows) {
+        const ekle = await client.query(
+          `
+            INSERT INTO class_schedule
+              (id, week_start, term, day_of_week, period, subject, class_name, room, kind)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            ON CONFLICT (week_start, term, day_of_week, period) DO NOTHING
+          `,
+          [
+            makeId('sch'),
+            hedef,
+            r.term,
+            r.day_of_week,
+            r.period,
+            r.subject,
+            r.class_name,
+            r.room,
+            r.kind
+          ]
+        );
+        if (ekle.rowCount) {
+          eklenen += 1;
+          // O hucrenin ZIL SAATI de gelir: Ders Ekle saati zorunlu kildigi
+          // icin saatsiz kopyalanan hucre hesaplanan varsayilana duserdi,
+          // yani yanlis saat gosterirdi.
+          const zil = await client.query(
+            `
+              INSERT INTO period_times (week_start, day_of_week, period, start_time, end_time)
+              SELECT $1, day_of_week, period, start_time, end_time
+              FROM period_times
+              WHERE week_start = $2 AND day_of_week = $3 AND period = $4
+              ON CONFLICT (week_start, day_of_week, period) DO NOTHING
+            `,
+            [hedef, kaynak, r.day_of_week, r.period]
+          );
+          saat += zil.rowCount || 0;
+        } else {
+          atlanan += 1;
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const parcalar = [`${kaynak} → ${hedef}: ${eklenen} ders kopyalandı`];
+    if (saat) parcalar.push(`${saat} zil saati`);
+    if (atlanan) parcalar.push(`${atlanan} hücre zaten doluydu, atlandı`);
+    return adminRedirect(req, res, { message: `${parcalar.join(' · ')}.` });
   })
 );
 
@@ -6907,6 +7146,186 @@ app.post(
  * `view` = buildWakeView / buildSportView / buildStudyView sonucu (rows: en yeni
  * ustte, son N gun). `haftaGunleri` = Pzt..Paz tarih dizisi.
  */
+/**
+ * ADMIN gorev listesi icin rutin satirlari.
+ *
+ * Ogrenci tarafindaki `buildRoutineWeekRows` tek ogrencinin hazir gorunumunu
+ * kullanir; admin listesi ise BIRDEN COK ogrenciyi gosterir. Ogrenci basina
+ * bes gorunum kurmak (5 x N sorgu) yerine her rutin turu icin SECILI HAFTAYA
+ * ve ogrenci kumesine daraltilmis TEK sorgu calisir — toplam bes sorgu,
+ * ogrenci sayisindan bagimsiz.
+ *
+ * Satirlar admin tablosunun sutunlarina gore uretilir (Tarih · Baslik ·
+ * Islenen Konu · Ogrenci · Kategori · Son Saat · Islem) ve satir ici
+ * isaretleme YOKTUR: adminin duzeltmesi kendi "Gunluk Kayitlar" alaninda
+ * yapilir, satir oraya baglanir.
+ */
+async function buildAdminRoutineWeekRows(students, haftaGunleri, today) {
+  if (!students.length || !haftaGunleri.length) return [];
+  const ogrIdler = students.map((st) => st.id);
+  const adById = new Map(students.map((st) => [st.id, st.name]));
+  const ilk = haftaGunleri[0];
+  const son = haftaGunleri[haftaGunleri.length - 1];
+
+  const [wakeR, sportR, aiR, ydsR, prayerR] = await Promise.all([
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.target_time AS "targetTime",
+               r.tolerance_minutes AS "toleranceMinutes", r.created_at AS "createdAt",
+               l.day, l.woke_at AS "at", l.status, l.delay_minutes AS "delay", l.note
+        FROM wake_routines r
+        LEFT JOIN wake_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+      `,
+      [ogrIdler, ilk, son]
+    ),
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.start_time AS "startTime",
+               r.end_time AS "endTime", r.created_at AS "createdAt",
+               l.day, l.done_at AS "at", l.status, l.delay_minutes AS "delay", l.note
+        FROM sport_routines r
+        LEFT JOIN sport_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+      `,
+      [ogrIdler, ilk, son]
+    ),
+    ...['ai', 'yds'].map((k) =>
+      query(
+        `
+          SELECT r.student_id AS "studentId", r.start_time AS "startTime",
+                 r.minutes, r.created_at AS "createdAt",
+                 l.day, l.status, l.actual_minutes AS "actualMinutes",
+                 l.done_at AS "doneAt", l.makeup_at AS "makeupAt"
+          FROM ${STUDY_KINDS[k].routinesTable} r
+          LEFT JOIN ${STUDY_KINDS[k].logsTable} l
+            ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+          WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+        `,
+        [ogrIdler, ilk, son]
+      )
+    ),
+    query(
+      `
+        SELECT r.student_id AS "studentId", r.created_at AS "createdAt",
+               l.day,
+               count(l.id)::int AS tracked,
+               count(l.id) FILTER (WHERE l.status = 'on_time')::int AS "onTime",
+               count(l.id) FILTER (WHERE l.status = 'qada')::int AS qada,
+               count(l.id) FILTER (WHERE l.status = 'missed')::int AS missed
+        FROM prayer_routines r
+        LEFT JOIN prayer_logs l
+          ON l.student_id = r.student_id AND l.day BETWEEN $2::date AND $3::date
+        WHERE r.student_id = ANY($1::text[]) AND r.is_active = TRUE
+        GROUP BY r.student_id, r.created_at, l.day
+      `,
+      [ogrIdler, ilk, son]
+    )
+  ]);
+
+  // Rutinin kuruldugu gun: o gunden oncesi hic takip edilmedi, satir da
+  // uretilmez (ogrenci tarafindaki kuralin aynisi).
+  const tabanlar = new Map();
+  const kayitlar = new Map();
+  const topla = (tur, rows) => {
+    for (const row of rows) {
+      const kuruldu = toDateOnly(row.createdAt) || SYSTEM_START_DATE;
+      const taban = [kuruldu, SYSTEM_START_DATE].sort().pop();
+      tabanlar.set(`${tur}:${row.studentId}`, { taban, ayar: row });
+      const gun = toDateOnly(row.day);
+      if (gun) kayitlar.set(`${tur}:${row.studentId}:${gun}`, row);
+    }
+  };
+  topla('wake', wakeR.rows);
+  topla('sport', sportR.rows);
+  topla('ai', aiR.rows);
+  topla('yds', ydsR.rows);
+  topla('prayer', prayerR.rows);
+
+  const TURLER = [
+    { tur: 'wake', baslik: 'Uyanma Rutini', sira: 0, yol: (id) => `/admin/wake?bolum=kayitlar&wakeStudentId=${id}` },
+    { tur: 'sport', baslik: 'Spor Rutini', sira: 1, yol: (id) => `/admin/sport?bolum=kayitlar&sportStudentId=${id}` },
+    { tur: 'ai', baslik: 'Yapay Zeka Rutini', sira: 2, yol: (id) => `/admin/ai?bolum=kayitlar&aiStudentId=${id}` },
+    { tur: 'yds', baslik: 'YDS Rutini', sira: 3, yol: (id) => `/admin/yds?bolum=kayitlar&ydsStudentId=${id}` },
+    { tur: 'prayer', baslik: 'Namaz Rutini', sira: 4, yol: (id) => `/admin/prayer?bolum=kayitlar&prayerStudentId=${id}` }
+  ];
+
+  const satirlar = [];
+  for (const st of students) {
+    for (const t of TURLER) {
+      const kayit = tabanlar.get(`${t.tur}:${st.id}`);
+      if (!kayit) continue; // o ogrencide bu rutin yok / pasif
+      for (const gun of haftaGunleri) {
+        if (gun < kayit.taban) continue;
+        const r = kayitlar.get(`${t.tur}:${st.id}:${gun}`) || null;
+        const ayar = kayit.ayar;
+
+        let saat = '';
+        let durumMetni = 'Bekliyor';
+        let ayrinti = '';
+        if (t.tur === 'prayer') {
+          const onTime = r ? r.onTime : 0;
+          const qada = r ? r.qada : 0;
+          const missed = r ? r.missed : 0;
+          saat = '5 vakit';
+          const p = [`${onTime}/5 vaktinde`];
+          if (qada) p.push(`${qada} kaza`);
+          if (missed) p.push(`${missed} kılınmadı`);
+          // Bekleyen vakitler SOYLENIR (gecmemis gunde): gun bitmeden
+          // "0/5 vaktinde" yazmak basarisizlik gibi okunuyordu, oysa
+          // vakitler henuz gelmemis olabilir. Ogrenci tarafindaki ozetin
+          // aynisi (buildRoutineWeekRows, tip === 'prayer').
+          const pending = Math.max(5 - onTime - qada - missed, 0);
+          if (pending && gun >= today) p.push(`${pending} bekleyen`);
+          durumMetni = p.join(' · ');
+        } else if (t.tur === 'wake') {
+          const hedef = normalizeEstimatedTimeForDisplay(ayar.targetTime);
+          const tol = Number(ayar.toleranceMinutes) || 0;
+          saat = tol ? `${hedef} (+${tol} dk)` : hedef;
+          durumMetni = r && r.status ? wakeStatusText(r.status) : 'Bekliyor';
+          const basilan = r ? normalizeEstimatedTimeForDisplay(r.at) : null;
+          ayrinti = basilan ? `${basilan}${r.delay ? ` · ${r.delay} dk gecikme` : ''}` : '';
+        } else if (t.tur === 'sport') {
+          saat = `${normalizeEstimatedTimeForDisplay(ayar.startTime)} - ${normalizeEstimatedTimeForDisplay(ayar.endTime)}`;
+          durumMetni = r && r.status ? sportStatusText(r.status) : 'Bekliyor';
+          const basilan = r ? normalizeEstimatedTimeForDisplay(r.at) : null;
+          ayrinti = basilan ? `${basilan}${r.delay ? ` · ${r.delay} dk gecikme` : ''}` : '';
+        } else {
+          const bas = normalizeEstimatedTimeForDisplay(ayar.startTime);
+          const dk = Number(ayar.minutes) || 60;
+          saat = `${bas} - ${studyWindowEnd(bas, dk)}`;
+          durumMetni = r && r.status ? studyStatusText(r.status) : 'Bekliyor';
+          if (r && (r.status === 'done' || r.status === 'makeup')) {
+            // Gercek sure girilmediyse plandan sayildigini soyler.
+            ayrinti = r.actualMinutes === null ? `${dk} dk (plan)` : `${r.actualMinutes} dk`;
+          }
+        }
+
+        const bugun = gun === today;
+        satirlar.push({
+          id: `adm-routine-${t.tur}-${st.id}-${gun}`,
+          isRoutine: true,
+          routineTur: t.tur,
+          routineSira: t.sira,
+          routineHref: t.yol(st.id),
+          singleDate: gun,
+          dateText: bugun ? `${gun} · Bugün` : gun,
+          title: t.baslik,
+          // Admin tablosunda "Islenen Konu" sutunu rutinde DURUMU yazar.
+          description: ayrinti ? `${durumMetni} · ${ayrinti}` : durumMetni,
+          student: { id: st.id, name: adById.get(st.id) || '' },
+          studentId: st.id,
+          category: { name: 'Rutin' },
+          estimatedTime: saat
+        });
+      }
+    }
+  }
+  return satirlar;
+}
+
 function buildRoutineWeekRows(config, view, haftaGunleri, today) {
   const { tur, baslik, endpoint, page, tip } = config;
   if (!view || !view.routine || view.routine.isActive === false) return [];
@@ -7024,6 +7443,26 @@ function buildRoutineWeekRows(config, view, haftaGunleri, today) {
     // Kapanmis (kilit rozeti gosterilecek) durum: isaretli ve baska islem yok.
     const kilitli = isaretli && !actionHref;
 
+    // DURUM sutununun ayrintisi — admin listesindeki `ayrinti` ile AYNI
+    // bilgi: uyanma/spor'da basilan saat + gecikme, YZ/YDS'de calisilan
+    // dakika (gercek sure girilmediyse plandan sayildigi soylenir).
+    // Onceden ogrenci tarafi bunu hic basmiyordu: sablon yalnizca
+    // `routineDoneAt` varsa saati yaziyor, yoksa genel gorev dalina dusup
+    // TARIHI yaziyordu — "Kacirildi" yerine "2026-09-21", "Telafi edildi ·
+    // 99 dk" yerine "21:03" gorunuyordu.
+    let routineDetay = '';
+    if (tip === 'time') {
+      const basilan = r ? normalizeEstimatedTimeForDisplay(tur === 'wake' ? r.wokeAt : r.doneAt) : null;
+      if (basilan) {
+        routineDetay = `${basilan}${r.delayMinutes ? ` · ${r.delayMinutes} dk gecikme` : ''}`;
+      }
+    } else if (tip === 'study' && r && (durum === 'done' || durum === 'makeup')) {
+      routineDetay =
+        r.actualMinutes === null || r.actualMinutes === undefined
+          ? `${Number(routine.minutes) || 60} dk (plan)`
+          : `${r.actualMinutes} dk`;
+    }
+
     satirlar.push({
       id: `routine-${tur}-${gun}`,
       isRoutine: true,
@@ -7051,6 +7490,7 @@ function buildRoutineWeekRows(config, view, haftaGunleri, today) {
       routineDoneAt: r ? (tur === 'wake' ? r.wokeAt : r.doneAt) || (r.makeupAt || null) : null,
       routineStatus: durum,
       routineStatusText: r && r.statusText ? r.statusText : 'Bekliyor',
+      routineDetay,
       routineDelay: r && r.delayMinutes ? r.delayMinutes : 0,
       displayStatus: displayDurum ? { status: displayDurum, day: gun } : null,
       displayStatusIsToday: bugun,
@@ -7170,8 +7610,11 @@ async function getStudentViewModel(req, currentPage) {
   // penceresi hem o sorunu cozer hem de "bu hafta hangi dersin konusunu
   // yazmadim" sorusunu yanitlar. Digerleri silinmez: takvimde kendi gununde,
   // haftalik analizde ve raporlarda aynen gorunur.
-  const buHaftaBaslangic = startOfWeek(today);
-  const buHaftaBitis = shiftDate(buHaftaBaslangic, 6);
+  // Hafta hafta gezinme (serit ustte). Parametre yoksa icinde bulunulan
+  // hafta; ogretim yili disina kirpilir.
+  const weekStrip = buildWeekStrip(normalizeText(req.query.hafta), today);
+  const buHaftaBaslangic = weekStrip.weekStart;
+  const buHaftaBitis = weekStrip.weekEnd;
 
   // Bu haftanin yazilmis konulari: gorev satirinda YAZILAN KONU gorunsun.
   // Liste yalnizca "1. ders · Matematik" gosteriyordu; ogretmen konuyu
@@ -7314,13 +7757,16 @@ async function getStudentViewModel(req, currentPage) {
   // Uyanma/spor bugun satir ici tek dokunusla; YZ/YDS uc durumlu oldugu icin
   // kendi sayfasina baglanti; NAMAZ gunde 5 vakit oldugu icin TEK OZET satir
   // ("2/5 vaktinde · 1 kaza · ...") ve isaretleme kendi sayfasinda.
-  // Gorevlerim listesi YALNIZCA okul gunlerini (Sal/Per/Cum — schedule.GUNLER)
-  // ve YALNIZCA BUGUNE KADAR gosterir (ileri tarihler gizli); rutin satirlari
-  // da yalnizca bu gunler icin uretilir.
+  // Rutin satirlari secili haftanin TUM gunleri icin uretilir (rutin gunluk;
+  // ders cizelgesinin Sal/Per/Cum kurali buraya dayatilmaz), ama bugunu
+  // asmaz — yarinin rutini henuz yapilamaz.
   const haftaGunleri = [];
   for (let g = buHaftaBaslangic; g <= buHaftaBitis; g = shiftDate(g, 1)) {
-    if (g <= today && schedule.GUNLER.includes(schedule.dayOfWeek(g))) haftaGunleri.push(g);
+    if (g <= today) haftaGunleri.push(g);
   }
+  // Not: rutin satirlari bugunu asmaz (yukaridaki `g <= today`), ama DERS
+  // satirlari secili haftanin tamaminda gorunur — ileri haftaya bakan
+  // kullanici bos liste gormemeli.
   const rutinSatirlari =
     currentPage === 'dashboard'
       ? [
@@ -7355,6 +7801,27 @@ async function getStudentViewModel(req, currentPage) {
             today
           )
         ]
+      : [];
+
+  // Tanimlanmamis rutinler SESSIZCE eksilmesin. buildRoutineWeekRows, rutin
+  // yoksa (ya da pasifse) bos donuyor; liste de hicbir sey demiyordu.
+  // Kullanici "YDS ve yapay zeka rutinleri neden gorunmuyor" diye sordu —
+  // cevap "o ogrenci icin hic tanimlanmamis"ti, ama bunu ancak veritabanina
+  // bakarak anlamak mumkundu. Ders gorevlerindeki "liste bossa nedeni
+  // yazilir" kuralinin rutin karsiligi.
+  //
+  // Ogrenciye "git tanimla" DENMEZ: rutini yalnizca admin acar.
+  const tanimsizRutinler =
+    currentPage === 'dashboard'
+      ? [
+          { label: 'Uyanma Rutini', view: wake },
+          { label: 'Spor Rutini', view: sport },
+          { label: 'Yapay Zeka Rutini', view: aiWeek },
+          { label: 'YDS Rutini', view: ydsWeek },
+          { label: 'Namaz Rutini', view: prayer }
+        ]
+          .filter((r) => !r.view || !r.view.routine || r.view.routine.isActive === false)
+          .map((r) => r.label)
       : [];
 
   const scheduleView = currentPage === 'schedule' ? await buildStudentScheduleView(req) : null;
@@ -7403,12 +7870,13 @@ async function getStudentViewModel(req, currentPage) {
     }
     return 900;
   };
-  // Yalnizca okul gunu (Sal/Per/Cum) ve bugune kadar; ileri tarihli ve okul
-  // disi gunlerdeki gorevler listede gizlenir. Tarihi olmayan satirlar kalir.
-  const okulGunuSatir = (s) =>
+  // SECILI HAFTANIN TUM gunleri; tarihi olmayan satirlar kalir. Rutin
+  // satirlari zaten uretilirken bugunle sinirlandi — burada gorevlerin
+  // haftasi kirpiliyor.
+  const haftaIcindeSatir = (s) =>
     !s.singleDate ||
-    (schedule.GUNLER.includes(schedule.dayOfWeek(s.singleDate)) && s.singleDate <= today);
-  const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(okulGunuSatir).sort(
+    (s.singleDate >= buHaftaBaslangic && s.singleDate <= buHaftaBitis);
+  const listeSatirlari = [...rutinSatirlari, ...activeTasks].filter(haftaIcindeSatir).sort(
     (a, b) =>
       String(a.singleDate || '').localeCompare(String(b.singleDate || '')) ||
       satirSirasi(a) - satirSirasi(b) ||
@@ -7430,6 +7898,13 @@ async function getStudentViewModel(req, currentPage) {
     satir.gunAdi = getDayName(gun);
     satir.gunBugun = gun === today;
     satir.gunOzeti = gunOzeti.get(gun);
+    // "Bugün" rozeti tarih metninden AYRILIR: Tarih sutunu 124px sabit ve
+    // nowrap (tarih kisa/sabit bicimli), "2026-09-27 · Bugün" ise 140px
+    // istiyor ve hucreyi 16px tasiriyordu. Rozet sablonda alt satira iner —
+    // rutin "Son Saat" hucresindeki karar. (Kusur bugune kadar gizliydi:
+    // liste yalnizca Sal/Per/Cum gosterdigi icin bugun cogu gun listede
+    // hic yoktu.)
+    satir.scheduleText = String(satir.scheduleText || '').replace(/ · Bugün$/, '');
   }
   // "Tamamlanan" sayaci EKRANDA GORUNENI saymali. Once yalnizca gorev
   // satirlarinin BUGUNKU durumuna bakiyordu: rutinler hic sayilmiyordu ve
@@ -7440,13 +7915,17 @@ async function getStudentViewModel(req, currentPage) {
     (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
   ).length;
 
-  // "Bugunun Ozeti" KPI'si YALNIZCA BUGUNU sayar: liste artik tum haftayi
-  // (ders gorevleri + rutinler) gosterdigi icin tum listeyi saymak "bugun"
-  // etiketiyle celisirdi. Gun bazli sayac (gunOzeti) zaten her gun basliginda.
-  const bugunSatirlari = listeSatirlari.filter((satir) => (satir.singleDate || today) === today);
-  const bugunOzet = {
-    toplam: bugunSatirlari.length,
-    tamamlanan: bugunSatirlari.filter(
+  // Ozet KPI'si SECILI HAFTAYI sayar. Bir donem yalnizca bugunu sayiyordu;
+  // liste hafta hafta gezilir hale gelince bu iki sekilde de yanlis oldu:
+  // baska bir haftaya bakarken sayac hala bugunu gosteriyordu, bugun okul
+  // gunu degilse (liste yalnizca Sal/Per/Cum) 22 satirin ustunde "0 / 0 / 0"
+  // yaziyordu. Sayac artik ekranda GORUNENI sayar; gun bazli kirilim zaten
+  // her gun basliginda (gunOzeti).
+  const haftaOzet = {
+    label: weekStrip.selected ? weekStrip.selected.label : 'Hafta',
+    buHafta: weekStrip.isCurrentWeek,
+    toplam: listeSatirlari.length,
+    tamamlanan: listeSatirlari.filter(
       (satir) => satir.displayStatus && satir.displayStatus.status === 'done'
     ).length
   };
@@ -7461,15 +7940,24 @@ async function getStudentViewModel(req, currentPage) {
     user: req.currentUser,
     currentPage,
     currentSection,
-    menuTree: menu.buildMenuTree(menu.STUDENT_MENU, currentPage, currentSection),
+    menuTree: menu.buildMenuTree(
+      menu.STUDENT_MENU,
+      currentPage,
+      currentSection,
+      currentPage === 'schedule' && scheduleView && scheduleView.hafta
+        ? `hafta=${scheduleView.hafta}`
+        : ''
+    ),
     currentSectionLabel: menu.sectionLabel(menu.STUDENT_MENU, currentPage, currentSection),
     today,
     menuIcons,
     categories,
     activeTasks: listeSatirlari,
+    weekStrip,
+    tanimsizRutinler,
     dersGorevBilgi,
     doneCount,
-    bugunOzet,
+    haftaOzet,
     questionEntry: null,
     questionHistory,
     calendar,
@@ -7492,7 +7980,7 @@ app.get(
   '/student/:page',
   requireRole('student'),
   asyncHandler(async (req, res) => {
-    const allowedPages = new Set(['dashboard', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai', 'yds']);
+    const allowedPages = new Set(['dashboard', 'new-task', 'questions', 'calendar', 'program', 'wake', 'schedule', 'goals', 'sport', 'prayer', 'ai', 'yds']);
     const currentPage = allowedPages.has(req.params.page) ? req.params.page : 'dashboard';
     const viewModel = await getStudentViewModel(req, currentPage);
     return res.render('student', viewModel);
@@ -7700,6 +8188,169 @@ app.get(
   })
 );
 
+// Ogrenci kendi gorevini elle acabilir. Bir donem kaldirilmisti (gorevler
+// yalnizca ders programindan uretiliyordu); kullanici geri istedi.
+// Acilan gorev OGRENCININ KENDISININ: created_by = student_id, repeat_type
+// 'once'. Bu yuzden listede canManage acik olur (baslik/kategori/tarih
+// duzenlenebilir, silinebilir) — ders gorevlerinden farki bu. Isaretlenince
+// ya da suresi dolunca yine kilitlenir (findStudentTaskIfEditable).
+app.post(
+  '/student/tasks',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const titleValidation = validateTaskTitle(req.body.title);
+    if (!titleValidation.ok) {
+      return studentRedirect(req, res, { error: titleValidation.error });
+    }
+    const descriptionValidation = validateTaskDescription(req.body.description);
+    if (!descriptionValidation.ok) {
+      return studentRedirect(req, res, { error: descriptionValidation.error });
+    }
+    const title = titleValidation.value;
+    const description = descriptionValidation.value;
+    const categoryId = normalizeText(req.body.categoryId);
+    const planningMode = normalizeText(req.body.planningMode) || 'single';
+    const singleDate = normalizeText(req.body.singleDate) || todayDateString();
+    const rangeStartDate = normalizeText(req.body.rangeStartDate) || singleDate;
+    const rangeDayCount = Number(req.body.rangeDayCount);
+    const estimatedTimeValidation = normalizeEstimatedTimeForStorage(
+      normalizeText(req.body.estimatedTime)
+    );
+    if (!estimatedTimeValidation.ok) {
+      return studentRedirect(req, res, { error: estimatedTimeValidation.error });
+    }
+    const estimatedTime = estimatedTimeValidation.value;
+
+    if (!categoryId) {
+      return studentRedirect(req, res, { error: 'Kategori zorunlu.' });
+    }
+    if (!['single', 'multi_daily'].includes(planningMode)) {
+      return studentRedirect(req, res, { error: 'Plan tipi geçersiz.' });
+    }
+    if (planningMode === 'single' && !isDateOnly(singleDate)) {
+      return studentRedirect(req, res, { error: 'Görev tarihi geçersiz.' });
+    }
+    if (planningMode === 'multi_daily') {
+      if (!isDateOnly(rangeStartDate)) {
+        return studentRedirect(req, res, { error: 'Başlangıç tarihi geçersiz.' });
+      }
+      if (!Number.isInteger(rangeDayCount) || rangeDayCount < 1 || rangeDayCount > 180) {
+        return studentRedirect(req, res, { error: 'Gün sayısı 1 ile 180 arasında olmalı.' });
+      }
+    }
+
+    // Sistem taban tarihinden onceye yazilmaz: purgeBeforeSystemStart o
+    // kayitlari her acilista silerdi, yani gorev sessizce kaybolurdu.
+    const ilkGun = planningMode === 'single' ? singleDate : rangeStartDate;
+    if (ilkGun < SYSTEM_START_DATE) {
+      return studentRedirect(req, res, {
+        error: `${SYSTEM_START_DATE} tarihinden önceye görev eklenemez.`
+      });
+    }
+
+    const categoryRes = await query(`SELECT id FROM categories WHERE id = $1 LIMIT 1`, [categoryId]);
+    if (categoryRes.rowCount === 0) {
+      return studentRedirect(req, res, { error: 'Kategori bulunamadı.' });
+    }
+
+    const EKLE = `
+      INSERT INTO tasks (
+        id, title, description, category_id, student_id, repeat_type,
+        single_date, weekly_day, monthly_day, custom_dates,
+        start_date, end_date, estimated_time, is_archived, created_by
+      )
+      VALUES ($1,$2,$3,$4,$5,'once',$6,NULL,NULL,'{}',NULL,NULL,$7,false,$8)
+    `;
+
+    if (planningMode === 'single') {
+      const varMi = await query(
+        `
+          SELECT id FROM tasks
+          WHERE student_id = $1 AND category_id = $2 AND title = $3
+            AND repeat_type = 'once' AND single_date = $4 AND is_archived = false
+          LIMIT 1
+        `,
+        [req.currentUser.id, categoryId, title, singleDate]
+      );
+      if (varMi.rowCount > 0) {
+        return studentRedirect(req, res, {
+          error: 'Aynı gün için aynı başlıkta görev zaten mevcut.'
+        });
+      }
+      await query(EKLE, [
+        makeId('task'),
+        title,
+        description,
+        categoryId,
+        req.currentUser.id,
+        singleDate,
+        estimatedTime,
+        req.currentUser.id
+      ]);
+      return studentRedirect(req, res, {
+        message: 'Görev eklendi.',
+        hafta: startOfWeek(singleDate)
+      });
+    }
+
+    const rangeEndDate = shiftDate(rangeStartDate, rangeDayCount - 1);
+    const gunler = getDateRangeInclusive(rangeStartDate, rangeEndDate, 200);
+    if (!gunler || !gunler.length) {
+      return studentRedirect(req, res, { error: 'Toplu plan tarih aralığı geçersiz.' });
+    }
+
+    // Var olan gunler ATLANIR (hepsi tek sorguda okunur): form ikinci kez
+    // gonderilirse kopya gorev acilmasin.
+    const mevcutRes = await query(
+      `
+        SELECT single_date::text AS day FROM tasks
+        WHERE student_id = $1 AND category_id = $2 AND title = $3
+          AND repeat_type = 'once' AND is_archived = false
+          AND single_date BETWEEN $4 AND $5
+      `,
+      [req.currentUser.id, categoryId, title, rangeStartDate, rangeEndDate]
+    );
+    const mevcut = new Set(mevcutRes.rows.map((row) => row.day));
+    const eklenecek = gunler.filter((gun) => !mevcut.has(gun));
+    if (!eklenecek.length) {
+      return studentRedirect(req, res, {
+        error: 'Seçilen aralıktaki görevlerin tamamı zaten mevcut.'
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const gun of eklenecek) {
+        await client.query(EKLE, [
+          makeId('task'),
+          title,
+          description,
+          categoryId,
+          req.currentUser.id,
+          gun,
+          estimatedTime,
+          req.currentUser.id
+        ]);
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const atlanan = gunler.length - eklenecek.length;
+    return studentRedirect(req, res, {
+      message: atlanan
+        ? `${eklenecek.length} görev eklendi, ${atlanan} görev zaten mevcuttu.`
+        : `${eklenecek.length} görev eklendi.`,
+      hafta: startOfWeek(rangeStartDate)
+    });
+  })
+);
+
 app.post(
   '/student/tasks/:taskId/cell-update',
   requireRole('student'),
@@ -7803,6 +8454,44 @@ app.post(
     }
 
     return res.status(400).json({ ok: false, error: 'Güncellenebilir alan bulunamadı.' });
+  })
+);
+
+// Elle acilan gorev silinebilmeli: yanlis acilan bir gorev silinemezse gun
+// sonunda kalici olarak "Yapilmadi" muhurlenirdi. Kosullar `canManage` ile
+// ayni — YALNIZCA ogrencinin KENDI actigi tek seferlik gorev; ders gorevleri
+// (created_by = admin) ve isaretlenmis/suresi dolmus gorevler disarida.
+app.post(
+  '/student/tasks/:taskId/delete',
+  requireRole('student'),
+  asyncHandler(async (req, res) => {
+    const { taskId } = req.params;
+    const { locked, marked } = await findStudentTaskIfEditable(taskId, req.currentUser.id);
+    if (locked) {
+      return studentRedirect(req, res, {
+        error: marked
+          ? 'Bu görev işaretlendi; silinemez.'
+          : 'Bu görevin süresi doldu; silinemez.'
+      });
+    }
+
+    const silindi = await query(
+      `
+        DELETE FROM tasks
+        WHERE id = $1
+          AND student_id = $2
+          AND created_by = $2
+          AND repeat_type = 'once'
+          AND is_archived = false
+      `,
+      [taskId, req.currentUser.id]
+    );
+    if (silindi.rowCount === 0) {
+      return studentRedirect(req, res, {
+        error: 'Bu görev silinemedi (yalnızca kendi eklediğin görevler silinebilir).'
+      });
+    }
+    return studentRedirect(req, res, { message: 'Görev silindi.' });
   })
 );
 

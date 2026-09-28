@@ -446,6 +446,33 @@
               </button>
             </form>
             <% } %>
+            <%# HAFTA SERIDI: ogretim yilinin butun haftalari tek satirda
+                yatay kayar; secili hafta sayfa acilinca gorunume kaydirilir.
+                Ogrenci filtresi korunur — hafta degistirince secili ogrenci
+                kaybolmamali. %>
+            <% const haftaTemel = activeTaskFilters.studentId ? `/admin/tasks/${taskSection}?activeTaskStudentId=${activeTaskFilters.studentId}&` : `/admin/tasks/${taskSection}?`; %>
+            <nav class="week-strip" aria-label="Hafta seçimi">
+              <a class="week-nav <%= weekStrip.prevWeek ? '' : 'disabled' %>" href="<%= haftaTemel %>hafta=<%= weekStrip.prevWeek %>" title="Önceki hafta" aria-label="Önceki hafta">‹</a>
+              <div class="week-strip-track" data-week-track>
+                <% weekStrip.weeks.forEach((h) => { %>
+                <a
+                  class="week-chip <%= h.isSelected ? 'active' : '' %> <%= h.isCurrent ? 'current' : '' %>"
+                  href="<%= haftaTemel %>hafta=<%= h.weekStart %>"
+                  <%= h.isSelected ? 'data-week-selected' : '' %>
+                  title="<%= h.weekStart %> - <%= h.weekEnd %><%= h.academic.termLabel ? ' · ' + h.academic.termLabel : '' %>"
+                ><%= h.label %><small><%= h.weekStart.slice(5) %></small></a>
+                <% }) %>
+              </div>
+              <a class="week-nav <%= weekStrip.nextWeek ? '' : 'disabled' %>" href="<%= haftaTemel %>hafta=<%= weekStrip.nextWeek %>" title="Sonraki hafta" aria-label="Sonraki hafta">›</a>
+            </nav>
+            <p class="muted">
+              <strong><%= weekStrip.selected ? weekStrip.selected.label : '' %></strong> ·
+              <%= weekStrip.weekStart %> - <%= weekStrip.weekEnd %><% if (weekStrip.isCurrentWeek) { %> · <span class="day-badge">Bu hafta</span><% } %>
+              <% if (!weekStrip.isCurrentWeek) { %>
+              &nbsp;<a href="<%= haftaTemel %>hafta=<%= weekStrip.thisWeek %>">Bu haftaya dön</a>
+              <% } %>
+            </p>
+
             <div class="datatable-filter-row">
               <div class="datatable-search">
                 <label for="taskSearchInput">Genel Ara</label>
@@ -496,22 +523,32 @@
               <tbody>
                 <% taskTableTasks.forEach((t) => { %>
                 <% const rowSearchText = `${t.title || ''} ${t.description || ''} ${t.student ? t.student.name : ''} ${t.category ? t.category.name : ''}`.toLowerCase(); %>
-                <tr class="task-data-row" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>" data-title="<%= (t.title || '').toLowerCase() %>" data-category="<%= (t.category ? t.category.name : '').toLowerCase() %>" data-date="<%= (t.dateText || '').toLowerCase() %>">
+                <tr class="task-data-row <%= t.isRoutine ? 'routine-row' : '' %>" data-task-id="<%= t.id %>" data-search="<%= rowSearchText %>" data-title="<%= (t.title || '').toLowerCase() %>" data-category="<%= (t.category ? t.category.name : '').toLowerCase() %>" data-date="<%= (t.dateText || '').toLowerCase() %>">
+                  <%# Rutin satiri bir `tasks` kaydi DEGIL: toplu silmeye
+                      girmez, satir ici duzenlenmez, islemi kendi "Gunluk
+                      Kayitlar" alanina baglantidir. %>
                   <% if (bulkSelect) { %>
-                  <td><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /></td>
+                  <td><% if (!t.isRoutine) { %><input type="checkbox" name="taskIds" value="<%= t.id %>" form="bulkTaskForm" /><% } %></td>
                   <% } %>
                   <td><%= t.dateText %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong><% if (t.lessonMeta) { %><small class="muted lesson-topic"><%= t.lessonMeta %></small><% } %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><% if (t.lessonMeta) { %><%= t.lessonTopic || 'Konu yazılmadı' %><% } else { %><%= t.description || '-' %><% } %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Öğrenci yok' %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
-                  <td class="<%= isInlineEditPage ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= t.estimatedTime || '' %>"><%= t.estimatedTime || '-' %></td>
+                  <td class="<%= isInlineEditPage && !t.isRoutine ? 'editable-cell' : '' %>" data-field="title" data-value="<%= t.title || '' %>"><strong><%= t.title %></strong><% if (t.lessonMeta) { %><small class="muted lesson-topic"><%= t.lessonMeta %></small><% } %></td>
+                  <td class="<%= isInlineEditPage && !t.isRoutine ? 'editable-cell' : '' %>" data-field="description" data-value="<%= t.description || '' %>"><% if (t.lessonMeta) { %><%= t.lessonTopic || 'Konu yazılmadı' %><% } else { %><%= t.description || '-' %><% } %></td>
+                  <td class="<%= isInlineEditPage && !t.isRoutine ? 'editable-cell' : '' %>" data-field="studentId" data-value="<%= t.studentId || '' %>"><%= t.student ? t.student.name : 'Öğrenci yok' %></td>
+                  <td class="<%= isInlineEditPage && !t.isRoutine ? 'editable-cell' : '' %>" data-field="categoryId" data-value="<%= t.categoryId || '' %>"><%= t.category ? t.category.name : 'Kategori yok' %></td>
+                  <td class="<%= isInlineEditPage && !t.isRoutine ? 'editable-cell' : '' %>" data-field="estimatedTime" data-value="<%= t.estimatedTime || '' %>"><%= t.estimatedTime || '-' %></td>
                   <td>
                     <div class="task-table-actions">
+                      <% if (t.isRoutine) { %>
+                      <%# Rutin satiri silinmez: kayit `tasks`ta degil, kendi
+                          tablosunda. Duzeltme o rutinin Gunluk Kayitlar
+                          alaninda yapilir. %>
+                      <a class="button-link routine-open" href="<%= t.routineHref %>">Kayıtlar</a>
+                      <% } else { %>
                       <form method="post" action="/admin/tasks/<%= t.id %>/delete" onsubmit="return confirm('Görev kalıcı olarak silinsin mi?')">
                         <input type="hidden" name="next" value="<%= tasksPagePath %>" />
                         <button type="submit" class="danger">Sil</button>
                       </form>
+                      <% } %>
                     </div>
                   </td>
                 </tr>
@@ -2072,8 +2109,13 @@
             alanda ve ayni haftada kalmali. %>
         <% const haftaSorgu = `?bolum=${currentSection}&hafta=${hf}`; %>
         <% const cizelgeYolu = `/admin/schedule${haftaSorgu}`; %>
-        <% if (currentSection === 'hafta') { %>
-        <section class="panel">
+
+        <%# HAFTA SECICI SAYFA BAGLAMIDIR, ALAN DEGIL — her alanda gorunur.
+            Once yalnizca "Hafta Seçimi" alanindaydi: Haftalık Çizelge, Ders
+            Ekle ve Gün Özeti alanlarinda hafta degistirmenin hicbir yolu
+            yoktu, yani baska bir haftanin cizelgesi ne gorulebiliyor ne de
+            olusturulabiliyordu. (Ogrenci/ay secicisiyle ayni kural.) %>
+        <section class="panel compact-panel">
           <div class="datatable-toolbar">
             <div class="row center">
               <a class="button-link <%= hf === scheduleView.buHafta ? 'active' : '' %>" href="/admin/schedule?bolum=<%= currentSection %>&hafta=<%= scheduleView.buHafta %>">Bu hafta</a>
@@ -2087,7 +2129,18 @@
               <button type="submit">Git</button>
             </form>
           </div>
+          <p class="muted">
+            <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong>
+            <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
+              · <%= scheduleView.haftaAkademik.termLabel %><% } %><%
+              if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.weekNo) { %>
+              · <%= scheduleView.haftaAkademik.weekNo %>. hafta<% } %>
+            <% if (hf === scheduleView.buHafta) { %> · <span class="day-badge">Bu hafta</span><% } %>
+          </p>
+        </section>
 
+        <% if (currentSection === 'hafta') { %>
+        <section class="panel">
           <p class="muted">
             <strong><%= hf %> - <%= scheduleView.haftaSonu %></strong>
             <% if (scheduleView.haftaAkademik && scheduleView.haftaAkademik.termLabel) { %>
@@ -2438,8 +2491,32 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               senkron();
             })();
           </script>
+
+          <%# BASKA BIR HAFTADAN KOPYALA. Varsayilan sablon kaldirilinca her
+              hafta bostan basliyor; ayni cizelgeyi her hafta elle girmek
+              gerekiyordu. Kopyalama kurali bozmaz — hicbir hafta kendiliginden
+              dolmaz, admin acikca "su haftadan kopyala" der. %>
+          <% if (scheduleView.kopyalanabilirHaftalar && scheduleView.kopyalanabilirHaftalar.length) { %>
+          <form method="post" action="/admin/schedule/copy" class="row center wrap">
+            <input type="hidden" name="next" value="<%= cizelgeYolu %>" />
+            <input type="hidden" name="hafta" value="<%= hf %>" />
+            <label for="kopyaKaynak">Bu haftaya kopyala:</label>
+            <select id="kopyaKaynak" name="kaynak" required>
+              <% scheduleView.kopyalanabilirHaftalar.forEach((k) => { %>
+              <option value="<%= k.weekStart %>"><%= k.weekStart %> (<%= k.ders %> ders)</option>
+              <% }) %>
+            </select>
+            <button type="submit">Çizelgeyi Kopyala</button>
+          </form>
+          <p class="muted">
+            Seçilen haftanın dersleri ve zil saatleri bu haftaya eklenir.
+            <strong>Dolu hücrelere dokunulmaz</strong> — haftanın tamamını
+            değiştirmek istersen önce <em>Bu Haftayı Boşalt</em>.
+          </p>
+          <% } %>
         </section>
         <% } %>
+
 
         <% if (currentSection === 'ozet') { %>
         <section class="panel">
@@ -2499,7 +2576,7 @@ Cuma&#9;8&#9;Nöbet"></textarea>
         <section class="panel narrow">
           <h3>Çizelge boş</h3>
           <p class="muted">
-            Önce <a href="/admin/schedule?bolum=cizelge">Çizelge</a> sekmesinden ders programını gir;
+            Önce <a href="/admin/schedule?bolum=cizelge&hafta=<%= tw.weekStart %>">Çizelge</a> sekmesinden ders programını gir;
             konu yazılacak ders saatleri oradan gelir.
           </p>
         </section>
@@ -2826,6 +2903,30 @@ Cuma&#9;8&#9;Nöbet"></textarea>
               }
             });
           }
+        }
+      })();
+    </script>
+
+    <%# Secili hafta seridin gorunmeyen kisminda kalabilir (40+ hafta tek
+        satirda kayiyor). Sayfa acilinca ortaya kaydirilir; betik
+        calismazsa serit yine kullanilir, yalnizca elle kaydirmak gerekir. %>
+    <script>
+      (() => {
+        for (const track of document.querySelectorAll('[data-week-track]')) {
+          const secili = track.querySelector('[data-week-selected]');
+          if (!secili) continue;
+          // scroll-behavior: smooth acik; ilk konumlandirmanin animasyonlu
+          // olmasi gereksiz, o yuzden kapatilip geri aciliyor.
+          const eski = track.style.scrollBehavior;
+          track.style.scrollBehavior = 'auto';
+          // offsetLeft KONUMLANDIRILMIS ataya gore olcer; serit static oldugu
+          // icin disaridaki kapsayicinin payi da iceriye giriyordu ve secili
+          // hafta gorunumun disinda kaliyordu (olculdu: 49px sola tasti).
+          // Kutu dikdortgenleri ataya bagli degil.
+          const tr = track.getBoundingClientRect();
+          const sr = secili.getBoundingClientRect();
+          track.scrollLeft += sr.left - tr.left - (tr.width - sr.width) / 2;
+          track.style.scrollBehavior = eski;
         }
       })();
     </script>

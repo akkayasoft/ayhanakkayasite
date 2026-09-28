@@ -15,6 +15,7 @@ Ayrıca günlük soru çözüm/süre takibi ve tarih aralıklı performans rapor
 | **Uyanma rutini** | günlük tek dokunuş, basılan saat | sahte satır (`tasks` kaydı değil) |
 | **Spor rutini** | günlük tek dokunuş, basılan saat | sahte satır |
 | **Ders programı** | her ders saati için bir görev (*"3. ders · Matematik"*), işlenen konu yazılınca "Yapıldı" | `tasks`, `source_key = ders:<tarih>:<saat>` |
+| **Öğrencinin kendi açtığı görev** | *Görev Ekle* sayfası; tek gün ya da N güne birden | `tasks`, `created_by = student_id`, `source_key` yok |
 
 > **Rutinler (uyanma, spor, namaz, yapay zeka, YDS) görev ÜRETMEZ —
 > bilinçli.** `tasks` kaydı açmazlar; işaretleme kendi sayfalarında olur.
@@ -35,9 +36,13 @@ Bunun dışında görev **üretilmez ve elle açılamaz**. Kaldırılanlar:
 - **YDS çalışma programı** (`ydsp:` görevleri) ve **yds.obs ilerleme aynası**
   (senkron, `yds_days` / `yds_sync` / `yds_program_settings` tabloları,
   `yds:` kaynaklı soru kayıtları, YDS Takibi sayfası).
-- **Elle görev açma**: admin "Görev Oluştur" / "Görev Güncelle" (toplu) /
-  "Haftayı Kopyala" sayfaları ve öğrenci "Görev Ekle" sayfası; ilgili rotalar.
-  Görev Yönetimi'nde **Tüm Görevler** ve **Durum Düzelt** sekmeleri kaldı.
+- **Elle görev açma — ADMİN tarafı**: "Görev Oluştur" / "Görev Güncelle"
+  (toplu) / "Haftayı Kopyala" sayfaları ve ilgili rotalar. Görev
+  Yönetimi'nde **Tüm Görevler** ve **Durum Düzelt** sekmeleri kaldı.
+
+  > ⚠️ **Öğrenci tarafı GERİ GELDİ** (27 Eylül): kullanıcı *"elle görev
+  > ekleyebilmeyi aktif et tekrardan öğrenci için"* dedi. Bkz. *Görev Ekle
+  > (öğrenci)*. Admin tarafı hâlâ kapalı.
 
 > Temizlik `db.js` içinde **idempotent** bir migration olarak duruyor: her
 > açılışta `yz:` / `ydsp:` görevlerini, `yds:` ayna soru kayıtlarını ve boşalan
@@ -89,7 +94,9 @@ alan görmek istiyorum"*). Sayfanın diğer alanları iki yerden açılır:
    *"hangi alandayım"* sorusunu sayfanın kendi içinde yanıtlar.
 
 - **Tek kaynak `src/menu.js`**: menü satırları, ikonları ve her sayfanın alan
-  listesi orada. Şablon karar vermez — görünüm modeline `menuTree` (aktiflik ve
+  listesi orada. `buildMenuTree(menu, sayfa, bolum, ekSorgu)` — `ekSorgu`
+  sayfa bağlamını (ör. çizelgede `hafta=…`) **aktif sayfanın** bölüm
+  bağlantılarına ekler; bölüm değiştirmek bağlamı düşürmemeli. Şablon karar vermez — görünüm modeline `menuTree` (aktiflik ve
   bağlantılar hesaplanmış), `currentSection` ve `currentSectionLabel` geçer.
 - Alan seçimi **`?bolum=<anahtar>`** ile gelir. Tanımsız ya da geçersiz değer
   **ilk alana düşer**; yani bölümsüz eski bağlantılar (`/admin/wake`) kırılmaz.
@@ -135,7 +142,8 @@ düşüyor; zil saatleri / ders ekleme / zil çizelgesi kayıtları kendi alanla
 dönüyor; uçan liste 11 alanı ekran içinde açıyor (y 106-514, taşma yok);
 1440 ve 390px'te sayfa taşması **0**, konsol hatası yok.
 
-Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `calendar`,
+Öğrenci sayfaları: `dashboard` (Görevlerim — liste), `new-task` (Görev Ekle),
+`calendar`,
 `program` (Yıllık Plan — hafta hafta), `questions`, `wake` (Uyanma Rutini),
 `sport` (Spor Rutini), `schedule` (Ders Programı — **salt okunur**),
 `goals` (Aylık Hedefler). Yeni bir öğrenci sayfası eklerken `/student/:page`
@@ -693,14 +701,79 @@ haftalar önceden belli değildir.
   **yalnızca o haftanın** satırlarını döner, artık şablona düşmez; hafta
   verilmezse boş.
 - `/admin/schedule?hafta=YYYY-MM-DD` → o haftanın ızgarası. **Parametre yoksa
-  içinde bulunulan hafta** açılır (eski "şablon modu" gitti). Panelde hafta
-  gezinmesi (Bu hafta / ← Önceki / Sonraki → / tarih seçici); *"Bu Haftayı
+  içinde bulunulan hafta** açılır (eski "şablon modu" gitti). *"Bu Haftayı
   Boşalt"* o haftanın derslerini **ve o haftaya özel zil saatlerini** siler.
-  Öğrenci tarafında da hafta gezinmesi var; varsayılan **bu haftadır**.
+
+> ⚠️ **Hafta seçici SAYFA BAĞLAMIDIR, alan değil** — çizelge sayfasının
+> **her alanında** görünür (Bu hafta / ← Önceki / Sonraki → / tarih seçici),
+> tıpkı öğrenci ve ay seçicisi gibi. Bir dönem yalnızca *"Hafta Seçimi"*
+> alanındaydı: **Haftalık Çizelge, Gün Özeti ve Ders Ekle alanlarında hafta
+> değiştirmenin hiçbir yolu yoktu.** Kullanıcı bunu *"mevcut hafta dışındaki
+> çizelgeleri göremiyorum ve oluşturamıyorum"* diye bildirdi.
+>
+> ⚠️ **İkinci yarısı: bölüm bağlantıları haftayı DÜŞÜRÜYORDU.** `buildMenuTree`
+> bölüm yollarını `?bolum=<anahtar>` olarak üretiyordu; *Hafta Seçimi*'nden
+> başka bir haftaya geçip *Ders Ekle*'ye tıklayan kullanıcı sessizce içinde
+> bulunulan haftaya dönüyordu. `buildMenuTree` artık dördüncü bir `ekSorgu`
+> parametresi alır ve **yalnızca aktif sayfanın** bölüm bağlantılarına ekler
+> (başka menü satırları başka sayfalardır — `/admin/wake?hafta=…` anlamsız
+> olurdu). Aynı sorgu hem kenar çubuğundaki uçan listeye hem içerik
+> sekmelerine işler, çünkü ikisi de `menuTree`'den beslenir.
+>
+> **Sunucu tarafı hep doğruydu**: rota `hafta`yı okuyup o haftaya yazıyor,
+> form da `hafta` + kaçışlı `next` gönderiyordu. Eksik olan tek şey o haftaya
+> **gidebilmekti** — doğrulandı: URL elle yazıldığında ders hep doğru haftaya
+> düşüyordu.
+
+  Öğrenci tarafında da aynısı: hafta gezinmesi önce yalnızca **boş hafta
+  kartında** vardı, yani dersi olan bir haftaya gelince hafta değiştirmek
+  imkânsızdı. O da sayfa bağlamına taşındı; varsayılan **bu haftadır**.
 - Yazma rotalarının hedef haftası (`hedefHafta`) `hafta` gelmezse **içinde
   bulunulan haftadır**. Ders ekleme/yapıştırma o haftaya yazar; kopyalanacak
   şablon olmadığı için `ensureWeekCustomized` yalnızca **işaret** koyar
   (`schedule_week_overrides`), kopya yapmaz.
+
+### Başka bir haftadan kopyala
+
+Şablon kalkınca her hafta **boştan başlıyor** ve aynı çizelgeyi her hafta elle
+girmek gerekiyordu (canlıda 29 ders). `POST /admin/schedule/copy` — GAP MTAL →
+**Haftalık Çizelge** alanının altında, ızgaranın hemen ardında: *"Bu haftaya
+kopyala: &lt;hafta&gt; (N ders)"*.
+
+- **Kural bozulmaz:** hiçbir hafta kendiliğinden dolmaz; admin açıkça *"şu
+  haftadan kopyala"* der. Gelecek haftalar yine önceden belli değildir.
+- **Dolu hücreler KORUNUR** (`ON CONFLICT DO NOTHING`) ve kaç tanesinin
+  atlandığı söylenir — toplu görev eklemedeki kararın aynısı. Haftanın
+  tamamını değiştirmek isteyen önce *"Bu Haftayı Boşalt"* der; **tek işlem
+  ikisini birden yapmaz** (sessizce üzerine yazmak veri kaybı olurdu).
+- **Zil saatleri de gelir**: Ders Ekle saati zorunlu kıldığı için saatsiz
+  kopyalanan hücre hesaplanan varsayılana düşer, yani **yanlış saat**
+  gösterirdi. Yalnızca gerçekten kopyalanan hücrelerin saati yazılır.
+- Hedef hafta `ensureWeekCustomized` ile **"girildi"** işaretlenir.
+- Kaynak listesi `getWeeksWithSchedule()` — içinde ders olan haftalar, eski
+  şablon (`SABLON_HAFTA`) **hariç**, yeniden eskiye. Hedef haftanın kendisi
+  listeden çıkarılır.
+- Reddedilenler: kaynak seçilmemiş, kaynak = hedef, eski şablon haftası,
+  içinde ders olmayan hafta.
+
+> ⚠️ **Eski şablon koruması HAM değerle karşılaştırılır.**
+> `startOfWeek('1900-01-01')` pazartesiye kaydırıp `1899-12-31` yapıyor, yani
+> `kaynak === SABLON_HAFTA` hiç tutmuyordu — ölçüldü: koruma yerine
+> *"1899-12-31 haftasında ders yok"* çıkıyordu (sonuç yine retti ama gerekçe
+> yanlıştı, koruma ölü koddu).
+
+> ⚠️ **Form yalnızca `cizelge` alanında.** İlk denemede *Gün Özeti*'nin içine
+> düştü (orada görünmedi bile), ikinci denemede üç alanda birden çıktı —
+> *"her sayfa TEK ALAN gösterir"* kuralına aykırı. Yeri, boş ızgaranın
+> görüldüğü alandır.
+
+Doğrulandı (tarayıcıda, Hafta 1 boşken): *"2026-09-21 → 2026-09-14: 3 ders
+kopyalandı · 2 zil saati."* — ızgara doldu, **kaynak hafta değişmedi**.
+İkinci basış *"0 ders kopyalandı · 3 hücre zaten doluydu, atlandı"* dedi.
+Kaynak = hedef, eski şablon (`1900-01-01`), boş hafta ve geçersiz kaynak
+**reddedildi**; hiçbiri veritabanına yazmadı. Nöbet satırı `kind='duty'`
+olarak, sınıfsız hücre boş sınıfla kopyalandı. Öğrenci **403**, oturumsuz
+**302**. 1440 / 375px'te taşma 0.
 
 > ⚠️ **"Girildi" işareti hâlâ ders satırlarından AYRI** (`schedule_week_overrides`).
 > Şablon kalksa da işaret **"bu hafta bilerek boş (ders yok)"** ile **"hiç
@@ -988,18 +1061,29 @@ O dersin **işlenen konusu yazılınca görev anında "Yapıldı"** işaretlenir
   raporlarda kendi gününde görünür. (Öğretim yılı boyunca yüzlerce ders görevi
   açılır; hepsi listede dursaydı sayfa kullanılamazdı.)
 
-  > ⚠️ **Görev listeleri yalnızca Sal/Per/Cum ve YALNIZCA BUGÜNE KADAR
-  > gösterir.** Hem admin **Tüm Görevler** (`taskTableTasks`, `okulGunu`) hem
-  > öğrenci **Görevlerim** (`listeSatirlari` + `haftaGunleri`, `okulGunuSatir`)
-  > tarihli satırları `schedule.GUNLER.includes(dayOfWeek) && singleDate <=
-  > today` ile süzer; **ileri tarihli** ve **okul dışı gün** (Pzt/Çar/hafta
-  > sonu) görevleri **listede gizlenir** (silinmez — DB'de durur, diğer
-  > görünümlerde çıkar). Öğrenci tarafında rutin sahte satırları da yalnızca bu
-  > günler için üretilir (`haftaGunleri` filtresi). Tarihi olmayan (tekrarlı)
-  > görevler elenmez. Kullanıcı çizelgeyi **hafta hafta** kurup ileriyi
-  > doldurmak istediği için gelecek görünmemeli; geçmiş okul günleri kalır.
-  > Doğrulandı: 09-21 Pzt ve 09-29 (gelecek Sal) gizli, 09-22/24/25
-  > (Sal/Per/Cum, bugüne kadar) görünür; 1440/390px taşma 0.
+  > ⚠️ **Görev listeleri SEÇİLİ HAFTANIN TÜM GÜNLERİNİ gösterir** (Pzt-Paz).
+  > Bir dönem `schedule.GUNLER` (Sal/Per/Cum) listelere de dayatılıyordu ve
+  > kullanıcı *"görev listesinde sadece salı perşembe ve cuma görünüyor, tüm
+  > günler görünmeli"* dedi. Filtre **kaldırıldı**: `GUNLER` *ders
+  > çizelgesinin* kuralıdır, oysa görev listesinde rutinler, öğrencinin elle
+  > açtığı görevler ve tekrarlı görevler de var — onların haftanın her günü
+  > olması normal. `GUNLER` çizelge/defter/ders görevi tarafında **aynen
+  > duruyor**.
+  >
+  > Kalan tek kırpma **hafta**dır (`haftaIcinde` / `haftaIcindeSatir`);
+  > tarihi olmayan (tekrarlı) görevler elenmez. **Rutin satırları bugünü
+  > aşmaz** (`g <= today`) — yarının rutini henüz yapılamaz; ders ve elle
+  > açılan görevler seçili haftanın tamamında görünür.
+  > Doğrulandı: liste 09-21 Pazartesi'den 09-27 Pazar'a **yedi gün başlığı**
+  > gösteriyor (önce üç gündü); 1440/375px taşma 0.
+
+  > ⚠️ **Bu değişiklik gizli bir kusuru açtı:** *Tarih* sütunu 124px sabit ve
+  > `nowrap` (tarih kısa/sabit biçimli), ama bugünün satırında metin
+  > *"2026-09-27 · Bugün"* olup hücreyi **16px taşırıyordu**. Bugün çoğu gün
+  > listede hiç olmadığı için görünmüyordu. Rozet artık tarih metninden
+  > **ayrılıp** alt satıra iniyor (`scheduleText`ten söküldü, şablon
+  > `task.gunBugun` ile basıyor) — rutin *Son Saat* hücresindeki kararın
+  > aynısı.
 
   > **Tüm Ders Görevlerini Sil** (`POST /admin/schedule/tasks/delete-all`,
   > `requireRole('admin')`): tarih/öğrenci ayrımı yapmadan bütün `ders:%`
@@ -1230,6 +1314,131 @@ değişmedi. Dört genişlikte (1440 / 1180 / 1024 / 390px) **sayfa taşması 0*
 > o sayfalardaki formlar `next="/admin/sport"` göndermesine rağmen kayıttan
 > sonra panoya dönüyordu. Liste tamamlandı.
 
+## Hafta şeridi (görev listeleri hafta hafta gezilir)
+
+Hem **admin Görev Yönetimi** (`/admin/tasks/active`) hem **öğrenci
+Görevlerim** (`/student/dashboard`) listesi artık tek bir haftayı gösterir ve
+hafta hafta ileri/geri gezilir. Seçim `?hafta=YYYY-MM-DD` ile gelir.
+
+- **Tek kaynak `buildWeekStrip(requestedWeek, today)`**: öğretim yılının
+  bütün haftalarını (41) üretir, seçimi **yıla kırpar** ve
+  `{weeks, selected, weekStart, weekEnd, isCurrentWeek, prevWeek, nextWeek}`
+  döner. Geçersiz/eksik/aralık dışı parametre kırılmaz — ölçüldü:
+  `uydurma` → Hafta 2 (içinde bulunulan), `2020-01-01` → Hafta 1,
+  `2030-01-01` → Hafta 41.
+- **Hafta adları SIRALI** (*Hafta 1 … Hafta 41*), `describeWeek`'in
+  **dönem içi** numarası değil: o numara yarıyıl tatilinden sonra 1'e dönüyor
+  ve şeritte iki ayrı "Hafta 1" çıkıyordu. Dönem etiketi chip'in `title`'ında
+  durur.
+- **Şerit yatay kayar** (`.week-strip-track`, `overflow-x: auto`); 41 chip'i
+  sarmak ekranın yarısını içerikten önce harcardı (menü şeridindeki kararın
+  aynısı). Yanlarda önceki/sonraki okları (`.week-nav`), uçlarda `disabled`.
+- **Seçili hafta açılışta görünüme kaydırılır** (`[data-week-selected]`).
+
+> ⚠️ **`offsetLeft` KONUMLANDIRILMIŞ ataya göre ölçer.** Şerit `static`
+> olduğu için dışarıdaki kapsayıcının payı da hesaba giriyordu ve seçili
+> hafta görünümün **dışında** kalıyordu (ölçüldü: öğrenci panosunda 49px
+> sola taştı; admin'de tesadüfen doğru görünüyordu). Kaydırma artık kutu
+> dikdörtgenlerinden hesaplanır (`getBoundingClientRect`), ataya bağlı değil.
+> Ölçüldü: Hafta 27'de chip **tam ortada** (merkez farkı 0px).
+
+> ⚠️ **Ölçüm notu:** chip'in sarıp sarmadığını `getClientRects().length` ile
+> saymak yanıltır — chip metin düğümü + `<small>` taşıdığı için sarmayan bir
+> chip de 3 dikdörtgen döndürür. Yükseklik de yanıltır (hücre dolgusu).
+> Doğru ölçü: chip yüksekliklerinin **tekdüzeliği** ve `scrollWidth >
+> clientWidth`.
+
+- **Admin tarafında rutinler de listeye girer** (`buildAdminRoutineWeekRows`):
+  beş rutin (uyanma, spor, YZ, YDS, namaz) için **toplam beş sorgu**; her biri
+  rutin→kayıt LEFT JOIN'i ile haftaya ve öğrenci kümesine daraltılır, yani
+  **öğrenci sayısından bağımsızdır**. Satırlar admin tablosunun şeklinde
+  üretilir (kategori *"Rutin"*), öğrenci tarafındaki `buildRoutineWeekRows`
+  ile karıştırılmamalı — o listeye değil panoya çalışır.
+- **Sıralama:** tarih → rutin/ders sırası (`RUTIN_SIRA_ADMIN`, sabah rutinleri
+  önce) → öğrenci adı → başlık.
+- **İki taraf aynı metni göstermeli.** Admin satırını `buildAdminRoutineWeekRows`,
+  öğrenci satırını `buildRoutineWeekRows` üretir — ayrı kodlar, aynı tablolar.
+  Biri değişirse diğeri de değişmeli; ikisinin ayrıldığı her yer kullanıcıya
+  *"yansımıyor"* diye görünür. (Namaz özetindeki *"N bekleyen"* parçası da bu
+  yüzden admine eklendi: gün bitmeden *"0/5 vaktinde"* yazmak başarısızlık
+  gibi okunuyordu, oysa vakitler henüz gelmemişti.)
+- **Admin'de rutin satırı düzenlenemez**: toplu seçim kutusu yok, satır içi
+  düzenleme kapalı, *İşlem* sütununda "Sil" yerine **"Kayıtlar"** bağlantısı
+  (rutinin kendi Günlük Kayıtlar paneline gider — düzeltmenin doğru yeri
+  orası). Rutin satırı bir `tasks` kaydı değil; silinecek bir şey yok.
+- Bağlantılar seçili haftayı korur; admin'de `activeTaskStudentId` filtresi de
+  şeritte taşınır.
+
+> ⚠️ **Tarih ve İşlem sütunları `nowrap` olmalı** — sarınca *"Kayıtla / r"* ve
+> *"2026-09- / 22"* gibi anlamsız kırılmalar çıkıyordu. Rutin satırları gelince
+> satır sayısı arttı ve bu her ekranda görünür hale geldi.
+>
+> ⚠️ Ama o iki `nowrap` **metin sütunlarını sıkıştırdı**: 1024px'te Başlık
+> 80px'e düşüp *"Uyan / ma Rutini"*, Öğrenci *"Muham / med"* diye dikey
+> dilimlere bölünüyordu (hücre taşması 0 olduğu için sayılar bunu
+> göstermiyordu — **ekrana bakmak gerekti**). Çözüm analiz ve rutin
+> tablolarındaki kabul edilen desen: `.task-table { min-width: 1080px }`,
+> sarmak yerine kapsayıcı kaydırsın. Telefonda `.stack-mobile` min-width'i
+> zaten 0'a çeker.
+
+Doğrulandı: şeritte 41 chip, *Hafta 2* aktif ve görünüme kaydırılmış; admin
+listesi 29 satır (21 rutin + ders görevleri) tarihe göre sıralı, rutinler
+günün başında; öğrenci listesi 19 satır ve özet *"Hafta 2 Özeti · Bu hafta ·
+19 / 3 / 16"*; Hafta 27'ye gidince özetten *"Bu hafta"* düşüyor. Geçersiz ve
+aralık dışı `?hafta=` kırpılıyor (26 adres **200**). Yetki değişmedi: öğrenci
+→ `/admin/tasks/active` **403**, admin → `/student/dashboard` **403**,
+oturumsuz **302**. 1440 / 1024 / 375px'te **sayfa taşması 0**, hücre taşması
+**0**; 1440'ta admin tablosu (1084px) kapsayıcıya sığar, 1024'te 388px
+kaydırır, telefonda karta döner (kart etiketleri doğru).
+
+### Görev Ekle (öğrenci)
+
+`/student/new-task` → **Görev Ekle**. Öğrenci kendi görevini açar; `tasks`
+kaydı gerçek, `created_by = student_id` ve `repeat_type = 'once'`.
+
+- **İki plan tipi:** *tek gün*, ya da *birden çok gün* — aynı başlık N güne
+  (1-180) her güne bir görev olarak açılır. Toplu ekleme **tek
+  transaction**tır ve zaten var olan günleri **atlar** (aralık tek sorguda
+  okunur), form ikinci kez gönderilirse kopya açılmaz; mesaj kaç tanesinin
+  atlandığını söyler.
+- **Son saat opsiyoneldir** ve anlamı görevlerdekiyle aynı: girilirse o saatte
+  kilitlenir ve işaretlenmemişse kalıcı olarak `not_done` olur; boşsa son
+  teslim gün sonudur (23:59). Form bunu yazıyor.
+- **Sistem taban tarihinden önceye açılamaz** — `purgeBeforeSystemStart` o
+  kayıtları her açılışta silerdi, yani görev sessizce kaybolurdu.
+- Kayıttan sonra `hafta` parametresiyle listeye dönülür: eklenen görev
+  **kendi haftasında** açılır, kullanıcı onu aramak zorunda kalmaz.
+- Plan tipine göre alan gösterme **ilerlemeli**: betik çalışmazsa iki blok da
+  görünür ve form yine çalışır — sunucu `planningMode`'a bakar, gizleme
+  yalnızca görseldir.
+
+**Listede farkı `canManage`:** kendi açtığı görevde başlık, kategori ve tarih
+satır içi düzenlenebilir ve **silinebilir**; ders görevlerinde (created_by =
+admin) bunlar kapalıdır. Kilit kuralı aynen geçerli — işaretlenmiş ya da
+süresi dolmuş görev ne düzenlenir ne silinir.
+
+> ⚠️ **Silme rotası da geri getirildi** (`POST /student/tasks/:taskId/delete`).
+> Yalnızca ekleme geri gelseydi yanlış açılan bir görev silinemez ve gün
+> sonunda kalıcı olarak *"Yapılmadı"* mühürlenirdi. `DELETE` koşulu
+> `canManage` ile aynı: `created_by = student_id AND repeat_type = 'once' AND
+> is_archived = false`.
+
+> Sayfa **iki yerde birden** tanımlanır: `/student/:page` içindeki
+> `allowedPages` ve `studentRedirect`'teki `next` beyaz listesi. İkisi birlikte
+> güncellenmezse ya sayfa açılmaz ya da form kayıttan sonra panoya fırlar.
+> Menü ikonu `newTask` (daire + artı) `menuIcons.js`'e geri eklendi — puan
+> sistemiyle birlikte silinmişti.
+
+Doğrulandı: tek gün ve 3 günlük toplu ekleme **kaydediliyor**
+(`created_by = student_id`); aynı gün aynı başlık, boş başlık, boş/olmayan
+kategori, geçersiz tarih, taban öncesi gün (**2026-09-14**), geçersiz plan
+tipi, gün sayısı 0 ve 999, geçersiz saat **reddedildi** ve hiçbiri DB'ye
+sızmadı (0 kayıt). Kendi bugünkü görevinde başlık/açıklama düzenleme **200**,
+silme **"Görev silindi"**; kilitli geçmiş görevde düzenleme **403** ve silme
+reddedildi; ders görevi ve olmayan görev silinemedi; ikinci silme reddedildi.
+Admin → `/student/new-task` ve silme **403**, oturumsuz **302**. 27 adres
+**200**; 1440 / 375px'te taşma 0, plan tipi geçişi çalışıyor.
+
 ### Rutinler görev listesinde de görünür (hafta hafta)
 
 Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
@@ -1252,6 +1461,24 @@ Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
   - **Bugün:** uyanma/spor **satır içi tek dokunuş** ("İşaretle" düğmesi, ilk
     basış geçerli); YZ/YDS üç durumlu olduğu için **"İşaretle →"** bağlantısı.
   - **Gelecek gün:** **"Bekliyor"**, işlem yok.
+- **Durum sütunu rutinin KENDİ rozetidir** (*"Kaçırıldı"*, *"Geç · 09:12 ·
+  192 dk gecikme"*, *"Telafi edildi · 99 dk"*) — admin listesindeki metnin
+  aynısı. Ayrıntı `routineDetay` alanında üretilir: uyanma/spor'da basılan
+  saat + gecikme, YZ/YDS'de çalışılan dakika (gerçek süre girilmediyse
+  *"N dk (plan)"*).
+
+  > ⚠️ **Öğrenci tarafı bunu bir süre hiç basmadı.** Şablon yalnızca
+  > `routineDoneAt` varsa saati yazıyor, yoksa **genel görev dalına** düşüp
+  > durumun yazıldığı **TARİHİ** basıyordu: *"Kaçırıldı"* yerine
+  > *"2026-09-21"*, *"Telafi edildi · 99 dk"* yerine yalnız *"21:03"*.
+  > Kullanıcı bunu *"admin panelinde seçilen öğrencinin yaptığı rutinler
+  > öğrencinin görevlerim listesine yansımıyor"* diye bildirdi — satırlar
+  > aslında oradaydı, **yansımayan şey durum metniydi**. Veri (`statusText`,
+  > `actualMinutes`) iki tarafta da zaten vardı; eksik olan şablondu.
+  > Doğrulandı: iki panelin 35 rutin satırı da **birebir aynı** metni
+  > gösteriyor (FARKLI=0), hem öğrenci yeni işaretlediğinde hem admin elle
+  > yazdığında.
+
 - **Namaz `tip: 'prayer'`** ile özel: günde 5 vakit tuttuğu için **tek özet
   satır**. Durum hücresinde gün kırılımı yazar (*"2/5 vaktinde · 1 kaza ·
   2 kılınmadı"*, `buildPrayerView` gün özetinden). Satır içi işaretlenmez;
@@ -1260,9 +1487,29 @@ Uyanma, spor, **yapay zeka, YDS ve namaz**, panonun tepesindeki şeride
   *"5 vakit"* (namazın hedef saati yok). **"Tamamlandı" sayılması yalnızca
   beş vaktin de vaktinde kılındığı günde** olur (seri ölçüsüyle aynı); aksi
   hâlde nötr (kırmızı yapılmaz).
-- **"Bugünün Özeti" KPI'si (Toplam/Tamamlanan/Bekleyen) yalnızca BUGÜNÜ sayar**
-  (`bugunOzet`). Liste artık tüm haftayı gösterdiği için tüm listeyi saymak
-  "bugün" etiketiyle çelişirdi; gün bazlı sayaç zaten her gün başlığında.
+- **Özet KPI'si (Toplam/Tamamlanan/Bekleyen) SEÇİLİ HAFTAYI sayar**
+  (`haftaOzet`) ve başlığı da öyle yazar: *"Hafta 2 Özeti · Bu hafta"*.
+  Bir dönem yalnızca bugünü sayıyordu (`bugunOzet`); hafta gezinmesi gelince
+  bu iki şekilde birden yanlış oldu: **başka bir haftaya bakarken sayaç hâlâ
+  bugünü gösteriyordu**, ve bugün okul günü değilse (liste yalnızca
+  Sal/Per/Cum) **19 satırın üstünde "0 / 0 / 0"** yazıyordu — ölçüldü,
+  27 Eylül Pazar. Sayaç artık ekranda göreneni sayar; gün bazlı kırılım zaten
+  her gün başlığında (`gunOzeti`).
+- **Tanımlanmamış rutin listede görünmez** — `buildRoutineWeekRows` rutin yoksa
+  (ya da `isActive === false` ise) boş döner. Bu **sessiz** olmamalı: liste
+  artık altında *"Şu rutinler bu hesapta tanımlı değil, bu yüzden listede yok:
+  …"* yazar (`tanimsizRutinler`).
+
+  > ⚠️ Kullanıcı *"öğrencinin görevlerim listesinde YDS ve yapay zeka rutinleri
+  > neden görünmüyor"* diye sordu. Cevap **hata değil, yapılandırmaydı**: o
+  > öğrenci için `ai_routines` / `yds_routines` satırı hiç açılmamıştı
+  > (ölçüldü: iki öğrenciden birinde uyanma+spor var, diğer üçü yok). Ama bunu
+  > ancak veritabanına bakarak anlamak mümkündü — ders görevlerindeki *"liste
+  > boşsa nedeni yazılır"* kuralının rutin karşılığı eksikti.
+  >
+  > Metin öğrenciyi bir sayfaya **yönlendirmez**: rutini yalnızca admin açar
+  > (`/admin/ai`, `/admin/yds`, `/admin/prayer` → *Rutin Ayarla*).
+
 - **Açıklama (not)** yalnızca **uyanma/spor'da ve yalnızca bugün** (kayıt varsa)
   satır içi düzenlenir; `wake_logs.note` / `sport_logs.note`, rota
   `POST /student/routines/:tur/note`. YZ/YDS satırında not düzenlenmez.
@@ -1285,8 +1532,8 @@ geçerli olmaması:
   yanında basılan saat + gecikme (`07:00 · 60 dk gecikme`) var.
 - *Son Saat* sütunu 72px sabit; yatay dolgu düşülünce içeriye **39px** kalıyor.
 
-Çözüm yalnızca **rutin satırlarına** (`.student-task-row.routine-row`)
-kapsandı — normal görev satırlarının `nowrap`'ine dokunulmadı:
+Çözüm önce yalnızca **rutin satırlarına** (`.student-task-row.routine-row`)
+kapsanmıştı — normal görev satırlarının `nowrap`'ine dokunulmadı:
 
 1. İki hücrede `white-space: normal`, ayrıntı (`<small>`) alt satıra.
 2. *Son Saat* değeri **anlamlı yerden** ikiye bölünür: üst satır asıl saat
@@ -1296,6 +1543,13 @@ kapsandı — normal görev satırlarının `nowrap`'ine dokunulmadı:
 3. O hücrenin **sağ dolgusu** 4px'e iner (içerik 39px → 52px) ve ayrıntı
    satırı 12px'e küçülür; böylece `→ 06:30` (49px) tek satırda durur. Sol
    dolgu korunur — saat, görev satırlarındaki saatle aynı hizada başlar.
+
+> ⚠️ **Sonra *Durum* sütununda aynı kural TÜM satırlara açıldı.** Liste
+> haftaya açılınca geçmiş günler de listeleniyor ve görev satırı rozetin
+> yanında durumun yazıldığı günü basıyor (*"✕ 2026-09-22"*). O dal daha önce
+> hiç çalışmıyordu (yalnızca bugün gösteriliyordu), `nowrap` kalınca sütun
+> **11px taşıyordu**. Kural artık `.student-task-table .status-cell`;
+> `.single-line-cell[data-field='estimatedTime']` rutine özel kaldı.
 
 Doğrulandı (1440 / 1180 / 390px, işaretli ve işaretsiz durumda, görev
 satırlarıyla birlikte): hücre taşması **0**, sayfa taşması **0**; görev
